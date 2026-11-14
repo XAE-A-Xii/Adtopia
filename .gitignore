@@ -18,3 +18,5 @@ key.txt
 
 # OS and editor files
 .DS_Store
+.vercel
+.env*
