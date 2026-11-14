@@ -747,7 +747,7 @@ type Pending = { resolve: (value: Record<string, unknown>) => void; reject: (err
 type EventWaiter = { method: string; resolve: (params: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout };
 
 /** One headless Chrome with one page, driven over the DevTools protocol on a pipe (no port is opened). */
-class ChromeSession {
+export class ChromeSession {
   private nextId = 0;
   private readonly pending = new Map<number, Pending>();
   private waiters: EventWaiter[] = [];
@@ -781,16 +781,28 @@ class ChromeSession {
     child.on("error", (error) => gone(`could not start (${error.message})`));
   }
 
-  static async open(chrome: string, input: { width: number; height: number; scale: number; port: number; timeoutMs: number }): Promise<ChromeSession> {
+  /**
+   * Screens open sandboxed (chromeArgs: every request goes to the screen server). `args` replaces
+   * those flags for the open web (site capture), `phone` emulates a phone: its user agent, touch,
+   * and the page's own mobile viewport.
+   */
+  static async open(
+    chrome: string,
+    input: { width: number; height: number; scale: number; port: number; timeoutMs: number; args?: (profile: string) => string[]; phone?: { userAgent: string } },
+  ): Promise<ChromeSession> {
     const profile = await mkdtemp(join(tmpdir(), "nomen-chrome-"));
-    const child = spawn(chrome, chromeArgs({ ...input, profile }), { stdio: ["ignore", "ignore", "pipe", "pipe", "pipe"] });
+    const child = spawn(chrome, input.args ? input.args(profile) : chromeArgs({ ...input, profile }), { stdio: ["ignore", "ignore", "pipe", "pipe", "pipe"] });
     const session = new ChromeSession(child, profile, input.timeoutMs);
     try {
       const { targetId } = (await session.send("Target.createTarget", { url: "about:blank" }, false)) as { targetId: string };
       const { sessionId } = (await session.send("Target.attachToTarget", { targetId, flatten: true }, false)) as { sessionId: string };
       session.sessionId = sessionId;
       await session.send("Page.enable");
-      await session.send("Emulation.setDeviceMetricsOverride", { width: input.width, height: input.height, deviceScaleFactor: input.scale, mobile: false });
+      await session.send("Emulation.setDeviceMetricsOverride", { width: input.width, height: input.height, deviceScaleFactor: input.scale, mobile: Boolean(input.phone) });
+      if (input.phone) {
+        await session.send("Emulation.setUserAgentOverride", { userAgent: input.phone.userAgent });
+        await session.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+      }
       return session;
     } catch (error) {
       await session.close();
@@ -870,6 +882,12 @@ class ChromeSession {
 
   /** Loads `url`, waits for its load event and fonts, and writes a PNG of the viewport. */
   async shoot(url: string, png: string): Promise<void> {
+    await this.navigate(url);
+    await this.capture(png);
+  }
+
+  /** Loads `url` and waits for its load event. */
+  async navigate(url: string): Promise<void> {
     const loaded = this.waitFor("Page.loadEventFired");
     try {
       const navigation = (await this.send("Page.navigate", { url })) as { errorText?: string };
@@ -878,6 +896,17 @@ class ChromeSession {
     } finally {
       loaded.cancel();
     }
+  }
+
+  /** The value of a JavaScript expression in the page (promises awaited). */
+  async evaluate<T>(expression: string): Promise<T> {
+    const reply = (await this.send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })) as { result?: { value?: T }; exceptionDetails?: { text?: string } };
+    if (reply.exceptionDetails) throw new Error(`the page script failed: ${reply.exceptionDetails.text ?? "error"}`);
+    return reply.result?.value as T;
+  }
+
+  /** Waits for fonts, then writes a PNG of the viewport. */
+  async capture(png: string): Promise<void> {
     await this.send("Runtime.evaluate", { expression: "document.fonts.ready.then(function(){return 1})", awaitPromise: true, returnByValue: true });
     const shot = (await this.send("Page.captureScreenshot", { format: "png", optimizeForSpeed: true, captureBeyondViewport: false })) as { data?: string };
     if (!shot.data) throw new Error("Chrome returned no screenshot");

@@ -7,7 +7,7 @@ import { MonidClient } from "./monid";
 import { NaiveClient } from "./naive";
 import { advanceCreative, type CreativeRow, insertCreative, type ShotState } from "./production";
 import { scratchDir } from "./media";
-import { captureSiteVisuals } from "./creative/capture";
+import { canCaptureLocally, captureSiteVisuals, captureSiteVisualsLocal } from "./creative/capture";
 import { planProduction } from "./creative/plan";
 import { getBrandKit } from "./creative/brandkit";
 import { analyzeProduct } from "./creative/product";
@@ -312,7 +312,10 @@ async function stepStyle(campaign: CampaignRow) {
     if (state.product.kind !== "physical") {
       const dir = join(scratchDir(), `visuals-${campaign.id}`);
       try {
-        const shots = await captureSiteVisuals(naive, { domain: brand.domain, dir });
+        // A local Chrome when there is one (free); otherwise a throwaway Naive computer.
+        const local = canCaptureLocally();
+        if (!local && !naive.hasKey) throw new Error("no Chrome here and no Naive key for a cloud browser");
+        const shots = local ? await captureSiteVisualsLocal({ domain: brand.domain, dir }) : await captureSiteVisuals(naive, { domain: brand.domain, dir });
         // Production cuts to these on later ticks (on a serverless host, maybe another machine): keep them.
         const kept = await Promise.all(shots.map((shot, i) => keepVisual(`visuals-${campaign.id}`, { ...shot, id: `s${i + 1}` })));
         state.product.visuals.push(...kept);

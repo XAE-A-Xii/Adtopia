@@ -4,11 +4,20 @@ import { join } from "node:path";
 import { ApiError } from "../http";
 import { download, probe } from "../media";
 import type { Computer, NaiveClient } from "../naive";
+import { ChromeSession, findChrome } from "./screens";
 import type { ProductVisual } from "./types";
 
-// Product screenshots for the edit: one throwaway Naive computer whose browser presents as a
-// phone, a screenshot of the homepage and up to four pages that show what the product is
-// (pricing, features, how it works, docs), saved locally as ProductVisuals.
+// Product screenshots for the edit: a browser that presents as a phone (a local headless Chrome,
+// or a throwaway Naive computer), a screenshot of the homepage and up to four pages that show what
+// the product is (pricing, features, how it works, docs), saved locally as ProductVisuals.
+
+/** What a capture needs from a browser. */
+type PageBrowser = {
+  goto: (url: string) => Promise<{ url: string }>;
+  title: () => Promise<string>;
+  screenshot: (path: string) => Promise<void>;
+  links: () => Promise<Array<{ href: string; text: string }>>;
+};
 
 /** The NaiveClient methods a capture uses (a NaiveClient satisfies it). */
 export type CaptureClient = Pick<NaiveClient, "createComputer" | "getComputer" | "browserAction" | "fileUrl" | "closeBrowser" | "deleteComputer" | "pauseComputer">;
@@ -42,11 +51,8 @@ export const PHONE_VIEWPORT = { width: 430, height: 932 };
 export async function captureSiteVisuals(naive: CaptureClient, input: CaptureInput): Promise<ProductVisual[]> {
   const started = Date.now();
   const left = () => (input.budgetMs ?? 110_000) - (Date.now() - started);
-  const host = hostOf(input.domain);
-  const bare = host.replace(/^www\./, "");
-  const origin = `https://${host}`;
+  const bare = hostOf(input.domain).replace(/^www\./, "");
   const viewport = input.viewport ?? PHONE_VIEWPORT;
-  const prefix = input.idPrefix ?? "s";
   await mkdir(input.dir, { recursive: true });
 
   const computer = await naive.createComputer(
@@ -60,81 +66,152 @@ export async function captureSiteVisuals(naive: CaptureClient, input: CaptureInp
     },
     `nomen-capture-${bare}-${randomUUID()}`,
   );
-  const visuals: ProductVisual[] = [];
   try {
     await waitUntilRunning(naive, computer, Math.min(45_000, Math.max(5_000, left())), input.pollMs ?? 1500);
     let step = 0;
     // Idempotency-Keys never expire and a reused one replays the old answer, so every goto gets its own.
     const key = () => `nomen-capture-${computer.id}-${++step}`;
-    const seen = new Set<string>();
-
-    // The browser can answer "unavailable" for a few seconds after the computer reports running.
-    const goto = async (url: string) => {
-      for (let attempt = 0; ; attempt++) {
-        try {
-          return await naive.browserAction(computer.id, { action: "goto", url }, key());
-        } catch (error) {
-          if (!(error instanceof ApiError && error.status === 409) || attempt >= 4 || left() < 15_000) throw error;
-          await new Promise((resolve) => setTimeout(resolve, input.pollMs ?? 1500));
+    const browser: PageBrowser = {
+      // The browser can answer "unavailable" for a few seconds after the computer reports running.
+      goto: async (url) => {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const landed = await naive.browserAction(computer.id, { action: "goto", url }, key());
+            return { url: landed.url || url };
+          } catch (error) {
+            if (!(error instanceof ApiError && error.status === 409) || attempt >= 4 || left() < 15_000) throw error;
+            await new Promise((resolve) => setTimeout(resolve, input.pollMs ?? 1500));
+          }
         }
-      }
+      },
+      title: () =>
+        naive
+          .browserAction(computer.id, { action: "extract", selector: "title" })
+          .then((result) => result.text ?? "")
+          .catch(() => ""),
+      screenshot: async (path) => {
+        const shot = await naive.browserAction(computer.id, { action: "screenshot" });
+        if (!shot.file_id) throw new Error("no screenshot");
+        await download((await naive.fileUrl(shot.file_id)).url, path);
+      },
+      links: async () => (await naive.browserAction(computer.id, { action: "links", limit: 200 })).links ?? [],
     };
-    let lastError: unknown = null;
-
-    const shoot = async (url: string) => {
-      const landed = await goto(url);
-      const final = pageKey(landed.url || url);
-      if (seen.has(final)) return;
-      seen.add(final);
-      const title = await naive
-        .browserAction(computer.id, { action: "extract", selector: "title" })
-        .then((result) => (result.text ?? "").replace(/\s+/g, " ").trim().slice(0, 120))
-        .catch(() => "");
-      const shot = await naive.browserAction(computer.id, { action: "screenshot" });
-      if (!shot.file_id) throw new Error(`no screenshot of ${url}`);
-      const path = pathOf(landed.url || url, bare);
-      const local = join(input.dir, `site-${slug(path)}.png`);
-      const { url: signed } = await naive.fileUrl(shot.file_id);
-      await download(signed, local);
-      const size = await imageSize(local);
-      visuals.push({
-        id: `${prefix}${visuals.length + 1}`,
-        kind: "screenshot",
-        url: local,
-        caption: `${pageLabel(path)}, as a phone shows it${title ? `: "${title}"` : ""}`,
-        source: `capture:mobile:${path}`,
-        ...(size ? { width: size.width, height: size.height } : {}),
-      });
-    };
-
-    let links: Array<{ href: string; text: string }> = [];
-    try {
-      await shoot(`${origin}/`);
-      if (!input.paths) {
-        const found = await naive.browserAction(computer.id, { action: "links", limit: 200 });
-        links = found.links ?? [];
-      }
-    } catch (error) {
-      lastError = error; // the homepage would not load or capture: explicit paths may still work
-    }
-
-    const max = input.maxPages ?? 4;
-    const pages = input.paths ? input.paths.map((path) => resolvePage(path, origin, bare)).filter((url): url is string => url !== null).slice(0, max) : pickPages(links, bare, max);
-    for (const page of pages) {
-      if (left() < 12_000) break;
-      try {
-        await shoot(page);
-      } catch (error) {
-        lastError = error; // one page failing (a redirect off the domain, a slow load) never costs the others
-      }
-    }
-    // Nothing captured at all is a failure worth reporting, not an empty success.
-    if (visuals.length === 0 && lastError) throw lastError instanceof Error ? lastError : new Error(String(lastError));
-    return visuals;
+    return await capturePages(browser, input, left);
   } finally {
     await naive.closeBrowser(computer.id).catch(() => null);
     await naive.deleteComputer(computer.id).catch(() => naive.pauseComputer(computer.id).catch(() => null));
   }
+}
+
+/** A phone's user agent, for sites that pick their mobile layout by it rather than by width. */
+const PHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+
+/** Whether a local Chrome can take the screenshots (it can't on serverless hosts). */
+export const canCaptureLocally = () => Boolean(findChrome());
+
+/** Headless Chrome for the open web: a throwaway profile, driven over the DevTools pipe. */
+function siteChromeArgs(profile: string, viewport: { width: number; height: number }) {
+  return [
+    "--headless=new",
+    "--disable-gpu",
+    "--hide-scrollbars",
+    "--mute-audio",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-sync",
+    "--disable-default-apps",
+    "--use-mock-keychain",
+    "--password-store=basic",
+    `--user-data-dir=${profile}`,
+    `--window-size=${viewport.width},${viewport.height}`,
+    "--remote-debugging-pipe",
+    ...(typeof process.getuid === "function" && process.getuid() === 0 ? ["--no-sandbox"] : []),
+    "about:blank",
+  ];
+}
+
+/**
+ * The same screenshots from a local headless Chrome emulating a phone: free, no key. One browser,
+ * one page, a throwaway profile; each page gets a second and a half after its load event for
+ * scripts and animations to settle.
+ */
+export async function captureSiteVisualsLocal(input: CaptureInput & { chrome?: string }): Promise<ProductVisual[]> {
+  const chrome = input.chrome ?? findChrome();
+  if (!chrome) throw new Error("No Chrome or Chromium found to take screenshots: install Google Chrome, or set CHROME_PATH.");
+  const started = Date.now();
+  const left = () => (input.budgetMs ?? 110_000) - (Date.now() - started);
+  const viewport = input.viewport ?? PHONE_VIEWPORT;
+  await mkdir(input.dir, { recursive: true });
+  const session = await ChromeSession.open(chrome, { ...viewport, scale: 2, port: 0, timeoutMs: 30_000, args: (profile) => siteChromeArgs(profile, viewport), phone: { userAgent: PHONE_UA } });
+  const browser: PageBrowser = {
+    goto: async (url) => {
+      await session.navigate(url);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return { url: await session.evaluate<string>("location.href") };
+    },
+    title: () => session.evaluate<string>("document.title"),
+    screenshot: (path) => session.capture(path),
+    links: () => session.evaluate<Array<{ href: string; text: string }>>("[...document.querySelectorAll('a[href]')].slice(0, 300).map((a) => ({ href: a.href, text: (a.innerText || '').trim().slice(0, 80) }))"),
+  };
+  try {
+    return await capturePages(browser, input, left);
+  } finally {
+    await session.close();
+  }
+}
+
+/** The homepage, then the most useful pages (found from its links, or given): one screenshot each. */
+async function capturePages(browser: PageBrowser, input: CaptureInput, left: () => number): Promise<ProductVisual[]> {
+  const host = hostOf(input.domain);
+  const bare = host.replace(/^www\./, "");
+  const origin = `https://${host}`;
+  const prefix = input.idPrefix ?? "s";
+  const visuals: ProductVisual[] = [];
+  const seen = new Set<string>();
+  let lastError: unknown = null;
+
+  const shoot = async (url: string) => {
+    const landed = await browser.goto(url);
+    const final = pageKey(landed.url);
+    if (seen.has(final)) return;
+    seen.add(final);
+    const title = (await browser.title().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 120);
+    const path = pathOf(landed.url, bare);
+    const local = join(input.dir, `site-${slug(path)}.png`);
+    await browser.screenshot(local);
+    const size = await imageSize(local);
+    visuals.push({
+      id: `${prefix}${visuals.length + 1}`,
+      kind: "screenshot",
+      url: local,
+      caption: `${pageLabel(path)}, as a phone shows it${title ? `: "${title}"` : ""}`,
+      source: `capture:mobile:${path}`,
+      ...(size ? { width: size.width, height: size.height } : {}),
+    });
+  };
+
+  let links: Array<{ href: string; text: string }> = [];
+  try {
+    await shoot(`${origin}/`);
+    if (!input.paths) links = await browser.links();
+  } catch (error) {
+    lastError = error; // the homepage would not load or capture: explicit paths may still work
+  }
+
+  const max = input.maxPages ?? 4;
+  const pages = input.paths ? input.paths.map((path) => resolvePage(path, origin, bare)).filter((url): url is string => url !== null).slice(0, max) : pickPages(links, bare, max);
+  for (const page of pages) {
+    if (left() < 12_000) break;
+    try {
+      await shoot(page);
+    } catch (error) {
+      lastError = error; // one page failing (a redirect off the domain, a slow load) never costs the others
+    }
+  }
+  // Nothing captured at all is a failure worth reporting, not an empty success.
+  if (visuals.length === 0 && lastError) throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  return visuals;
 }
 
 async function waitUntilRunning(naive: CaptureClient, computer: Computer, timeoutMs: number, pollMs: number) {
