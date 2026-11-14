@@ -7,6 +7,7 @@ import { logEvent, newId, now, parse, save, store } from "./db";
 import { DEFAULT_VOICES } from "./creative/persona";
 import { TTS_MODEL } from "./creative/dub";
 import { ElevenLabsClient, hasElevenLabs } from "./elevenlabs";
+import { FAL, FAL_USD, FalClient, falImageUrl, falVideoUrl, hasFal } from "./fal";
 import { ApiError } from "./http";
 import { chunkCaptions } from "./creative/captions";
 import { renderTimeline } from "./creative/edit";
@@ -40,7 +41,7 @@ export type ShotState = {
   pose?: string;
   seconds: number;
   status: "pending" | "framed" | "rendering" | "rendered" | "passed" | "failed";
-  provider: "naive" | "monid" | null;
+  provider: "naive" | "monid" | "fal" | null;
   renders: number;
   qc_rounds: number;
   qc_errors?: number;
@@ -79,6 +80,8 @@ export type ShotState = {
   qc: Verdict | null;
   naive_cost: number;
   monid_cost: number;
+  /** Estimated from fal's list prices (fal reports no cost per request). */
+  fal_cost?: number;
   error: string | null;
 };
 
@@ -272,7 +275,7 @@ export async function advanceCreative(ctx: ProductionContext, creative: Creative
   const persist = (fields: Record<string, unknown> = {}) =>
     save("creatives", creative.id, {
       shots_json: JSON.stringify(shots),
-      cost_micro: shots.reduce((sum, shot) => sum + shot.naive_cost + shot.monid_cost, 0) + otherCost,
+      cost_micro: shots.reduce((sum, shot) => sum + shot.naive_cost + shot.monid_cost + (shot.fal_cost ?? 0), 0) + otherCost,
       ...fields,
     });
   if (creative.status === "queued") await persist({ status: "producing" });
@@ -389,7 +392,7 @@ async function checkContinuity(ctx: ProductionContext, creative: CreativeRow, co
 }
 
 async function makeFrame(ctx: ProductionContext, creativeId: string, concept: Concept, shots: ShotState[], shot: ShotState) {
-  if (!ctx.naive || ctx.naiveOut()) {
+  if (!hasFal() && (!ctx.naive || ctx.naiveOut())) {
     shot.frame_skipped = true;
     shot.status = "framed";
     return;
@@ -410,14 +413,15 @@ async function makeFrame(ctx: ProductionContext, creativeId: string, concept: Co
   // House rules for every frame, whatever the concept says: these are what make AI video look fake.
   prompt +=
     "\nPhotorealistic. No readable text anywhere, no captions, subtitles, cards, labels or graphics, no phone interface or status bar, no monitors or screens facing the camera, no logos except the product's own label.";
+  if (hasFal()) return falFrame(creativeId, concept, shot, prompt, references);
   try {
-    const result = await ctx.naive.generateImage({ prompt, aspect_ratio: "9:16", image_urls: references.length ? references : undefined }, shot.frame_idem);
+    const result = await ctx.naive!.generateImage({ prompt, aspect_ratio: "9:16", image_urls: references.length ? references : undefined }, shot.frame_idem);
     const file = result.files[0];
     if (!file) throw new ApiError("naive", 500, "no_file", "the image render returned no file");
     shot.naive_cost += result.cost_micro_usd ?? 0;
     shot.frame_file_id = file.id;
     shot.frame_inflight_since = null;
-    shot.frame_url = (await ctx.naive.fileUrl(file.id)).url;
+    shot.frame_url = (await ctx.naive!.fileUrl(file.id)).url;
     // Keep a copy for the review page and the first-frame gate: signed links expire after seven days.
     const key = fileKey(creativeId, `shot${shot.n}-frame.png`);
     shot.frame_key = await store()
@@ -447,6 +451,66 @@ async function makeFrame(ctx: ProductionContext, creativeId: string, concept: Co
       shot.status = "framed";
       shot.error = `first frame skipped: ${message(error)}`;
     }
+  }
+}
+
+/** A first frame on fal (Nano Banana Pro). The frame's link doubles as its id: later shots and Kling take links. */
+async function falFrame(creativeId: string, concept: Concept, shot: ShotState, prompt: string, references: string[]) {
+  const links = references.filter((ref) => /^(https?:|data:)/.test(ref)); // Naive file ids mean nothing to fal
+  try {
+    // ponytail: waits in this tick; a tick that dies mid-wait submits again next time (a frame costs cents).
+    const output = await new FalClient().run(FAL.frame, { prompt, image_urls: links, aspect_ratio: "9:16", num_images: 1, output_format: "png", resolution: "2K" });
+    const url = falImageUrl(output);
+    if (!url) throw new ApiError("fal", 502, "no_image", "the frame render returned no image");
+    shot.fal_cost = (shot.fal_cost ?? 0) + Math.round(FAL_USD.frame * 1_000_000);
+    Object.assign(shot, { frame_file_id: url, frame_url: url, frame_inflight_since: null });
+    const key = fileKey(creativeId, `shot${shot.n}-frame.png`);
+    shot.frame_key = await store()
+      .files.saveUrl(key, url, "image/png")
+      .then(() => key)
+      .catch(() => null);
+    shot.status = "framed";
+  } catch (error) {
+    if (error instanceof ApiError && error.retryable && shot.submit_errors < MAX_SUBMIT_ERRORS) {
+      backoff(shot);
+    } else if (!shot.drop_product_refs && concept.reference_images.length && !(error instanceof ApiError && (error.retryable || error.outOfCredits))) {
+      shot.drop_product_refs = true; // a product photo fal could not use: keep the identity reference only
+    } else {
+      shot.frame_skipped = true;
+      shot.status = "framed";
+      shot.error = `first frame skipped: ${message(error)}`;
+    }
+  }
+}
+
+/** Kling 3.0 Pro on fal, voicing its own line; about a second longer than the line, as on Monid. */
+const falSeconds = (shot: ShotState) => Math.max(3, Math.min(15, Math.ceil(shot.seconds + 1)));
+
+async function submitFal(shot: ShotState) {
+  const firstFrame = shot.frame_url && !shot.text_only ? shot.frame_url : null;
+  const base = { prompt: shot.prompt.slice(0, 2500), duration: String(falSeconds(shot)), generate_audio: true };
+  try {
+    const id = await new FalClient().submit(firstFrame ? FAL.i2v : FAL.t2v, firstFrame ? { ...base, start_image_url: firstFrame } : { ...base, aspect_ratio: "9:16" });
+    Object.assign(shot, { job_id: id, monid_run_id: null, provider: "fal", status: "rendering", renders: shot.renders + 1, submit_errors: 0 });
+  } catch (error) {
+    if (error instanceof ApiError && error.retryable && shot.submit_errors < MAX_SUBMIT_ERRORS) backoff(shot);
+    else Object.assign(shot, { status: "failed", error: message(error) });
+  }
+}
+
+async function pollFal(shot: ShotState) {
+  const fal = new FalClient();
+  const endpoint = shot.frame_url && !shot.text_only ? FAL.i2v : FAL.t2v;
+  const status = await fal.status(endpoint, shot.job_id!);
+  if (status.status !== "COMPLETED") return;
+  try {
+    const url = falVideoUrl(await fal.result(endpoint, shot.job_id!, status));
+    if (!url) throw new ApiError("fal", 502, "no_video", "the render returned no video");
+    shot.fal_cost = (shot.fal_cost ?? 0) + Math.round(FAL_USD.renderPerSecond * falSeconds(shot) * 1_000_000);
+    Object.assign(shot, { video_url: url, status: "rendered" });
+  } catch (error) {
+    if (error instanceof ApiError && error.retryable) throw error; // reading the result failed: ask again next tick
+    Object.assign(shot, { error: `fal render failed: ${message(error)}`, status: shot.renders < MAX_RENDERS ? "framed" : "failed" });
   }
 }
 
@@ -530,6 +594,7 @@ async function submitRender(ctx: ProductionContext, shot: ShotState) {
     shot.error ??= "render failed repeatedly";
     return;
   }
+  if (hasFal()) return submitFal(shot);
   // Kling 3.0 voicing the line itself is the presenter engine (it won the head-to-head); the Naive
   // video model is the alternative (presenter_engine "naive"), and Kling stays its fallback.
   const kling = getSetting("presenter_engine") !== "naive" && Boolean(ctx.monid);
@@ -612,6 +677,8 @@ async function pollRender(ctx: ProductionContext, creativeId: string, shot: Shot
       shot.status = "framed";
       if (shot.renders >= 2 && monidVideoEnabled(ctx)) shot.force_monid = true;
     }
+  } else if (shot.provider === "fal" && shot.job_id) {
+    await pollFal(shot);
   } else if (shot.provider === "monid" && shot.monid_run_id && ctx.monid) {
     const run = await ctx.monid.getRun(shot.monid_run_id);
     if (TERMINAL.has(run.status)) await finishMonid(run, shot);

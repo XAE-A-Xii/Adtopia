@@ -688,7 +688,8 @@ export async function recomputeSpend(campaignId: string) {
   for (const creative of await listCreatives(campaignId)) {
     for (const shot of parse<ShotState[]>(creative.shots_json, [])) {
       naiveVideo += shot.naive_cost;
-      monidVideo += shot.monid_cost;
+      // ponytail: fal renders count with Monid's, the other render provider; a separate fal column when it matters.
+      monidVideo += shot.monid_cost + (shot.fal_cost ?? 0);
     }
   }
   await save("campaigns", campaignId, {
