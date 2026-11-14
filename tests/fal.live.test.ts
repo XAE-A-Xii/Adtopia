@@ -13,7 +13,6 @@ describe.skipIf(!live)("fal (live)", () => {
     const frame = falImageUrl(
       await fal.run(FAL.frame, {
         prompt: "A woman in her twenties in a bright kitchen, holding a phone, looking into the lens mid-sentence. Photorealistic. No readable text anywhere.",
-        image_urls: [],
         aspect_ratio: "9:16",
         num_images: 1,
         output_format: "png",

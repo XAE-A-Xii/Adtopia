@@ -6,8 +6,9 @@ import { getSetting } from "./settings";
 // retried submit is a second paid job.
 
 export const FAL = {
-  /** Gemini 3 Pro Image ("Nano Banana Pro"): frames, with reference images when there are any. */
-  frame: "fal-ai/nano-banana-pro/edit",
+  /** Gemini 3 Pro Image ("Nano Banana Pro"): frames from words; the edit endpoint when there are reference images (it requires one). */
+  frame: "fal-ai/nano-banana-pro",
+  frameEdit: "fal-ai/nano-banana-pro/edit",
   /** Kling 3.0 Pro with its own voice: from a first frame, or from the prompt alone. */
   i2v: "fal-ai/kling-video/v3/pro/image-to-video",
   t2v: "fal-ai/kling-video/v3/pro/text-to-video",

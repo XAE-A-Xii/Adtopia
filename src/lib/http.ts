@@ -85,6 +85,7 @@ function toApiError(service: ApiError["service"], status: number, data: unknown,
   const body = (data ?? {}) as Record<string, unknown>;
   const envelope = (typeof body.error === "object" && body.error !== null ? body.error : body) as Record<string, unknown>;
   const code = String(envelope.code ?? envelope.type ?? status);
-  const message = String(envelope.message ?? envelope.detail ?? envelope.raw ?? `HTTP ${status}`);
+  const detail = Array.isArray(envelope.detail) ? envelope.detail.map((d: { loc?: unknown[]; msg?: string }) => `${(d.loc ?? []).slice(1).join(".")}: ${d.msg ?? ""}`).join("; ") : envelope.detail;
+  const message = String(envelope.message ?? detail ?? envelope.raw ?? `HTTP ${status}`);
   return new ApiError(service, status, code, message, String(envelope.request_id ?? requestId ?? "") || undefined);
 }

@@ -459,7 +459,8 @@ async function falFrame(creativeId: string, concept: Concept, shot: ShotState, p
   const links = references.filter((ref) => /^(https?:|data:)/.test(ref)); // Naive file ids mean nothing to fal
   try {
     // ponytail: waits in this tick; a tick that dies mid-wait submits again next time (a frame costs cents).
-    const output = await new FalClient().run(FAL.frame, { prompt, image_urls: links, aspect_ratio: "9:16", num_images: 1, output_format: "png", resolution: "2K" });
+    const input = { prompt, aspect_ratio: "9:16", num_images: 1, output_format: "png", resolution: "2K" };
+    const output = await new FalClient().run(links.length ? FAL.frameEdit : FAL.frame, links.length ? { ...input, image_urls: links } : input);
     const url = falImageUrl(output);
     if (!url) throw new ApiError("fal", 502, "no_image", "the frame render returned no image");
     shot.fal_cost = (shot.fal_cost ?? 0) + Math.round(FAL_USD.frame * 1_000_000);
