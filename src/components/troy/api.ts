@@ -50,8 +50,9 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 /** Creates (or finds) the brand and starts its campaign: POST /api/brands. */
-export function startCampaign(url: string) {
-  return call<{ brandId: string; campaignId: string }>("/api/brands", { method: "POST", body: JSON.stringify({ url }) });
+/** `preferences`: what the visitor told the greeter at the door (sent along; the core may not use it yet). */
+export function startCampaign(url: string, preferences?: string) {
+  return call<{ brandId: string; campaignId: string }>("/api/brands", { method: "POST", body: JSON.stringify(preferences ? { url, preferences } : { url }) });
 }
 
 export async function listBrands() {

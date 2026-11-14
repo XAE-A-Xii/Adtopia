@@ -1,8 +1,14 @@
 # Troy: the landing page and the camp
 
 Troy is the pixel-art front door of Surreel. `/` is a white page with a Trojan horse and one box:
-the company's website. Submitting it starts a real campaign; the horse's doors open, a gangplank
-drops and the campaign's agents march out, one by one, down to their posts in the camp. `/camp/[brandId]` is the camp:
+the company's website. As the page opens, the HQ's street door rolls up and one agent, the greeter
+(`scenes/greeter.ts`), steps out and waits on the pavement ("Hi! What's your website?").
+Submitting the website closes the camera in on it and it asks, in a speech bubble: "Do you have
+any preference or requirements?" The visitor types them or skips; the greeter walks back in while
+the campaign starts (the answer goes to `POST /api/brands` as `preferences`), then comes the
+crew: the campaign's agents march out, one by one, across the street and down the stairs to their
+posts in the camp. Escape or "Change website" pulls the camera back with the greeter still
+waiting; if the campaign can't start, the greeter comes back out. `/camp/[brandId]` is the camp:
 the campaign's agents, one island per pipeline stage, doing the work the core track reports.
 
 ## Who owns what
