@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ApiError } from "./http";
 import { getSetting } from "./settings";
 
-// Claude on the Anthropic API with the brand's own key: the same Messages calls Nomen otherwise
+// Claude on the Anthropic API with the brand's own key: the same Messages calls Surreel otherwise
 // sends through Naive's proxy. Model names arrive in Naive's form ("anthropic/claude-sonnet-5.5").
 
 export const hasClaude = () => Boolean(getSetting("anthropic_api_key"));
@@ -58,7 +58,7 @@ function reply(message: Anthropic.Beta.BetaMessage): ClaudeReply {
   return { content: message.content as ClaudeReply["content"], stop_reason: message.stop_reason ?? "", usage: message.usage as ClaudeReply["usage"] };
 }
 
-/** Anthropic's errors as Nomen's: busy and network trouble are retryable, an empty balance is out of credits. */
+/** Anthropic's errors as Surreel's: busy and network trouble are retryable, an empty balance is out of credits. */
 async function guard<T>(call: () => Promise<T>): Promise<T> {
   try {
     return await call();
