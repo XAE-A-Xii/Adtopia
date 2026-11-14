@@ -437,8 +437,11 @@ async function stepStrategy(campaign: CampaignRow) {
 
   // The director's briefs are in: the script room writes each video, then production starts.
   if (campaign.strategy_json) return scriptRoom(campaign, naive, product, breakdowns);
+  // remake (persona portraits, presenter renders) and filmed_screen (a photo of a monitor) still make images on Naive.
+  const naiveOnly: Partial<Record<string, string>> = naive.hasKey ? {} : { remake: "talking_head_broll", filmed_screen: "voiceover_demo" };
   const keep = async (output: unknown) => {
     const strategy = normalizeStrategy(output, options, { referenceIds: breakdowns.map((b) => b.id), visualIds: product.visuals.map((v) => v.id) });
+    for (const brief of strategy.campaign.briefs ?? []) brief.format = (naiveOnly[brief.format] as typeof brief.format | undefined) ?? brief.format;
     if (!strategy.campaign.briefs?.length) throw new Error("The creative director returned no video briefs.");
     await save("campaigns", campaign.id, { strategy_json: JSON.stringify(strategy) });
     await logEvent({
@@ -457,7 +460,7 @@ async function stepStrategy(campaign: CampaignRow) {
       model: DIRECTOR_MODEL,
       max_tokens: 32_000,
       system,
-      messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns }, options, await pastResults(brand.id, campaign.id))}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
+      messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns }, options, await pastResults(brand.id, campaign.id))}\n\n${Object.keys(naiveOnly).length ? `\n\nThis deployment cannot make the ${Object.keys(naiveOnly).join(" or ")} formats: choose from the others.` : ""}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
       tools: [{ name: "submit_strategy", description: "Return the brand brief, the search plan and one video brief per video.", input_schema: STRATEGY_SCHEMA }],
     });
     await save("campaigns", campaign.id, { strategy_spend_micro: claudeCostMicro(DIRECTOR_MODEL, reply.usage) });
