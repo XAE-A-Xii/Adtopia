@@ -1,0 +1,1562 @@
+{
+  "version": 1,
+  "recorded": true,
+  "recordedAt": "2026-11-14T15:02:35.354Z",
+  "brand": {
+    "name": "Fal",
+    "domain": "fal.ai",
+    "url": "https://fal.ai",
+    "profile": {
+      "name": "Fal",
+      "description": "Fal (fal.ai) is a generative media platform that provides developers and enterprises with instant access to a vast library of over 1,000 production‑ready image, video, audio, and 3D AI models via a unified API. The service offers serverless, on‑demand GPU compute—including H100, H200, and B200 instances—so users can run, fine‑tune, or deploy custom models without managing infrastructure. Fal’s proprietary Inference Engine delivers up to 10× faster diffusion model performance, supporting scaling from a single request to millions of daily calls with 99.99% uptime. The platform also supplies dedicated clusters for large‑scale training, enterprise‑grade security, SOC 2 compliance, and 24/7 support, enabling companies to embed state‑of‑the‑art generative AI into products quickly and cost‑effectively.",
+      "slogan": "The generative media cloud.",
+      "industry": "Artificial Intelligence & Machine Learning",
+      "colors": [
+        "#ffffff",
+        "#ec084d",
+        "#fbc3da",
+        "#040404"
+      ],
+      "logo": "logo.png",
+      "socials": [
+        {
+          "type": "x",
+          "url": "https://x.com/fal"
+        },
+        {
+          "type": "discord",
+          "url": "https://discord.gg/fal-ai"
+        },
+        {
+          "type": "reddit",
+          "url": "https://reddit.com/r/fal"
+        },
+        {
+          "type": "instagram",
+          "url": "https://instagram.com/madeonfal"
+        },
+        {
+          "type": "linkedin",
+          "url": "https://linkedin.com/company/features-and-labels"
+        },
+        {
+          "type": "youtube",
+          "url": "https://youtube.com/@fal.ai.official"
+        }
+      ],
+      "images": [
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6ac7da446227e2c2f66df421_h3-max-img.jpg",
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6ac7b46ebdfd2b09f18715bb_model-imgs-preview-05.jpg",
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6ac7e19077ffa5ae1b746daf_model-imgs-preview-07.jpg",
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6ac7b46e733bf94121e07337_model-imgs-preview-03.jpg",
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6ac7b46d6eae5bd5e99c5c1a_model-imgs-preview-01.jpg",
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6ac9c11328174b6207a2cd1c_minimax-h3-stone-forest.webp",
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6ad804484b2943795d9fa327_086e65f6d791f7eefc21b2ecf36f27b9_bfl.png",
+        "https://cdn.prod.website-files.com/6a72ef21c470312422dea9b3/6a75bba8f8575cc1cba349d0_canva.png"
+      ]
+    }
+  },
+  "options": {
+    "concepts": 1,
+    "shotsPerConcept": 1,
+    "secondsPerShot": 8,
+    "videoModel": "google/veo-3.1",
+    "learnStyle": true,
+    "statics": false,
+    "production": "ai"
+  },
+  "estimateUsd": 1.51,
+  "plan": {
+    "brand_name": "Fal",
+    "category": "generative media API",
+    "audience": "Developers and product or engineering leads at startups and enterprises who want to add AI image, video, audio, or 3D generation to their app without managing GPUs.",
+    "competitors": [
+      {
+        "name": "Replicate",
+        "domain": "replicate.com"
+      },
+      {
+        "name": "Hugging Face Inference",
+        "domain": "huggingface.co"
+      },
+      {
+        "name": "AIML API",
+        "domain": "aimlapi.com"
+      },
+      {
+        "name": "Together AI",
+        "domain": "together.ai"
+      }
+    ],
+    "content_queries": [
+      "my AI video generation is too slow",
+      "paying too much for GPUs",
+      "building an AI app as a solo dev",
+      "day in the life AI engineer",
+      "AI video API for apps"
+    ],
+    "conversion_queries": [
+      "I tried an AI video API",
+      "replicate vs fal honest review",
+      "FLUX API pricing comparison"
+    ],
+    "face_queries": [
+      "storytime I shipped an AI video app",
+      "POV developer adds AI image generation"
+    ],
+    "ads_query": "AI video API",
+    "reddit_query": "replicate vs fal ai image API",
+    "aeo_prompts": [
+      "What is the best API for running FLUX or video generation models in production?",
+      "Fal vs Replicate: which is faster and cheaper for generative media inference?"
+    ],
+    "benchmarks": [
+      {
+        "name": "Cluely",
+        "why": "Fast, meme-style hooks and punchy AI-demo clips that get shared widely; the format of showing an AI tool doing something impressive in seconds transfers to fal's model demos.",
+        "role": "reach"
+      },
+      {
+        "name": "Cal AI",
+        "why": "Creator-led UGC where a real person reacts to the app on camera with a clear before-and-after result, driving app sign-ups; transfers to developer creators showing a model output and saying what it cost or how fast it ran.",
+        "role": "convert"
+      }
+    ],
+    "scouted": true,
+    "scout_notes": "Mostly off-topic: the results are AI music, dance, \"fall\" clips, a GPU price joke, and AI-art/short-drama channels, so almost none are developers buying compute. Breakouts (views far above followers) include jc_cripin (2,704x), icecreamwaffles87 (1,115x) and gage_sampson (173x, 16.5M views), but none is about generative media APIs. Selling signals are weak: leo925579 (Higgsfield short drama, whop purchase link), askgrok (Grok Imagine API CTA, \"try it today in the API\") and the app-builder clips hustlewithgianni and graciejcreates, which have high saves per like (0.84 and 0.79) and carry the developer-builder audience. Missing: any face-to-camera developer testimonial or 'I tried' review of an image/video/audio API, and any Fal, Replicate or Together comparison."
+  },
+  "research": {
+    "videos": 100,
+    "ads": 14,
+    "reddit": 3,
+    "keywords": 20,
+    "domainRating": 83,
+    "benchmark": {
+      "views": 827699,
+      "likes": 34891
+    },
+    "rivalAds": [
+      {
+        "name": "Replicate",
+        "ads": 0
+      },
+      {
+        "name": "Hugging Face Inference",
+        "ads": 0
+      },
+      {
+        "name": "AIML API",
+        "ads": 0
+      },
+      {
+        "name": "Together AI",
+        "ads": 0
+      }
+    ]
+  },
+  "runs": [
+    {
+      "key": "brand",
+      "phase": "A",
+      "provider": "context.dev",
+      "status": "done",
+      "error": null,
+      "cost": 0.02
+    },
+    {
+      "key": "site",
+      "phase": "A",
+      "provider": "context.dev",
+      "status": "done",
+      "error": null,
+      "cost": 0.002
+    },
+    {
+      "key": "similar",
+      "phase": "A",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.00167
+    },
+    {
+      "key": "seo_rating",
+      "phase": "A",
+      "provider": "ahrefs",
+      "status": "done",
+      "error": null,
+      "cost": 0.00129
+    },
+    {
+      "key": "seo_keywords",
+      "phase": "A",
+      "provider": "ahrefs",
+      "status": "done",
+      "error": null,
+      "cost": 0.3096
+    },
+    {
+      "key": "tiktok_brand",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_2",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_3",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_4",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_conv_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_conv_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_conv_2",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "reels_conv_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.00188
+    },
+    {
+      "key": "tiktok_face_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_face_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "reels_face_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.00188
+    },
+    {
+      "key": "tiktok_comp_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_comp_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_comp_2",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_bench_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_bench_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "reels_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.00188
+    },
+    {
+      "key": "reels_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.00188
+    },
+    {
+      "key": "shorts_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "shorts_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "tiktok_ads",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0008
+    },
+    {
+      "key": "tiktok_ads_comp_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "failed",
+      "error": "completed (provider HTTP 400)",
+      "cost": 0
+    },
+    {
+      "key": "tiktok_ads_comp_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "failed",
+      "error": "completed (provider HTTP 400)",
+      "cost": 0
+    },
+    {
+      "key": "tiktok_top_ads",
+      "phase": "C",
+      "provider": "tikhub",
+      "status": "done",
+      "error": null,
+      "cost": 0.001
+    },
+    {
+      "key": "meta_ads_brand",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0
+    },
+    {
+      "key": "meta_ads_comp_0",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0
+    },
+    {
+      "key": "meta_ads_comp_1",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0
+    },
+    {
+      "key": "meta_ads_comp_2",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0
+    },
+    {
+      "key": "meta_ads_cat",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0012
+    },
+    {
+      "key": "reddit",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.00035
+    },
+    {
+      "key": "aeo_chatgpt",
+      "phase": "C",
+      "provider": "dataforseo",
+      "status": "done",
+      "error": null,
+      "cost": 0.004
+    },
+    {
+      "key": "aeo_perplexity",
+      "phase": "C",
+      "provider": "anyapi",
+      "status": "done",
+      "error": null,
+      "cost": 0.0025
+    }
+  ],
+  "style": {
+    "slug": null,
+    "version": null,
+    "samples": 3
+  },
+  "strategy": {
+    "brand": {
+      "name": "fal (Private Deployments)",
+      "one_liner": "fal is a platform where developers call over a thousand image, video, audio and 3D AI models through one API, and rent GPUs to run or train their own models.",
+      "category": "Generative media developer infrastructure (software / API)",
+      "value_props": [
+        "One unified API for image, video, audio, 3D and world models",
+        "Integrate new models without managing separate providers",
+        "Swap models by changing only the endpoint ID",
+        "Deploy custom models on serverless inference that autoscales from zero to thousands of GPUs",
+        "Built-in observability to monitor production inference",
+        "Compute clusters of H100, H200, B200 and B300 GPUs for training and fine-tuning"
+      ],
+      "tone": "Confident, technical and developer-first. Short punchy lines like \"zero headaches\" and \"just plug in and generate\".",
+      "visual_style": "Dark, modern developer-style look with a code editor, model cards with sample media, and hot-pink (#ec084d) accents on black and white.",
+      "product_look": "A dark landing page headed \"Your full stack for generative media\" with three product blocks (Model APIs, Serverless, Compute), a tabbed grid of model cards with sample images and video, and a code editor showing a TypeScript fal.subscribe snippet. Get Started and Contact Sales buttons.",
+      "proof_points": [
+        "Access to 1,500+ generative media models through one API (site)",
+        "Autoscaling across thousands of GPUs for custom models (site)",
+        "Built-in observability for production inference (site)",
+        "GPU clusters: H100, H200, B200, B300 (site)",
+        "Cited by ChatGPT as a top default for production FLUX and video generation APIs"
+      ]
+    },
+    "audience": [
+      {
+        "name": "Product developers adding generative media",
+        "description": "Engineers at startups and companies building image, video, audio or 3D AI features into their apps.",
+        "pains": [
+          "Every new model comes from a different provider with a different integration",
+          "Managing GPUs, scaling and MLOps in production"
+        ],
+        "motivations": [
+          "Ship new models the day they launch",
+          "Plug in and generate with a few lines of code"
+        ]
+      },
+      {
+        "name": "Teams running custom models",
+        "description": "ML engineers and technical founders who need to deploy or fine-tune their own models in production.",
+        "pains": [
+          "Autoscaling custom models is slow to set up",
+          "Little visibility into production inference"
+        ],
+        "motivations": [
+          "Scale from zero to thousands of GPUs",
+          "Observability and performance controls built in"
+        ]
+      }
+    ],
+    "competitors": [
+      {
+        "name": "Replicate",
+        "positioning": "Large catalog of community and commercial models with custom model deployment and per-second compute billing.",
+        "what_works": "Broad catalog and asynchronous predictions/webhooks; the main alternative AI engines name next to fal."
+      },
+      {
+        "name": "Runway",
+        "positioning": "Generative video platform pushing its tools into the AI chat apps people already use.",
+        "what_works": "Split-screen demo ads with a comment-for-link CTA ran 16 to 22 days and are still running."
+      },
+      {
+        "name": "Black Forest Labs",
+        "positioning": "First-party FLUX APIs for direct model access.",
+        "what_works": "Direct access to its own models, which suits teams where one model is the core dependency."
+      }
+    ],
+    "content_patterns": [
+      {
+        "pattern": "Surprising capability claim as the hook, then a fast demo with the visual changing about every 2 seconds",
+        "why_it_works": "The bold claim stops the scroll. The constantly changing visual panel keeps the eye moving while the presenter explains a simple flow.",
+        "examples": [
+          "https://www.facebook.com/ads/library/?id=2935213356855284",
+          "https://www.facebook.com/ads/library/?id=1168650725727655"
+        ]
+      },
+      {
+        "pattern": "Numbered, copyable steps that end with striking generated output",
+        "why_it_works": "Viewers save it as a recipe and the output shows the payoff. Short imperative steps feel easy.",
+        "examples": [
+          "https://www.facebook.com/ads/library/?id=1168650725727655",
+          "https://www.tiktok.com/@hustlewithgianni/video/7623171286365179166"
+        ]
+      },
+      {
+        "pattern": "Setup-friction objection answered in one line, then a single concrete ask",
+        "why_it_works": "Developers drop off when setup looks hard. A one-line answer and one clear next step convert.",
+        "examples": [
+          "https://www.facebook.com/ads/library/?id=2935213356855284"
+        ]
+      }
+    ],
+    "search": {
+      "seo_keywords": [
+        {
+          "keyword": "fal ai",
+          "intent": "brand navigational",
+          "priority": "high"
+        },
+        {
+          "keyword": "best API for FLUX in production",
+          "intent": "commercial, developer evaluation",
+          "priority": "high"
+        },
+        {
+          "keyword": "AI video generation API",
+          "intent": "commercial",
+          "priority": "high"
+        },
+        {
+          "keyword": "deploy custom AI model serverless GPU",
+          "intent": "commercial, matches Private Deployments",
+          "priority": "high"
+        },
+        {
+          "keyword": "fal vs replicate",
+          "intent": "comparison",
+          "priority": "medium"
+        },
+        {
+          "keyword": "generative media API",
+          "intent": "category",
+          "priority": "medium"
+        },
+        {
+          "keyword": "fine-tune image model GPU cluster H100",
+          "intent": "commercial",
+          "priority": "medium"
+        }
+      ],
+      "seo_actions": [
+        "Build a dedicated landing page for Private Deployments / serverless custom model deployment, using the site's own wording (autoscaling from zero to thousands of GPUs, built-in observability).",
+        "Publish a code-first guide: swap models by changing the endpoint ID in fal.subscribe, with copyable snippets.",
+        "Add comparison and use-case pages for production FLUX and video generation to capture 'best API' searches.",
+        "Link the docs, pricing and model pages to each other with descriptive anchor text."
+      ],
+      "aeo_status": "ChatGPT already recommends fal: \"My recommendation: start with fal.ai. It's probably the strongest default if you're building a production application that generates images and videos.\" Perplexity says \"fal is generally faster for popular image, video, and audio models\", with the caveat that the speed comparisons are provider- or third-party-reported. Neither answer mentions custom or private deployments specifically.",
+      "aeo_actions": [
+        "Add a short FAQ that answers 'how do I deploy a private custom model on fal' in two or three sentences.",
+        "Publish neutral, dated benchmarks and pricing tables so Perplexity cites fal's own pages instead of third-party blogs.",
+        "Keep fal.ai/learn pages current on serverless and inference-provider topics, since Perplexity already cites them."
+      ],
+      "geo_actions": [
+        "Keep the one-line description ('call over a thousand image, video, audio and 3D models through one API, and rent GPUs to run or train your own') identical across the site, docs, GitHub, X and LinkedIn.",
+        "Seed the same facts on Reddit (r/fal), Discord and YouTube walkthroughs so models see them repeated.",
+        "Mention private/custom deployment explicitly in docs headings and model-card pages so AI answers connect fal with custom model hosting."
+      ]
+    },
+    "campaign": {
+      "name": "One API, your own models",
+      "objective": "Drive developer clicks to fal's Get Started page from a proven converting split-screen demo format, with Private Deployments (serverless custom models) as the hook.",
+      "briefs": [
+        {
+          "title": "One API, a thousand models, deploy your own",
+          "reference_id": "ref_224949eec2",
+          "role": "convert",
+          "metric": "link_clicks",
+          "format": "split_screen",
+          "angle": "Developers stop juggling providers and GPUs: call 1,000+ models through one API, swap models by changing an endpoint ID, and deploy your own model on serverless inference.",
+          "audience": "Product developers adding generative media; teams running custom models",
+          "hook_plan": "Reference opens 'ChatGPT can now make you a full video just by you chatting with it, and'. Remake: 'You can now run a thousand AI image and video models from one API, and' with the first top panel showing a striking generated clip in a rounded card on a cream background (s1 homepage as the product card). The word-by-word bold captions sit on the seam, as in the original.",
+          "keep": [
+            "Split-screen vertical: top panel cycles screens, UI and generated clips, bottom is one presenter to a static camera",
+            "Hard cuts about every 1.9 s, with the top panel changing on each claim",
+            "Word-by-word bold captions on the seam between the halves",
+            "Fast upbeat explainer delivery (about 200 wpm), short clear sentences, one continuous take, no music",
+            "Selling beats in order: hook claim, demo, setup-friction objection, comment/click ask",
+            "Plain purple-lit backdrop and mic'd static camera feel",
+            "About 30 s runtime"
+          ],
+          "change": [
+            "ChatGPT and video-making claim → fal's one API for 1,000+ image, video, audio and 3D models",
+            "Runway demo flow → the fal.subscribe snippet, logs streaming, finished image returned (from the product aha), then 'swap models by changing the endpoint ID'",
+            "Objection line 'sign in with no separate API key required' → 'no separate integration per provider, no GPUs to manage'",
+            "Add one beat: deploy your own custom model on serverless that autoscales from zero to thousands of GPUs, with built-in observability",
+            "CTA 'Comment Runway and I'll send the link' → 'Hit Get Started, link in bio'",
+            "Presenter: AI-generated developer in a plain dark tee (not the original man's face)",
+            "No prices or discounts: none are stated by the brand"
+          ],
+          "visuals": [
+            "s1",
+            "s3",
+            "s2"
+          ],
+          "creator": "AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame.",
+          "setting": "Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter.",
+          "platforms": [
+            "instagram",
+            "tiktok",
+            "youtube"
+          ],
+          "caption": "One API. 1,000+ image, video, audio and 3D models. And you can deploy your own on serverless GPUs. Tap the link in bio to get started on fal.",
+          "hashtags": [
+            "#fal",
+            "#generativeAI",
+            "#AIdev",
+            "#API",
+            "#buildinpublic"
+          ],
+          "cta": "Tap Get Started, link in bio, to call your first model on fal.",
+          "why": "The reference is a Runway Meta ad that ran 22 days and is still running, with a 'Sign up' button and a comment-for-link ask. That is the strongest conversion evidence in the set. It has a cloneability of 7.6/10 and runs 30.6 s, within the 45 s budget, with one static presenter in one continuous take. Fit is 7/10: a dev-tool demo suits the split layout. The screen-recording top panel is replaced by fal's real site screenshots, which keeps the layout without laying the product over someone else's screen. The other references are weaker: ref_be7c733d59 is only 4.6 cloneable and ref_29d48c6809 is 4.7 with 65% screen time and a money claim fal can't support."
+        }
+      ],
+      "posting_plan": {
+        "cadence": "Post this one video on Instagram Reels and TikTok, then repost to YouTube Shorts a day later. Track each with its own tracked link.",
+        "best_times": [
+          "Tuesday to Thursday, 9-11am local",
+          "Weekday evenings, 6-8pm local"
+        ],
+        "notes": "Developers respond to concrete code and fast demos. Label the video as AI-generated and pin a comment linking the docs. Judge it on link clicks, not views."
+      },
+      "concepts": [
+        {
+          "title": "One API, a thousand models, deploy your own",
+          "format": "split screen",
+          "angle": "Developers stop juggling providers and GPUs: call 1,000+ models through one API, swap models by changing an endpoint ID, and deploy your own model on serverless inference.",
+          "platforms": [
+            "instagram",
+            "tiktok",
+            "youtube"
+          ],
+          "hook": "You can now run a thousand AI image and video models from one API, and",
+          "creator": "AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame.",
+          "setting": "Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter.",
+          "shots": [
+            {
+              "seconds": 8,
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Looks straight at the lens, upbeat, small smile, hands out of frame. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.\" No subtitles, no on-screen text.",
+              "dialogue": "You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.",
+              "pose": "Looks straight at the lens, upbeat, small smile, hands out of frame"
+            },
+            {
+              "seconds": 6,
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Small smile, relaxed, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.\" No subtitles, no on-screen text.",
+              "dialogue": "Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.",
+              "pose": "Small smile, relaxed, looks at lens"
+            },
+            {
+              "seconds": 8,
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Matter-of-fact but upbeat, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.\" No subtitles, no on-screen text.",
+              "dialogue": "No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+              "pose": "Matter-of-fact but upbeat, looks at lens"
+            },
+            {
+              "seconds": 4,
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Warm smile, steady look at lens, small nod to finish. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Tap Get Started, link in bio, to call your first model.\" No subtitles, no on-screen text.",
+              "dialogue": "Tap Get Started, link in bio, to call your first model.",
+              "pose": "Warm smile, steady look at lens, small nod to finish"
+            }
+          ],
+          "reference_images": [],
+          "caption": "One API. 1,000+ image, video, audio and 3D models. And you can deploy your own on serverless GPUs. Tap the link in bio to get started on fal.",
+          "hashtags": [
+            "#fal",
+            "#generativeAI",
+            "#AIdev",
+            "#API",
+            "#buildinpublic"
+          ],
+          "cta": "Tap Get Started, link in bio, to call your first model on fal.",
+          "inspired_by": [
+            "https://www.facebook.com/ads/library/?id=2935213356855284"
+          ],
+          "why": "The reference is a Runway Meta ad that ran 22 days and is still running, with a 'Sign up' button and a comment-for-link ask. That is the strongest conversion evidence in the set. It has a cloneability of 7.6/10 and runs 30.6 s, within the 45 s budget, with one static presenter in one continuous take. Fit is 7/10: a dev-tool demo suits the split layout. The screen-recording top panel is replaced by fal's real site screenshots, which keeps the layout without laying the product over someone else's screen. The other references are weaker: ref_be7c733d59 is only 4.6 cloneable and ref_29d48c6809 is 4.7 with 65% screen time and a money claim fal can't support.",
+          "role": "convert",
+          "metric": "link_clicks",
+          "brief": {
+            "title": "One API, a thousand models, deploy your own",
+            "reference_id": "ref_224949eec2",
+            "role": "convert",
+            "metric": "link_clicks",
+            "format": "split_screen",
+            "angle": "Developers stop juggling providers and GPUs: call 1,000+ models through one API, swap models by changing an endpoint ID, and deploy your own model on serverless inference.",
+            "audience": "Product developers adding generative media; teams running custom models",
+            "hook_plan": "Reference opens 'ChatGPT can now make you a full video just by you chatting with it, and'. Remake: 'You can now run a thousand AI image and video models from one API, and' with the first top panel showing a striking generated clip in a rounded card on a cream background (s1 homepage as the product card). The word-by-word bold captions sit on the seam, as in the original.",
+            "keep": [
+              "Split-screen vertical: top panel cycles screens, UI and generated clips, bottom is one presenter to a static camera",
+              "Hard cuts about every 1.9 s, with the top panel changing on each claim",
+              "Word-by-word bold captions on the seam between the halves",
+              "Fast upbeat explainer delivery (about 200 wpm), short clear sentences, one continuous take, no music",
+              "Selling beats in order: hook claim, demo, setup-friction objection, comment/click ask",
+              "Plain purple-lit backdrop and mic'd static camera feel",
+              "About 30 s runtime"
+            ],
+            "change": [
+              "ChatGPT and video-making claim → fal's one API for 1,000+ image, video, audio and 3D models",
+              "Runway demo flow → the fal.subscribe snippet, logs streaming, finished image returned (from the product aha), then 'swap models by changing the endpoint ID'",
+              "Objection line 'sign in with no separate API key required' → 'no separate integration per provider, no GPUs to manage'",
+              "Add one beat: deploy your own custom model on serverless that autoscales from zero to thousands of GPUs, with built-in observability",
+              "CTA 'Comment Runway and I'll send the link' → 'Hit Get Started, link in bio'",
+              "Presenter: AI-generated developer in a plain dark tee (not the original man's face)",
+              "No prices or discounts: none are stated by the brand"
+            ],
+            "visuals": [
+              "s1",
+              "s3",
+              "s2"
+            ],
+            "creator": "AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame.",
+            "setting": "Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter.",
+            "platforms": [
+              "instagram",
+              "tiktok",
+              "youtube"
+            ],
+            "caption": "One API. 1,000+ image, video, audio and 3D models. And you can deploy your own on serverless GPUs. Tap the link in bio to get started on fal.",
+            "hashtags": [
+              "#fal",
+              "#generativeAI",
+              "#AIdev",
+              "#API",
+              "#buildinpublic"
+            ],
+            "cta": "Tap Get Started, link in bio, to call your first model on fal.",
+            "why": "The reference is a Runway Meta ad that ran 22 days and is still running, with a 'Sign up' button and a comment-for-link ask. That is the strongest conversion evidence in the set. It has a cloneability of 7.6/10 and runs 30.6 s, within the 45 s budget, with one static presenter in one continuous take. Fit is 7/10: a dev-tool demo suits the split layout. The screen-recording top panel is replaced by fal's real site screenshots, which keeps the layout without laying the product over someone else's screen. The other references are weaker: ref_be7c733d59 is only 4.6 cloneable and ref_29d48c6809 is 4.7 with 65% screen time and a money claim fal can't support."
+          },
+          "script": {
+            "beats": [
+              {
+                "n": 1,
+                "job": "hook",
+                "seconds": 4.5,
+                "line": "You can now run a thousand AI image and video models from one API, and",
+                "on_screen_text": "",
+                "visual": "split",
+                "product_visual": "s1",
+                "direction": "Looks straight at the lens, upbeat, small smile, hands out of frame.",
+                "screen": "Top panel: the fal homepage screenshot shown as a rounded card on a cream background, with a striking generated clip playing inside the card.",
+                "emotion": "[excited]"
+              },
+              {
+                "n": 2,
+                "job": "demo",
+                "seconds": 2.5,
+                "line": "you just paste a few lines of code.",
+                "on_screen_text": "",
+                "visual": "split",
+                "product_visual": "s1",
+                "direction": "Eyes on lens, slight nod.",
+                "screen": "Dark code editor card on cream background. TypeScript types in: fal.subscribe(\"fal-ai/fast-sdxl\", { input: { prompt: \"photo of a cat wearing a kimono\" } }). The endpoint ID and the prompt highlight one after the other.",
+                "emotion": "[excited]"
+              },
+              {
+                "n": 3,
+                "job": "demo",
+                "seconds": 3,
+                "line": "Logs stream while it runs, then your image comes back.",
+                "on_screen_text": "",
+                "visual": "split",
+                "product_visual": "s1",
+                "direction": "Small smile, relaxed, looks at lens.",
+                "screen": "Dark console window with log lines appearing one by one, then it cuts to a rounded card on a cream background where the finished image of a cat wearing a kimono pops in.",
+                "emotion": "[excited]"
+              },
+              {
+                "n": 4,
+                "job": "demo",
+                "seconds": 2.5,
+                "line": "Want a different model? Change the endpoint ID.",
+                "on_screen_text": "",
+                "visual": "split",
+                "product_visual": "s1",
+                "direction": "Eyebrows lift slightly on the question, then steady.",
+                "screen": "Code editor where \"fal-ai/fast-sdxl\" is replaced by another endpoint ID, and a new generated clip swaps in beside it.",
+                "emotion": "[excited]"
+              },
+              {
+                "n": 5,
+                "job": "objection",
+                "seconds": 3,
+                "line": "No separate integration per provider, no GPUs to manage.",
+                "on_screen_text": "",
+                "visual": "split",
+                "product_visual": "s3",
+                "direction": "Matter-of-fact but upbeat, looks at lens.",
+                "emotion": "[excited]"
+              },
+              {
+                "n": 6,
+                "job": "other",
+                "seconds": 4,
+                "line": "Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+                "on_screen_text": "",
+                "visual": "split",
+                "product_visual": "s1",
+                "direction": "Fast, upbeat, one small smile at the end.",
+                "screen": "Clean card titled \"Serverless\". A GPU count bar grows from 0 to thousands as it autoscales, and an \"Observability\" panel shows log lines appearing one by one.",
+                "emotion": "[excited]"
+              },
+              {
+                "n": 7,
+                "job": "cta",
+                "seconds": 3.5,
+                "line": "Tap Get Started, link in bio, to call your first model.",
+                "on_screen_text": "Get Started: link in bio",
+                "visual": "split",
+                "product_visual": "s1",
+                "direction": "Warm smile, steady look at lens, small nod to finish.",
+                "emotion": "[excited]"
+              }
+            ],
+            "total_seconds": 23,
+            "review": {
+              "score": 8,
+              "notes": [
+                "lint: 7 beats vs the reference's 1: keep its beats one for one (merging middle beats is fine when shortening)",
+                "lint: hook beat is 4.5s vs the reference's 30.6s",
+                "Beat 5 \"No separate integration per provider, no GPUs to manage.\" is shown over s3, the docs page, with no screen text. The docs page doesn't show either claim. When filming, the edit should lay a short \"1 API / 0 GPUs to manage\" card over the docs shot. Otherwise the visual doesn't back up the words.",
+                "Every beat is tagged [excited]. The reference is upbeat but varies, so the objection beat should be [matter-of-fact] or [deadpan]. The beat 4 question should be [curious]. This is a delivery note, not a rewrite.",
+                "Beat 7 CTA reuses s1 (homepage) and carries only the on-screen text \"Get Started: link in bio\". That works, since the homepage has the Get Started button. Keep the button visible in the frame. Do not cut to the pricing page, because the brief states no price.",
+                "Beat 1 \"a thousand AI image and video models\" is slightly narrower than the brief's 1,000+ image, video, audio and 3D. It is true and keeps the reference's rhythm. Optionally say \"image, video, audio and 3D\" in the later beats if time allows.",
+                "The reference is a single hook beat and this script has 7. The creative brief asks for the reference's selling beats in order (hook, demo, objection, click ask), and the cut rhythm of about 3 s matches the reference's roughly 1.9 s cuts, so the extra beats are acceptable. The added serverless beat is the only new beat and is grounded in the brief.",
+                "Line lengths fit their seconds (about 190-200 wpm). The runtime is about 23 s against a 24 s target. The hook wording stays close to the reference, and the hook flows into \"you just paste a few lines of code.\""
+              ],
+              "rounds": 2
+            }
+          },
+          "plan": {
+            "format": "split_screen",
+            "aroll": [
+              {
+                "n": 1,
+                "beats": [
+                  1,
+                  2
+                ],
+                "seconds": 8,
+                "line": "You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.",
+                "pose": "Looks straight at the lens, upbeat, small smile, hands out of frame",
+                "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+                "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Looks straight at the lens, upbeat, small smile, hands out of frame. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.\" No subtitles, no on-screen text."
+              },
+              {
+                "n": 2,
+                "beats": [
+                  3,
+                  4
+                ],
+                "seconds": 6,
+                "line": "Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.",
+                "pose": "Small smile, relaxed, looks at lens",
+                "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+                "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Small smile, relaxed, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.\" No subtitles, no on-screen text."
+              },
+              {
+                "n": 3,
+                "beats": [
+                  5,
+                  6
+                ],
+                "seconds": 8,
+                "line": "No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+                "pose": "Matter-of-fact but upbeat, looks at lens",
+                "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+                "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Matter-of-fact but upbeat, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.\" No subtitles, no on-screen text."
+              },
+              {
+                "n": 4,
+                "beats": [
+                  7
+                ],
+                "seconds": 4,
+                "line": "Tap Get Started, link in bio, to call your first model.",
+                "pose": "Warm smile, steady look at lens, small nod to finish",
+                "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+                "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Warm smile, steady look at lens, small nod to finish. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Tap Get Started, link in bio, to call your first model.\" No subtitles, no on-screen text."
+              }
+            ],
+            "broll": [
+              {
+                "beat": 1,
+                "visual_id": "screen:b1",
+                "motion": "none"
+              },
+              {
+                "beat": 2,
+                "visual_id": "screen:b2",
+                "motion": "none"
+              },
+              {
+                "beat": 3,
+                "visual_id": "screen:b3",
+                "motion": "none"
+              },
+              {
+                "beat": 4,
+                "visual_id": "screen:b4",
+                "motion": "none"
+              },
+              {
+                "beat": 5,
+                "visual_id": "s3",
+                "motion": "zoom_in"
+              },
+              {
+                "beat": 6,
+                "visual_id": "screen:b6",
+                "motion": "none"
+              },
+              {
+                "beat": 7,
+                "visual_id": "s1",
+                "motion": "zoom_out"
+              }
+            ],
+            "voiceover": null,
+            "screens": [
+              {
+                "id": "b1",
+                "brief": "Top panel: the fal homepage screenshot shown as a rounded card on a cream background, with a striking generated clip playing inside the card.",
+                "line": "You can now run a thousand AI image and video models from one API, and",
+                "seconds": 4.5,
+                "reference_visual": "Top: claymation-style AI-generated FIZZ soda can on a beach, shown in a rounded card on a cream background. Bottom: the presenter talks to camera. A hard cut at 2.8 s, probably to another generated clip, then at 4.3 s to the next shot.",
+                "size": "half"
+              },
+              {
+                "id": "b2",
+                "brief": "Dark code editor card on cream background. TypeScript types in: fal.subscribe(\"fal-ai/fast-sdxl\", { input: { prompt: \"photo of a cat wearing a kimono\" } }). The endpoint ID and the prompt highlight one after the other.",
+                "line": "you just paste a few lines of code.",
+                "seconds": 2.5,
+                "reference_visual": "",
+                "size": "half"
+              },
+              {
+                "id": "b3",
+                "brief": "Dark console window with log lines appearing one by one, then it cuts to a rounded card on a cream background where the finished image of a cat wearing a kimono pops in.",
+                "line": "Logs stream while it runs, then your image comes back.",
+                "seconds": 3,
+                "reference_visual": "",
+                "size": "half"
+              },
+              {
+                "id": "b4",
+                "brief": "Code editor where \"fal-ai/fast-sdxl\" is replaced by another endpoint ID, and a new generated clip swaps in beside it.",
+                "line": "Want a different model? Change the endpoint ID.",
+                "seconds": 2.5,
+                "reference_visual": "",
+                "size": "half"
+              },
+              {
+                "id": "b6",
+                "brief": "Clean card titled \"Serverless\". A GPU count bar grows from 0 to thousands as it autoscales, and an \"Observability\" panel shows log lines appearing one by one.",
+                "line": "Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+                "seconds": 4,
+                "reference_visual": "",
+                "size": "half"
+              }
+            ]
+          },
+          "reference": {
+            "id": "ref_224949eec2",
+            "url": "https://www.facebook.com/ads/library/?id=2935213356855284",
+            "author": "Runway",
+            "views": 0,
+            "followers": null,
+            "outlier": null,
+            "format": "Split-screen vertical: top half cycles through screen recordings, UI graphics and AI-generated clips; bottom half is a man in a black tee talking to a mic'd static camera against a purple-lit backdrop. Hard cuts about every 1.9 s, with the top panel changing on each claim. Word-by-word bold captions sit on the seam between the halves. Fast spoken delivery with no music evident from the frames.",
+            "hook_mechanic": ""
+          }
+        }
+      ],
+      "script_rounds": 1
+    }
+  },
+  "creatives": [
+    {
+      "idx": 0,
+      "concept": {
+        "title": "One API, a thousand models, deploy your own",
+        "format": "split screen",
+        "angle": "Developers stop juggling providers and GPUs: call 1,000+ models through one API, swap models by changing an endpoint ID, and deploy your own model on serverless inference.",
+        "platforms": [
+          "instagram",
+          "tiktok",
+          "youtube"
+        ],
+        "hook": "You can now run a thousand AI image and video models from one API, and",
+        "creator": "AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame.",
+        "setting": "Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter.",
+        "shots": [
+          {
+            "seconds": 8,
+            "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+            "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Looks straight at the lens, upbeat, small smile, hands out of frame. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.\" No subtitles, no on-screen text.",
+            "dialogue": "You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.",
+            "pose": "Looks straight at the lens, upbeat, small smile, hands out of frame"
+          },
+          {
+            "seconds": 6,
+            "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+            "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Small smile, relaxed, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.\" No subtitles, no on-screen text.",
+            "dialogue": "Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.",
+            "pose": "Small smile, relaxed, looks at lens"
+          },
+          {
+            "seconds": 8,
+            "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+            "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Matter-of-fact but upbeat, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.\" No subtitles, no on-screen text.",
+            "dialogue": "No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+            "pose": "Matter-of-fact but upbeat, looks at lens"
+          },
+          {
+            "seconds": 4,
+            "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+            "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Warm smile, steady look at lens, small nod to finish. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Tap Get Started, link in bio, to call your first model.\" No subtitles, no on-screen text.",
+            "dialogue": "Tap Get Started, link in bio, to call your first model.",
+            "pose": "Warm smile, steady look at lens, small nod to finish"
+          }
+        ],
+        "reference_images": [],
+        "caption": "One API. 1,000+ image, video, audio and 3D models. And you can deploy your own on serverless GPUs. Tap the link in bio to get started on fal.",
+        "hashtags": [
+          "#fal",
+          "#generativeAI",
+          "#AIdev",
+          "#API",
+          "#buildinpublic"
+        ],
+        "cta": "Tap Get Started, link in bio, to call your first model on fal.",
+        "inspired_by": [
+          "https://www.facebook.com/ads/library/?id=2935213356855284"
+        ],
+        "why": "The reference is a Runway Meta ad that ran 22 days and is still running, with a 'Sign up' button and a comment-for-link ask. That is the strongest conversion evidence in the set. It has a cloneability of 7.6/10 and runs 30.6 s, within the 45 s budget, with one static presenter in one continuous take. Fit is 7/10: a dev-tool demo suits the split layout. The screen-recording top panel is replaced by fal's real site screenshots, which keeps the layout without laying the product over someone else's screen. The other references are weaker: ref_be7c733d59 is only 4.6 cloneable and ref_29d48c6809 is 4.7 with 65% screen time and a money claim fal can't support.",
+        "role": "convert",
+        "metric": "link_clicks",
+        "brief": {
+          "title": "One API, a thousand models, deploy your own",
+          "reference_id": "ref_224949eec2",
+          "role": "convert",
+          "metric": "link_clicks",
+          "format": "split_screen",
+          "angle": "Developers stop juggling providers and GPUs: call 1,000+ models through one API, swap models by changing an endpoint ID, and deploy your own model on serverless inference.",
+          "audience": "Product developers adding generative media; teams running custom models",
+          "hook_plan": "Reference opens 'ChatGPT can now make you a full video just by you chatting with it, and'. Remake: 'You can now run a thousand AI image and video models from one API, and' with the first top panel showing a striking generated clip in a rounded card on a cream background (s1 homepage as the product card). The word-by-word bold captions sit on the seam, as in the original.",
+          "keep": [
+            "Split-screen vertical: top panel cycles screens, UI and generated clips, bottom is one presenter to a static camera",
+            "Hard cuts about every 1.9 s, with the top panel changing on each claim",
+            "Word-by-word bold captions on the seam between the halves",
+            "Fast upbeat explainer delivery (about 200 wpm), short clear sentences, one continuous take, no music",
+            "Selling beats in order: hook claim, demo, setup-friction objection, comment/click ask",
+            "Plain purple-lit backdrop and mic'd static camera feel",
+            "About 30 s runtime"
+          ],
+          "change": [
+            "ChatGPT and video-making claim → fal's one API for 1,000+ image, video, audio and 3D models",
+            "Runway demo flow → the fal.subscribe snippet, logs streaming, finished image returned (from the product aha), then 'swap models by changing the endpoint ID'",
+            "Objection line 'sign in with no separate API key required' → 'no separate integration per provider, no GPUs to manage'",
+            "Add one beat: deploy your own custom model on serverless that autoscales from zero to thousands of GPUs, with built-in observability",
+            "CTA 'Comment Runway and I'll send the link' → 'Hit Get Started, link in bio'",
+            "Presenter: AI-generated developer in a plain dark tee (not the original man's face)",
+            "No prices or discounts: none are stated by the brand"
+          ],
+          "visuals": [
+            "s1",
+            "s3",
+            "s2"
+          ],
+          "creator": "AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame.",
+          "setting": "Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter.",
+          "platforms": [
+            "instagram",
+            "tiktok",
+            "youtube"
+          ],
+          "caption": "One API. 1,000+ image, video, audio and 3D models. And you can deploy your own on serverless GPUs. Tap the link in bio to get started on fal.",
+          "hashtags": [
+            "#fal",
+            "#generativeAI",
+            "#AIdev",
+            "#API",
+            "#buildinpublic"
+          ],
+          "cta": "Tap Get Started, link in bio, to call your first model on fal.",
+          "why": "The reference is a Runway Meta ad that ran 22 days and is still running, with a 'Sign up' button and a comment-for-link ask. That is the strongest conversion evidence in the set. It has a cloneability of 7.6/10 and runs 30.6 s, within the 45 s budget, with one static presenter in one continuous take. Fit is 7/10: a dev-tool demo suits the split layout. The screen-recording top panel is replaced by fal's real site screenshots, which keeps the layout without laying the product over someone else's screen. The other references are weaker: ref_be7c733d59 is only 4.6 cloneable and ref_29d48c6809 is 4.7 with 65% screen time and a money claim fal can't support."
+        },
+        "script": {
+          "beats": [
+            {
+              "n": 1,
+              "job": "hook",
+              "seconds": 4.5,
+              "line": "You can now run a thousand AI image and video models from one API, and",
+              "on_screen_text": "",
+              "visual": "split",
+              "product_visual": "s1",
+              "direction": "Looks straight at the lens, upbeat, small smile, hands out of frame.",
+              "screen": "Top panel: the fal homepage screenshot shown as a rounded card on a cream background, with a striking generated clip playing inside the card.",
+              "emotion": "[excited]"
+            },
+            {
+              "n": 2,
+              "job": "demo",
+              "seconds": 2.5,
+              "line": "you just paste a few lines of code.",
+              "on_screen_text": "",
+              "visual": "split",
+              "product_visual": "s1",
+              "direction": "Eyes on lens, slight nod.",
+              "screen": "Dark code editor card on cream background. TypeScript types in: fal.subscribe(\"fal-ai/fast-sdxl\", { input: { prompt: \"photo of a cat wearing a kimono\" } }). The endpoint ID and the prompt highlight one after the other.",
+              "emotion": "[excited]"
+            },
+            {
+              "n": 3,
+              "job": "demo",
+              "seconds": 3,
+              "line": "Logs stream while it runs, then your image comes back.",
+              "on_screen_text": "",
+              "visual": "split",
+              "product_visual": "s1",
+              "direction": "Small smile, relaxed, looks at lens.",
+              "screen": "Dark console window with log lines appearing one by one, then it cuts to a rounded card on a cream background where the finished image of a cat wearing a kimono pops in.",
+              "emotion": "[excited]"
+            },
+            {
+              "n": 4,
+              "job": "demo",
+              "seconds": 2.5,
+              "line": "Want a different model? Change the endpoint ID.",
+              "on_screen_text": "",
+              "visual": "split",
+              "product_visual": "s1",
+              "direction": "Eyebrows lift slightly on the question, then steady.",
+              "screen": "Code editor where \"fal-ai/fast-sdxl\" is replaced by another endpoint ID, and a new generated clip swaps in beside it.",
+              "emotion": "[excited]"
+            },
+            {
+              "n": 5,
+              "job": "objection",
+              "seconds": 3,
+              "line": "No separate integration per provider, no GPUs to manage.",
+              "on_screen_text": "",
+              "visual": "split",
+              "product_visual": "s3",
+              "direction": "Matter-of-fact but upbeat, looks at lens.",
+              "emotion": "[excited]"
+            },
+            {
+              "n": 6,
+              "job": "other",
+              "seconds": 4,
+              "line": "Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+              "on_screen_text": "",
+              "visual": "split",
+              "product_visual": "s1",
+              "direction": "Fast, upbeat, one small smile at the end.",
+              "screen": "Clean card titled \"Serverless\". A GPU count bar grows from 0 to thousands as it autoscales, and an \"Observability\" panel shows log lines appearing one by one.",
+              "emotion": "[excited]"
+            },
+            {
+              "n": 7,
+              "job": "cta",
+              "seconds": 3.5,
+              "line": "Tap Get Started, link in bio, to call your first model.",
+              "on_screen_text": "Get Started: link in bio",
+              "visual": "split",
+              "product_visual": "s1",
+              "direction": "Warm smile, steady look at lens, small nod to finish.",
+              "emotion": "[excited]"
+            }
+          ],
+          "total_seconds": 23,
+          "review": {
+            "score": 8,
+            "notes": [
+              "lint: 7 beats vs the reference's 1: keep its beats one for one (merging middle beats is fine when shortening)",
+              "lint: hook beat is 4.5s vs the reference's 30.6s",
+              "Beat 5 \"No separate integration per provider, no GPUs to manage.\" is shown over s3, the docs page, with no screen text. The docs page doesn't show either claim. When filming, the edit should lay a short \"1 API / 0 GPUs to manage\" card over the docs shot. Otherwise the visual doesn't back up the words.",
+              "Every beat is tagged [excited]. The reference is upbeat but varies, so the objection beat should be [matter-of-fact] or [deadpan]. The beat 4 question should be [curious]. This is a delivery note, not a rewrite.",
+              "Beat 7 CTA reuses s1 (homepage) and carries only the on-screen text \"Get Started: link in bio\". That works, since the homepage has the Get Started button. Keep the button visible in the frame. Do not cut to the pricing page, because the brief states no price.",
+              "Beat 1 \"a thousand AI image and video models\" is slightly narrower than the brief's 1,000+ image, video, audio and 3D. It is true and keeps the reference's rhythm. Optionally say \"image, video, audio and 3D\" in the later beats if time allows.",
+              "The reference is a single hook beat and this script has 7. The creative brief asks for the reference's selling beats in order (hook, demo, objection, click ask), and the cut rhythm of about 3 s matches the reference's roughly 1.9 s cuts, so the extra beats are acceptable. The added serverless beat is the only new beat and is grounded in the brief.",
+              "Line lengths fit their seconds (about 190-200 wpm). The runtime is about 23 s against a 24 s target. The hook wording stays close to the reference, and the hook flows into \"you just paste a few lines of code.\""
+            ],
+            "rounds": 2
+          }
+        },
+        "plan": {
+          "format": "split_screen",
+          "aroll": [
+            {
+              "n": 1,
+              "beats": [
+                1,
+                2
+              ],
+              "seconds": 8,
+              "line": "You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.",
+              "pose": "Looks straight at the lens, upbeat, small smile, hands out of frame",
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Looks straight at the lens, upbeat, small smile, hands out of frame. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"You can now run a thousand AI image and video models from one API, and you just paste a few lines of code.\" No subtitles, no on-screen text."
+            },
+            {
+              "n": 2,
+              "beats": [
+                3,
+                4
+              ],
+              "seconds": 6,
+              "line": "Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.",
+              "pose": "Small smile, relaxed, looks at lens",
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Small smile, relaxed, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Logs stream while it runs, then your image comes back. Want a different model? Change the endpoint ID.\" No subtitles, no on-screen text."
+            },
+            {
+              "n": 3,
+              "beats": [
+                5,
+                6
+              ],
+              "seconds": 8,
+              "line": "No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+              "pose": "Matter-of-fact but upbeat, looks at lens",
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Matter-of-fact but upbeat, looks at lens. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"No separate integration per provider, no GPUs to manage. Deploy your own on serverless: zero to thousands of GPUs, observability built in.\" No subtitles, no on-screen text."
+            },
+            {
+              "n": 4,
+              "beats": [
+                7
+              ],
+              "seconds": 4,
+              "line": "Tap Get Started, link in bio, to call your first model.",
+              "pose": "Warm smile, steady look at lens, small nod to finish",
+              "frame_prompt": "Vertical 9:16 candid photo, filmed by a camera propped up at eye level about an arm's length away: chest-up, centred, looking into the lens, mouth slightly open mid-sentence. Natural daylight, natural skin texture with pores, slight grain, imperfect real-world lighting. No text anywhere. AI presenter, man in his late 20s to mid 30s, short dark hair, light stubble, plain black tee, friendly upbeat energy, looks straight at the lens and smiles now and then, hands out of frame. A lived-in real place: Home office corner in the evening, static camera on a tripod, plain wall with soft purple and pink LED backlight, no clutter. Natural everyday exposure, not cinematic, no shallow-depth-of-field blur. A plain full-bleed photograph with nothing drawn or written over it.",
+              "video_prompt": "A single full-frame shot of the presenter only: no split screen, no inset, no on-screen graphics or cards. The camera is propped up and stays still apart from a very slight natural shake; never an arm's-length selfie, no arm reaching toward the lens. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind. He talks straight into the camera like a real TikTok creator: excited. One gentle action: Warm smile, steady look at lens, small nod to finish. Natural micro-expressions, eyebrow raises, small head tilts, natural blinking, eye contact with the lens, relaxed mouth movements that match every word, lips opening only as wide as in casual conversation, never exaggerated, over-enunciated or cartoonish. Hands relaxed and mostly below the frame, the body mostly still; no pointing, no thumbs-up, no head turns past a slight angle. Real phone-camera look: natural daylight, slight sensor noise, no studio lighting, no music. He says: \"Tap Get Started, link in bio, to call your first model.\" No subtitles, no on-screen text."
+            }
+          ],
+          "broll": [
+            {
+              "beat": 1,
+              "visual_id": "screen:b1",
+              "motion": "none"
+            },
+            {
+              "beat": 2,
+              "visual_id": "screen:b2",
+              "motion": "none"
+            },
+            {
+              "beat": 3,
+              "visual_id": "screen:b3",
+              "motion": "none"
+            },
+            {
+              "beat": 4,
+              "visual_id": "screen:b4",
+              "motion": "none"
+            },
+            {
+              "beat": 5,
+              "visual_id": "s3",
+              "motion": "zoom_in"
+            },
+            {
+              "beat": 6,
+              "visual_id": "screen:b6",
+              "motion": "none"
+            },
+            {
+              "beat": 7,
+              "visual_id": "s1",
+              "motion": "zoom_out"
+            }
+          ],
+          "voiceover": null,
+          "screens": [
+            {
+              "id": "b1",
+              "brief": "Top panel: the fal homepage screenshot shown as a rounded card on a cream background, with a striking generated clip playing inside the card.",
+              "line": "You can now run a thousand AI image and video models from one API, and",
+              "seconds": 4.5,
+              "reference_visual": "Top: claymation-style AI-generated FIZZ soda can on a beach, shown in a rounded card on a cream background. Bottom: the presenter talks to camera. A hard cut at 2.8 s, probably to another generated clip, then at 4.3 s to the next shot.",
+              "size": "half"
+            },
+            {
+              "id": "b2",
+              "brief": "Dark code editor card on cream background. TypeScript types in: fal.subscribe(\"fal-ai/fast-sdxl\", { input: { prompt: \"photo of a cat wearing a kimono\" } }). The endpoint ID and the prompt highlight one after the other.",
+              "line": "you just paste a few lines of code.",
+              "seconds": 2.5,
+              "reference_visual": "",
+              "size": "half"
+            },
+            {
+              "id": "b3",
+              "brief": "Dark console window with log lines appearing one by one, then it cuts to a rounded card on a cream background where the finished image of a cat wearing a kimono pops in.",
+              "line": "Logs stream while it runs, then your image comes back.",
+              "seconds": 3,
+              "reference_visual": "",
+              "size": "half"
+            },
+            {
+              "id": "b4",
+              "brief": "Code editor where \"fal-ai/fast-sdxl\" is replaced by another endpoint ID, and a new generated clip swaps in beside it.",
+              "line": "Want a different model? Change the endpoint ID.",
+              "seconds": 2.5,
+              "reference_visual": "",
+              "size": "half"
+            },
+            {
+              "id": "b6",
+              "brief": "Clean card titled \"Serverless\". A GPU count bar grows from 0 to thousands as it autoscales, and an \"Observability\" panel shows log lines appearing one by one.",
+              "line": "Deploy your own on serverless: zero to thousands of GPUs, observability built in.",
+              "seconds": 4,
+              "reference_visual": "",
+              "size": "half"
+            }
+          ]
+        },
+        "reference": {
+          "id": "ref_224949eec2",
+          "url": "https://www.facebook.com/ads/library/?id=2935213356855284",
+          "author": "Runway",
+          "views": 0,
+          "followers": null,
+          "outlier": null,
+          "format": "Split-screen vertical: top half cycles through screen recordings, UI graphics and AI-generated clips; bottom half is a man in a black tee talking to a mic'd static camera against a purple-lit backdrop. Hard cuts about every 1.9 s, with the top panel changing on each claim. Word-by-word bold captions sit on the seam between the halves. Fast spoken delivery with no music evident from the frames.",
+          "hook_mechanic": ""
+        }
+      },
+      "caption": "One API. 1,000+ image, video, audio and 3D models. And you can deploy your own on serverless GPUs. Tap the link in bio to get started on fal.\n\n#fal #generativeAI #AIdev #API #buildinpublic",
+      "platforms": [
+        "instagram",
+        "tiktok",
+        "youtube"
+      ],
+      "qcScore": 7,
+      "cost": 5.64,
+      "generation": 1,
+      "shots": [
+        {
+          "n": 1,
+          "provider": "fal",
+          "renders": 1,
+          "qc": {
+            "score": 8,
+            "pass": true,
+            "issues": [
+              "The presenter's face, hair, black tee and background stay the same across all 4 frames, so identity is consistent.",
+              "The camera angle is slightly low and close, with a mild wide-angle look at the edges. It is not heavy distortion.",
+              "The lighting is evening LED, not the 'natural daylight' in the prompt. This fits the setting description and isn't a problem.",
+              "The background has a lamp, a shelf with items and a plant, so it is a little more cluttered than 'no clutter'. Minor.",
+              "The mouth shapes in frames 1 and 3 are a bit wide, and the smile in frame 3 is fairly big. Both stay within natural speech and are not cartoonish.",
+              "The presenter's hands are out of frame, there are no screens or text, and the product is correctly absent."
+            ],
+            "fix_prompt": ""
+          }
+        },
+        {
+          "n": 2,
+          "provider": "fal",
+          "renders": 1,
+          "qc": {
+            "score": 8,
+            "pass": true,
+            "issues": [
+              "Frame 2: both hands/fingertips rise into the bottom of the frame as a gesture. They are blurry and cropped, so they are not clearly malformed. The brief asked for hands mostly below the frame.",
+              "Frame 1 and frame 3: the face is a bit close and wide-angle, with slight perspective distortion. It is not heavy.",
+              "The lighting is evening purple LED, not the 'natural daylight' in the prompt. This matches the setting description, so it is minor.",
+              "The mouth shapes are slightly broad in frame 2 (big grin) and frame 1 (stretched). They are still within natural excited speech.",
+              "The product is correctly absent, and no on-screen text or readable screens are visible. The identity, room and shirt stay consistent across the frames."
+            ],
+            "fix_prompt": ""
+          }
+        },
+        {
+          "n": 3,
+          "provider": "fal",
+          "renders": 1,
+          "qc": {
+            "score": 8,
+            "pass": true,
+            "issues": [
+              "Frame 4 has a blurry partial hand or thumb at the bottom edge. It is only briefly visible and reads as a natural gesture, but it is slightly ambiguous.",
+              "Frame 4 has his eyes closed. This looks like a blink or a mid-speech beat, not most of the shot.",
+              "Framing and head size shift a little between frames, and frame 1 looks slightly wider-angle. The identity stays the same.",
+              "The background has a lamp, shelves and a dark monitor edge, so it is a little less minimal than 'no clutter'. Nothing on it is readable.",
+              "The lighting is stylized purple LED with a soft studio feel, not natural daylight. It suits the evening home-office brief."
+            ],
+            "fix_prompt": ""
+          }
+        },
+        {
+          "n": 4,
+          "provider": "fal",
+          "renders": 1,
+          "qc": {
+            "score": 7,
+            "pass": true,
+            "issues": [
+              "Frame 1: the mouth is open very wide with the tongue showing and the eyebrows raised. This is more exaggerated than the casual-conversation mouth the brief asks for, though it could pass as an excited word like \"Tap\".",
+              "Frame 2: the eyes are closed in a big smile, which looks like a blink or smile moment. A blurry hand or fingers also drift into the bottom-left corner, which goes against \"hands out of frame\". Because it is soft and brief, it is minor.",
+              "Frame 1 is framed slightly closer to the lens than the other frames, and the face looks a bit wider. This is a small framing change and the identity still looks consistent.",
+              "The lighting is a purple and pink LED evening look rather than natural daylight. This matches the stated setting.",
+              "There is no product, on-screen text or readable screen, which is correct for a presenter-only shot."
+            ],
+            "fix_prompt": ""
+          }
+        }
+      ],
+      "video": "1.mp4",
+      "poster": "1.png",
+      "analytics": null
+    }
+  ],
+  "events": [
+    {
+      "s": 0,
+      "level": "info",
+      "message": "Campaign started: 1 videos, 1 shots each, google/veo-3.1"
+    },
+    {
+      "s": 16.7,
+      "level": "info",
+      "message": "Research plan: generative media API; competitors Replicate, Hugging Face Inference, AIML API, Together AI; searching my AI video generation is too slow, paying too much for GPUs, building an AI app as a solo dev, day in the life AI engineer, AI video API for apps"
+    },
+    {
+      "s": 65.1,
+      "level": "info",
+      "message": "Scout: no follow-up searches. Mostly off-topic: the results are AI music, dance, \"fall\" clips, a GPU price joke, and AI-art/short-drama channels, so almost none are developers buying compute. Breakouts (views far above followers) include jc_cripin (2,704x), icecreamwaffles87 (1,115x) and gage_sampson (173x, 16.5M views), but none is about generative media APIs. Selling signals are weak: leo925579 (Higgsfield short drama, whop purchase link), askgrok (Grok Imagine API CTA, \"try it today in the API\") and the app-builder clips hustlewithgianni and graciejcreates, which have high saves per like (0.84 and 0.79) and carry the developer-builder audience. Missing: any face-to-camera developer testimonial or 'I tried' review of an image/video/audio API, and any Fal, Replicate or Together comparison."
+    },
+    {
+      "s": 66.7,
+      "level": "info",
+      "message": "Research done: 100 short videos to rank, 14 live ads, 3 Reddit threads, 20 keywords (37/39 sources)"
+    },
+    {
+      "s": 88.6,
+      "level": "info",
+      "message": "Product brief: software, \"fal is a platform where developers call over a thousand image, video, audio and 3D AI models through one API, and rent GPUs to run or train their own models.\" (0 visuals)"
+    },
+    {
+      "s": 103.5,
+      "level": "info",
+      "message": "Captured 3 phone-size screenshots of fal.ai to show the product on screen"
+    },
+    {
+      "s": 115.2,
+      "level": "info",
+      "message": "Relevance screen: 2 of 24 top-ranked videos could be remade for Private Deployments (dropped: Fall-season clip, unrelated to developers or AI APIs.; Vague AI video-form meme with no developer or API angle.; AI app-builder (Rork) clip; builder audience is adjacent but it's a consumer no-code demo, not generative media APIs.; Consumer GPU price reaction; gamers, not developers renting compute.)"
+    },
+    {
+      "s": 115.2,
+      "level": "info",
+      "message": "Breaking down 3 outlier videos beat by beat (transcript, cuts, frames): @Runway Meta ad, ran 22 days, length unknown, clones 5/10; @Runway Meta ad, ran 16 days, length unknown, clones 5/10; @hustlewithgianni 537x the account's followers, 16% engagement, 56 s, clones 4.3/10"
+    },
+    {
+      "s": 176.1,
+      "level": "info",
+      "message": "Reference study ready: 3 videos broken down"
+    },
+    {
+      "s": 178.7,
+      "level": "info",
+      "message": "The creative director is choosing which reference videos to transplant for 1 videos"
+    },
+    {
+      "s": 213,
+      "level": "info",
+      "message": "Campaign \"One API, your own models\": \"One API, a thousand models, deploy your own\" (split screen). The script room is writing them."
+    },
+    {
+      "s": 263.9,
+      "level": "info",
+      "message": "Scripts ready: \"One API, a thousand models, deploy your own\" 23s, critic 8/10. Now producing."
+    },
+    {
+      "s": 584.1,
+      "level": "info",
+      "message": "\"One API, a thousand models, deploy your own\": built 5 of 5 product screens"
+    },
+    {
+      "s": 722.5,
+      "level": "info",
+      "message": "\"One API, a thousand models, deploy your own\" is ready (QC 7/10)"
+    }
+  ],
+  "spend": {
+    "naive": 0.092474,
+    "monid": 6.01353,
+    "style": 0,
+    "strategy": 0.092474
+  }
+}

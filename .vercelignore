@@ -1,0 +1,10 @@
+# Never upload keys or local campaign data; the demo needs neither.
+.env*
+!.env.example
+data/
+node_modules/
+.next/
+# Not part of the site.
+video/
+samples/
+tests/

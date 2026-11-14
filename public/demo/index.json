@@ -2,6 +2,11 @@
   "version": 1,
   "scripts": [
     {
+      "id": "fal-ai",
+      "domain": "fal.ai",
+      "name": "Fal"
+    },
+    {
       "id": "usenaive-ai",
       "domain": "usenaive.ai",
       "name": "Naïve"
