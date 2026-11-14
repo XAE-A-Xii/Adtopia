@@ -6,7 +6,7 @@ import { liveEnabled } from "@/lib/live";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Nomen: send in the horse",
+  title: "Surreel: enter the HQ",
   description: "Paste your website. An army of agents researches your market, writes the strategy, films UGC video ads and posts them.",
 };
 

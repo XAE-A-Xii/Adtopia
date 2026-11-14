@@ -14,7 +14,7 @@ describe("what changes hands", () => {
 
   it("hands the oracle the research, with the bar to clear and the rivals", () => {
     const x = exchangeOf("scouts", "oracle", campaignAt(tl.research[1] + 0.1));
-    expect(x.title).toBe("Scouts → Oracle");
+    expect(x.title).toBe("Intelligence desk → Reference archive");
     expect(x.lines[0]).toMatch(/^Research: \d+ top videos, \d+ running ads/);
     expect(x.lines.some((l) => /^The bar to clear: the top videos' median [\d.]+% likes per view\.$/.test(l))).toBe(true);
   });
@@ -35,7 +35,7 @@ describe("what changes hands", () => {
   });
 
   it("says something even without a campaign", () => {
-    expect(exchangeOf("scouts", "oracle", null).lines).toEqual(["Scouts hand their work to Oracle."]);
+    expect(exchangeOf("scouts", "oracle", null).lines).toEqual(["Intelligence desk hands its work to Reference archive."]);
   });
 });
 

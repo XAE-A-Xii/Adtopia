@@ -46,7 +46,7 @@ export function StaticAdsView({ campaign, onChange }: { campaign: CampaignView; 
   if (!statics) {
     return (
       <Empty title="No static ads yet">
-        <p>Static ads are researched separately: Nomen looks at competitors&apos; and category leaders&apos; best image ads, sets an art direction from them, and renders every size Google, Meta, X and Reddit ask for.</p>
+        <p>Static ads are researched separately: Surreel looks at competitors&apos; and category leaders&apos; best image ads, sets an art direction from them, and renders every size Google, Meta, X and Reddit ask for.</p>
         <div className="mt-4 flex justify-center">
           <Button variant="primary" disabled={!researchDone} loading={busy === "start"} onClick={() => act("start", `/api/campaigns/${campaign.id}/statics`)}>
             {researchDone ? "Make static ads" : "Waiting for research"}

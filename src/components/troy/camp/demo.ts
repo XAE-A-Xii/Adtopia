@@ -169,11 +169,11 @@ export type Timeline = {
 // the research is done once the last of them is home with the case.
 
 /**
- * Seconds a source stays out, by its land's row on the map: the ride there and a moment's
- * gathering. The rows at the ends of the high road are the longest rides; the ride home takes
- * about as long again.
+ * Seconds a source stays out, by its shop's place along the street: the ride up the stairs and
+ * along the road, and a moment's gathering. The shops farthest down the street are the longest
+ * rides; the ride home takes about as long again.
  */
-const STAY_BY_ROW = [9.2, 8, 8.2, 9.4, 10.8];
+const STAY_BY_ROW = [8, 8.2, 8.4, 8.7, 9, 9.3, 9.6, 10, 10.4, 10.8];
 const stay = (key: string) => STAY_BY_ROW[LAND[landFor(key)].row];
 const firstStart = (i: number) => 0.6 + i * 0.25;
 /** Seconds the planned sweep's scouts take to march out of the horse to the stable. */

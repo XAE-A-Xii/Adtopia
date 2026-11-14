@@ -22,6 +22,11 @@ export type PropId =
   | "olive"
   | "amphora"
   | "campfire"
+  // The command table in the middle of the HQ.
+  | "hub"
+  // The street's lamps and its passing hover cars (v: paint, + 4 heading the other way).
+  | "streetlamp"
+  | "car"
   | "rail"
   // The lands' landmarks (engine/models/lands.ts).
   | "phone"
@@ -103,7 +108,7 @@ export const PROPS: Record<StationId, Placement[]> = {
   ],
   tent: [
     { prop: "pavilion", x: -14, y: -14 },
-    { prop: "maptable", x: 12, y: 8 },
+    { prop: "maptable", x: 12, y: 8, v: 0, key: "maptable" },
     { prop: "amphora", x: -30, y: 14 },
     { prop: "olive", x: 26, y: -28, v: 3 },
   ],
@@ -121,7 +126,7 @@ export const PROPS: Record<StationId, Placement[]> = {
     { prop: "olive", x: 26, y: -28, v: 5 },
   ],
   agora: [
-    { prop: "podium", x: -6, y: -6 },
+    { prop: "podium", x: -6, y: -6, v: 0, key: "podium" },
     { prop: "banner", x: 14, y: -10, v: 0, key: "banner0" },
     { prop: "banner", x: 24, y: -4, v: 4, key: "banner1" },
     { prop: "banner", x: -20, y: 16, v: 8, key: "banner2" },
@@ -207,21 +212,22 @@ export const STABLE_AISLE = { x: STABLE.x - 16, south: STABLE.y + 20 };
  * it, and where they leave their horses meanwhile. Spot `i` goes with horse `i`.
  */
 export const LAND_SPOTS = {
-  landmark: { x: -5, y: -5 },
+  // The shop front stands at the back of its lot, facing the road (+y).
+  landmark: { x: 0, y: -10 },
   gather: [
-    { x: 7, y: 3, dir: 5 },
-    { x: 3, y: 8, dir: 5 },
-    { x: 11, y: 9, dir: 5 },
-    { x: 9, y: -4, dir: 4 },
+    { x: -6, y: 6, dir: 6 },
+    { x: 6, y: 7, dir: 6 },
+    { x: -12, y: 10, dir: 6 },
+    { x: 12, y: 11, dir: 6 },
   ] as Spot[],
+  // Bikes park at the kerb, along the road.
   horses: [
-    { x: 17, y: 12, dir: 1 },
-    { x: 12, y: 18, dir: 1 },
-    { x: 20, y: 3, dir: 1 },
-    { x: 4, y: 21, dir: 1 },
+    { x: -12, y: 22, dir: 0 },
+    { x: 0, y: 23, dir: 0 },
+    { x: 12, y: 22, dir: 0 },
+    { x: -4, y: 27, dir: 0 },
   ] as Spot[],
 };
-
 
 /** Seated spectators sit this far below the seat top (their feet rest on the step below). */
 export const WATCH_DROP = 2.4;

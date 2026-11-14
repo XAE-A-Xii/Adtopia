@@ -1,17 +1,20 @@
 /* Troy: the landing and the camp. Light, paper-coloured, with pixel-stepped borders. */
 
 .root {
-  --ink: #2b1d14;
-  --ink-soft: #6b5442;
-  --ink-faint: #a08a74;
-  --paper: #fffaf0;
-  --page: #f6f4ef;
-  --sand: #ead6ad;
-  --crimson: #b73a31;
-  --crimson-dark: #8f2726;
-  --bronze: #c98f3a;
-  --teal: #2d7b98;
-  --olive: #647247;
+  /* The HQ's night palette: light ink on dark panels, neon for state. */
+  --ink: #ecebff;
+  --ink-soft: #aaa7d8;
+  --ink-faint: #706d9e;
+  --paper: #1c2044;
+  --page: #151a35;
+  --sand: #292447;
+  --crimson: #f05ccd;
+  --crimson-dark: #b33397;
+  --bronze: #f5b86a;
+  --teal: #52d9ed;
+  --olive: #4dc3a0;
+  /* Pixel frames round the panels. */
+  --line: #51406d;
   --px: 3px;
   position: fixed;
   inset: 0;
@@ -19,9 +22,25 @@
   overflow: hidden;
   /* Not even focus or scrollIntoView may scroll the camp: a panel's heading taking focus would shift it. */
   overflow: clip;
-  background: var(--page);
+  /*
+   * Off the model, the night city's backdrop: an isometric grid like the floor's, fading out, with
+   * a haze of pink and aqua light, pixel stars and the bands of a far skyline at the bottom.
+   */
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 38%, rgba(255, 70, 210, 0.11), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 85% 75%, rgba(40, 230, 255, 0.09), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 12% 80%, rgba(50, 110, 255, 0.1), transparent 70%),
+    linear-gradient(to top, rgba(41, 36, 71, 0.95) 0, rgba(41, 36, 71, 0.95) 3%, transparent 3%, transparent 4%, rgba(41, 36, 71, 0.6) 4%, rgba(41, 36, 71, 0.6) 6%, transparent 6%),
+    radial-gradient(1px 1px at 13% 17%, rgba(204, 247, 252, 0.8), transparent 1.5px),
+    radial-gradient(1px 1px at 71% 9%, rgba(255, 200, 241, 0.8), transparent 1.5px),
+    radial-gradient(1px 1px at 37% 6%, rgba(204, 247, 252, 0.6), transparent 1.5px),
+    radial-gradient(1px 1px at 89% 31%, rgba(194, 214, 255, 0.7), transparent 1.5px),
+    radial-gradient(1px 1px at 6% 52%, rgba(255, 200, 241, 0.6), transparent 1.5px),
+    repeating-linear-gradient(26.565deg, rgba(120, 104, 200, 0.07) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-26.565deg, rgba(120, 104, 200, 0.07) 0 1px, transparent 1px 22px),
+    var(--page);
   color: var(--ink);
-  color-scheme: light;
+  color-scheme: dark;
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -33,6 +52,8 @@
   height: 100%;
   image-rendering: pixelated;
   touch-action: none;
+  /* Richer colour over the whole scene: the neon and the room's blues and violets pop more. */
+  filter: saturate(1.35) contrast(1.04);
 }
 
 .pixel {
@@ -45,21 +66,21 @@
 .box {
   background: var(--paper);
   box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    0 calc(var(--px) * 3) 0 0 rgba(43, 29, 20, 0.14);
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line),
+    0 calc(var(--px) * 3) 0 0 rgba(0, 0, 0, 0.14);
 }
 
 .boxSoft {
   background: var(--paper);
   box-shadow:
-    0 -2px 0 0 rgba(43, 29, 20, 0.85),
-    0 2px 0 0 rgba(43, 29, 20, 0.85),
-    -2px 0 0 0 rgba(43, 29, 20, 0.85),
-    2px 0 0 0 rgba(43, 29, 20, 0.85),
-    0 6px 0 0 rgba(43, 29, 20, 0.1);
+    0 -2px 0 0 rgba(0, 0, 0, 0.85),
+    0 2px 0 0 rgba(0, 0, 0, 0.85),
+    -2px 0 0 0 rgba(0, 0, 0, 0.85),
+    2px 0 0 0 rgba(0, 0, 0, 0.85),
+    0 6px 0 0 rgba(0, 0, 0, 0.1);
 }
 
 .button {
@@ -72,10 +93,10 @@
   background: var(--crimson);
   cursor: pointer;
   box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line),
     inset 0 calc(var(--px) * -1) 0 0 var(--crimson-dark),
     inset 0 var(--px) 0 0 rgba(255, 255, 255, 0.18);
   transition:
@@ -100,11 +121,11 @@
 .buttonInk {
   background: var(--ink);
   box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 #140d08,
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line),
+    inset 0 calc(var(--px) * -1) 0 0 #0d0f22,
     inset 0 var(--px) 0 0 rgba(255, 255, 255, 0.14);
 }
 
@@ -112,16 +133,16 @@
   color: var(--ink);
   background: var(--paper);
   box-shadow:
-    0 -2px 0 0 var(--ink),
-    0 2px 0 0 var(--ink),
-    -2px 0 0 0 var(--ink),
-    2px 0 0 0 var(--ink),
-    inset 0 -2px 0 0 rgba(43, 29, 20, 0.12);
+    0 -2px 0 0 var(--line),
+    0 2px 0 0 var(--line),
+    -2px 0 0 0 var(--line),
+    2px 0 0 0 var(--line),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.12);
 }
 
 .buttonQuiet:hover:not(:disabled) {
   filter: none;
-  background: #f4ead6;
+  background: #262b55;
 }
 
 .button:focus-visible,
@@ -241,7 +262,7 @@
 
 /* The screening room: one finished video at full height over the camp. */
 .overlay {
-  background: rgba(43, 29, 20, 0.74);
+  background: rgba(0, 0, 0, 0.74);
   animation: fadeIn 180ms ease both;
 }
 
@@ -279,7 +300,7 @@
     linear-gradient(rgba(255, 250, 240, 0.55), rgba(255, 250, 240, 0.55)),
     var(--sand);
   box-shadow:
-    inset 0 0 0 2px rgba(43, 29, 20, 0.16),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.16),
     inset 0 -4px 0 0 rgba(160, 120, 70, 0.14);
 }
 
@@ -325,7 +346,7 @@
     0 3px 0 0 var(--ink),
     -3px 0 0 0 var(--ink),
     3px 0 0 0 var(--ink),
-    0 7px 0 0 rgba(43, 29, 20, 0.16);
+    0 7px 0 0 rgba(0, 0, 0, 0.16);
   animation: emote 6.5s steps(1, end) both;
 }
 

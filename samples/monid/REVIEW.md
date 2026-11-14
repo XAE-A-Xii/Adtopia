@@ -1,10 +1,10 @@
 # Sample output: monid.ai test campaigns
 
-Six real videos Nomen produced for https://monid.ai on 2026-11-07, across three runs, each one the pipeline's final, stitched 16-second ad (two 8 s Veo 3.1 shots). They are here so whoever iterates on video quality can see exactly where it falls short.
+Six real videos Surreel produced for https://monid.ai on 2026-11-07, across three runs, each one the pipeline's final, stitched 16-second ad (two 8 s Veo 3.1 shots). They are here so whoever iterates on video quality can see exactly where it falls short.
 
 - `*.mp4`: compressed copies (540 px wide) for people to watch. The originals were 1080x1920.
 - `*-frames.jpg`: one frame per second, 16 frames in two rows (row 1 = shot 1, row 2 = shot 2). Agents that cannot play video should look at these.
-- QC scores are from Nomen's own vision check (`src/lib/qc.ts`): 7+ passes.
+- QC scores are from Surreel's own vision check (`src/lib/qc.ts`): 7+ passes.
 
 ## Honest verdict
 
@@ -261,7 +261,7 @@ Vertical 9:16 smartphone video, UGC style, phone propped on a table at eye level
 
 1. **Selfie framing.** Arm's-length selfies give a giant distorted forearm. The strategist now asks for a propped-up phone (not yet re-tested).
 2. **Expression and action control.** Veo exaggerates grins, closes eyes mid-shot and adds head turns. Try shorter, calmer action lines, or `seconds: 6`, or a second take per shot and let QC pick the best.
-3. **Upscaling.** Naive renders Veo at 720p; Nomen upscales with ffmpeg. A real upscaler (`black-forest-labs/flux-video-upscale` is in Naive's catalogue) is untested.
-4. **Captions.** Real UGC has burned-in captions; Nomen adds none yet (video models garble text, so this must be done after rendering, e.g. Naive clips `caption_preset` or ffmpeg drawtext from the script).
+3. **Upscaling.** Naive renders Veo at 720p; Surreel upscales with ffmpeg. A real upscaler (`black-forest-labs/flux-video-upscale` is in Naive's catalogue) is untested.
+4. **Captions.** Real UGC has burned-in captions; Surreel adds none yet (video models garble text, so this must be done after rendering, e.g. Naive clips `caption_preset` or ffmpeg drawtext from the script).
 5. **Physical products.** The product-photo first frame (real packaging in shot) has not been tested end to end: monid.ai has no physical product. Run a consumer brand next.
 6. **Cost.** QC re-renders made run 3 cost $16.28 per video; the QC rubric was loosened afterwards to fail only realism defects.

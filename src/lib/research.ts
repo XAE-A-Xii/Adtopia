@@ -164,7 +164,7 @@ export const TOP_ADS_CONVERSIONS = 3;
  * (reviews, "I tried", comparisons), the competitors' own ads on Meta and TikTok (an ad that keeps
  * running is an ad that pays), the category's ads, and TikTok's top ads bought for conversions.
  *
- * And it looks for the format Nomen remakes best: one person talking to camera about the category
+ * And it looks for the format Surreel remakes best: one person talking to camera about the category
  * (the face queries, on TikTok and the first on Reels), skipping any the conversion searches run.
  */
 export function phaseCSpecs(plan: ResearchPlan): RunSpec[] {

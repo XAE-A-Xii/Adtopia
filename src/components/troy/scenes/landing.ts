@@ -1,6 +1,6 @@
 import type { Baker } from "../engine/baker";
 import { LEAF_STEPS, PLANK_FROM, PLANK_STEPS, type Job } from "../engine/jobs";
-import { HORSE, PLANK_REST } from "../engine/models/horse";
+import { ENTRANCE, ROOM } from "./layout";
 import { type Entity, Stage } from "../engine/stage";
 
 // The landing: the horse on its island. `open()` plays the doors and the gangplank; then the
@@ -155,11 +155,12 @@ export class LandingScene {
   }
 
   private dust() {
-    const footY = HORSE.sillY + HORSE.plankLength * Math.cos(PLANK_REST);
+    // Sparks from the shutter as it hits the top.
+    const front = ENTRANCE.y + ENTRANCE.depth;
     for (let i = 0; i < 22; i++) {
       const angle = (i / 22) * Math.PI * 2 + Math.random() * 0.3;
       const speed = 10 + Math.random() * 16;
-      this.stage.add(dustPuff(Math.random() * 10 - 5, footY + 2, Math.cos(angle) * speed, Math.sin(angle) * speed * 0.6, 0.7 + Math.random() * 0.5));
+      this.stage.add(dustPuff(Math.random() * 10 - 5, front + 4, Math.cos(angle) * speed, Math.sin(angle) * speed * 0.6, 0.7 + Math.random() * 0.5, ROOM.wall + 0.5));
     }
   }
 }
@@ -182,13 +183,13 @@ export function knockJolt(t: number) {
 }
 
 /** A puff of sand: a few pixels that drift outward, rise a little and fade. */
-export function dustPuff(x: number, y: number, vx: number, vy: number, life: number): Entity {
+export function dustPuff(x: number, y: number, vx: number, vy: number, life: number, z = 0.5): Entity {
   let age = 0;
   const seed = Math.random();
   const puff: Entity = {
     x,
     y,
-    z: 0.5,
+    z,
     sort: 40,
     tick: (dt) => {
       age += dt;
@@ -203,7 +204,7 @@ export function dustPuff(x: number, y: number, vx: number, vy: number, life: num
       const k = age / life;
       const size = Math.max(1, Math.round(px * (1.6 - k)));
       ctx.globalAlpha = (1 - k) * 0.8;
-      ctx.fillStyle = seed > 0.5 ? "#e6cfa2" : "#d7ba8b";
+      ctx.fillStyle = seed > 0.5 ? "#52d9ed" : "#f05ccd";
       for (let i = 0; i < 3; i++) {
         const ox = Math.round((Math.cos(seed * 9 + i * 2.1) * (1 + k * 3)) * px);
         const oy = Math.round((Math.sin(seed * 7 + i * 1.7) * (0.5 + k * 1.5)) * px);

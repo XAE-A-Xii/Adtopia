@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // naive-guard: runs this repo's pinned Naive CLI with guard rails, so Naive cannot overwrite
-// work in this repository or touch Naive resources that Nomen does not own.
+// work in this repository or touch Naive resources that Surreel does not own.
 //
 //   npm run naive -- <naive command>   e.g. npm run naive -- whoami
 //   npm run naive:plan                 naive up --dry-run (reads only, changes nothing)
@@ -14,7 +14,7 @@
 //   --api-key, --key on the command line: the key would end up in shell history.
 //   names      every agent, app, skill, vault and identity in naive.config.ts, and every name under
 //              `removed`, must start with "nomen-". `naive up` matches resources by name across the
-//              whole Naive organization; the prefix keeps it to Nomen's own.
+//              whole Naive organization; the prefix keeps it to Surreel's own.
 //   tasks      `tasks` makes `naive up` create or edit the organization's CEO agent.
 //   real up    needs a clean git tree (what is live is always a commit), prints the dry-run first,
 //              and waits for you to type "apply".
@@ -64,7 +64,7 @@ if (command === "template") {
   const dir = valueOf("--dir") ?? rest[0];
   if (!dir || insideRepo(dir)) {
     refuse(
-      "naive template would clone a whole Naive company repo inside Nomen.",
+      "naive template would clone a whole Naive company repo inside Surreel.",
       `clone it next to this repo by adding --dir ../${rest[0] ?? "<blueprint>"}`,
     );
   }
@@ -166,7 +166,7 @@ async function checkConfig(dir) {
   if (outside.length > 0) {
     refuse(
       `these names in naive.config.ts do not start with "${PREFIX}": ${outside.map(([kind, name]) => `${kind} "${name}"`).join(", ")}.`,
-      `rename them so naive up only creates, changes or deletes Nomen's own resources.`,
+      `rename them so naive up only creates, changes or deletes Surreel's own resources.`,
     );
   }
   if (config.tasks.length > 0) {

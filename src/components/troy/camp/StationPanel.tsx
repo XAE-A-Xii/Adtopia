@@ -94,7 +94,7 @@ export function StationPanel({
       aria-label={`${station.name}: ${station.role}`}
       className={`${styles.box} ${styles.rise} absolute z-20 flex flex-col ${wide ? "bottom-4 right-4 top-[76px] w-[420px]" : "inset-x-3 bottom-3 h-[62vh]"}`}
     >
-      <header className="relative border-b-2 border-[rgba(43,29,20,0.12)] px-5 pb-3 pt-4">
+      <header className="relative border-b-2 border-[rgba(200,196,255,0.12)] px-5 pb-3 pt-4">
         <div className="flex items-start gap-3">
           <div className={`${styles.parchment} grid size-[64px] shrink-0 place-items-center`}>
             <Emblem baker={baker} id={id} size={56} />
@@ -124,7 +124,7 @@ export function StationPanel({
 
         <div className="mb-5">
           <p className="mb-2 text-[12px] leading-relaxed text-[var(--ink-soft)]">{ABOUT[id]}</p>
-          <div className="bg-[rgba(43,29,20,0.04)] px-2 pt-2">
+          <div className="bg-[rgba(200,196,255,0.04)] px-2 pt-2">
             <CampMap stations={plan.stations} here={id} onPick={onStation} />
           </div>
         </div>
@@ -166,9 +166,9 @@ export function StationPanel({
         )}
       </div>
 
-      <footer className="border-t-2 border-[rgba(43,29,20,0.12)] px-5 py-3 text-[12px] text-[var(--ink-soft)]">
+      <footer className="border-t-2 border-[rgba(200,196,255,0.12)] px-5 py-3 text-[12px] text-[var(--ink-soft)]">
         {demo ? (
-          <span>{demo.recorded ? "A recorded campaign, replayed: nothing is spent." : "Demo camp: made-up data, nothing is spent."}</span>
+          <span>{demo.recorded ? "A recorded campaign, replayed: nothing is spent." : "Demo HQ: made-up data, nothing is spent."}</span>
         ) : (
           <a href={`/brands/${encodeURIComponent(view.brand.id)}`} className={`${styles.link} ${styles.pixel}`}>
             Open the full workspace ↗
@@ -203,7 +203,7 @@ function Progress({ value, color }: { value: number; color: string }) {
   return (
     <div className="mt-3 flex gap-[3px]" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)}>
       {Array.from({ length: segments }, (_, i) => (
-        <span key={i} className="h-[6px] flex-1" style={{ background: i < filled ? color : "rgba(43,29,20,0.1)" }} />
+        <span key={i} className="h-[6px] flex-1" style={{ background: i < filled ? color : "rgba(200,196,255,0.1)" }} />
       ))}
     </div>
   );
@@ -257,7 +257,7 @@ function Scouts({ view, actions }: { view: BrandView; actions: CampActions }) {
               return (
                 <li
                   key={run.key}
-                  className="flex items-center gap-2 bg-[rgba(43,29,20,0.04)] py-1.5 pl-2.5 pr-2"
+                  className="flex items-center gap-2 bg-[rgba(200,196,255,0.04)] py-1.5 pl-2.5 pr-2"
                   style={{ boxShadow: `inset 3px 0 0 ${land.color}` }}
                   title={run.error ?? `${land.name}: ${land.what}, through ${run.provider}${run.cost ? ` · ${money(run.cost)}` : ""}`}
                 >
@@ -484,12 +484,12 @@ function Tent({ view, focus }: { view: BrandView; focus: string | null }) {
               const concept = concepts.find((c) => c.brief?.title === brief.title);
               const review = concept?.script?.review;
               return (
-                <li key={`${brief.title}-${i}`} className="flex gap-2.5 bg-[rgba(43,29,20,0.035)] px-3 py-2.5 text-[13px]">
+                <li key={`${brief.title}-${i}`} className="flex gap-2.5 bg-[rgba(200,196,255,0.035)] px-3 py-2.5 text-[13px]">
                   <span className={`${styles.pixel} grid size-6 shrink-0 place-items-center bg-[var(--ink)] text-[12px] text-[var(--paper)]`}>{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-snug">{brief.title}</p>
                     <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[var(--ink-soft)]">
-                      <span className={`${styles.pixel} bg-[rgba(43,29,20,0.07)] px-1.5 text-[11px] leading-[16px]`}>{brief.format.replace(/_/g, " ")}</span>
+                      <span className={`${styles.pixel} bg-[rgba(200,196,255,0.07)] px-1.5 text-[11px] leading-[16px]`}>{brief.format.replace(/_/g, " ")}</span>
                       {brief.role && <RoleBadge role={brief.role} />}
                       {brief.metric && <span>judged on {METRIC_WORDS[brief.metric] ?? brief.metric.replace(/_/g, " ")}</span>}
                     </p>
@@ -529,7 +529,7 @@ function Tent({ view, focus }: { view: BrandView; focus: string | null }) {
       <Section title={`Concepts · ${strategy.campaign.concepts.length}`}>
         <ol className="space-y-2">
           {strategy.campaign.concepts.map((concept, i) => (
-            <li key={i} className="flex gap-3 bg-[rgba(43,29,20,0.04)] px-3 py-2.5">
+            <li key={i} className="flex gap-3 bg-[rgba(200,196,255,0.04)] px-3 py-2.5">
               <span className={`${styles.pixel} grid size-7 shrink-0 place-items-center bg-[var(--ink)] text-[13px] text-[var(--paper)]`}>{i + 1}</span>
               <span className="min-w-0 text-[13px]">
                 <span className="block font-semibold leading-snug">{concept.title}</span>
@@ -568,7 +568,7 @@ function Workshop({ view, busy, actions }: { view: BrandView; busy: string | nul
       ) : (
         <ul className="space-y-4">
           {creatives.map((creative) => (
-            <li key={creative.id} className="bg-[rgba(43,29,20,0.04)] px-3 py-3 text-[13px]">
+            <li key={creative.id} className="bg-[rgba(200,196,255,0.04)] px-3 py-3 text-[13px]">
               <div className="mb-2 flex items-baseline gap-2">
                 <span className="min-w-0 flex-1 truncate font-semibold">{creative.concept?.title ?? `Video ${creative.idx + 1}`}</span>
                 {creative.internal && <InternalBadge cleared={creative.cleared} />}
@@ -864,8 +864,8 @@ function VideoCard({ creative, busy, actions }: { creative: CreativeView; busy: 
         ) : creative.videoUrl ? (
           <video src={`${creative.videoUrl}#t=0.5`} muted playsInline preload="metadata" className="size-full object-cover" />
         ) : null}
-        <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-[rgba(43,29,20,0.12)] opacity-90 transition-opacity group-hover:opacity-100">
-          <span className="grid size-10 place-items-center bg-[var(--paper)] text-[var(--ink)] shadow-[0_3px_0_rgba(43,29,20,0.3)]">
+        <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-[rgba(200,196,255,0.12)] opacity-90 transition-opacity group-hover:opacity-100">
+          <span className="grid size-10 place-items-center bg-[var(--paper)] text-[var(--ink)] shadow-[0_3px_0_rgba(200,196,255,0.3)]">
             <Icon name="play" size={16} />
           </span>
         </span>
@@ -908,7 +908,7 @@ function Battle({ battle, category }: { battle: BattlePlan; category: string | n
         A company for each video sails from the quay below the agora to the city of {rival} and lands once its video is posted. It routs the legion facing it if the video beats the top videos
         {category ? ` in ${category}` : ""} the scouts found by likes per view, holds its ground if level, and falls back to the quay if behind.
       </p>
-      <div className="mt-3 bg-[rgba(43,29,20,0.04)] p-2.5">
+      <div className="mt-3 bg-[rgba(200,196,255,0.04)] p-2.5">
         <p className="flex items-center justify-between text-[11px]">
           <span className={`${styles.pixel} text-[var(--olive)]`}>Your videos {battle.score ? pct(battle.score.engagement) : "–"}</span>
           <span className={`${styles.pixel} text-[var(--crimson)]`}>Top videos {battle.benchmark ? pct(battle.benchmark.engagement) : "–"}</span>
@@ -968,7 +968,7 @@ function Agora({ view, actions }: { view: BrandView; actions: CampActions }) {
               const numbers = postNumbers(post);
               const step = post.status === "posted" || post.status === "scheduled" ? 3 : post.status === "processing" ? 2 : post.status === "failed" ? 2 : 1;
               return (
-                <li key={post.id} className="flex gap-3 bg-[rgba(43,29,20,0.04)] p-2.5 text-[13px]">
+                <li key={post.id} className="flex gap-3 bg-[rgba(200,196,255,0.04)] p-2.5 text-[13px]">
                   {creative?.posterUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={creative.posterUrl} alt="" onLoad={crispIfTiny} className="aspect-[9/16] w-[38px] shrink-0 self-start bg-[var(--ink)] object-cover" />

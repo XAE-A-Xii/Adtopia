@@ -24,23 +24,50 @@ export function ground(sx: number, sy: number): Point {
 }
 
 /** Screen-space centre of the camp, in art px below the horse. */
-export const CAMP_CENTER = { sx: 0, sy: 312 };
+export const CAMP_CENTER = { sx: -20, sy: 180 };
 const COLUMN = 196;
 const ROW_TOP = -76;
 const ROW_BOTTOM = 80;
 
-function at(id: StationId, stage: PipelineStage, name: string, role: string, sx: number, sy: number): Station {
-  const p = ground(CAMP_CENTER.sx + sx, CAMP_CENTER.sy + sy);
+// The camp is one underground HQ: a square basement whose back walls run along x = ROOM.x0 (the
+// left wall on screen) and y = ROOM.y0 (the right wall), with the street above and behind the right
+// wall. Stations sit on a 3 x 3 grid of cells around the coordination table in the middle.
+
+/** The middle of the basement (the Surreel command table), in world units. */
+export const ROOM_CENTER = ground(CAMP_CENTER.sx, CAMP_CENTER.sy);
+/** Distance between neighbouring cells of the grid. */
+export const CELL = 80;
+/** Half the room's inner width. */
+export const ROOM_HALF = CELL + 52;
+export const ROOM = {
+  x0: ROOM_CENTER.x - ROOM_HALF,
+  y0: ROOM_CENTER.y - ROOM_HALF,
+  x1: ROOM_CENTER.x + ROOM_HALF,
+  y1: ROOM_CENTER.y + ROOM_HALF,
+  /** Height of the walls; the street outside is at this height. */
+  wall: 92,
+};
+
+/** A cell of the grid: `i` along x (down-right on screen), `j` along y (down-left). */
+export function cell(i: number, j: number) {
+  return { x: ROOM_CENTER.x + i * CELL, y: ROOM_CENTER.y + j * CELL };
+}
+
+function at(id: StationId, stage: PipelineStage, name: string, role: string, i: number, j: number): Station {
+  const p = cell(i, j);
   return { id, stage, name, role, x: p.x, y: p.y };
 }
 
+// Clockwise around the room on screen: the archive at the top corner, the stairs down from the
+// street to its right, approval and publishing on the right, production at the bottom left, the
+// writers' and strategy corner on the left, and the intelligence desk between it and the archive.
 export const STATIONS: Station[] = [
-  at("scouts", "research", "Scouts", "Research", -COLUMN, ROW_TOP),
-  at("oracle", "style", "Oracle", "Viral references", 0, ROW_TOP),
-  at("tent", "strategy", "War tent", "Strategy", COLUMN, ROW_TOP),
-  at("workshop", "production", "Workshop", "Production", COLUMN, ROW_BOTTOM),
-  at("theatre", "review", "Theatre", "Review", 0, ROW_BOTTOM),
-  at("agora", "live", "Agora", "Posting", -COLUMN, ROW_BOTTOM),
+  at("scouts", "research", "Intelligence desk", "Research", -1, 0),
+  at("oracle", "style", "Reference archive", "Viral references", -1, -1),
+  at("tent", "strategy", "Strategy table", "Strategy and scripts", -1, 1),
+  at("workshop", "production", "Production studio", "Production and QC", 0, 1),
+  at("theatre", "review", "Approval desk", "Review", 1, -1),
+  at("agora", "live", "Publishing terminal", "Posting and analytics", 1, 0),
 ];
 
 export const STATION = Object.fromEntries(STATIONS.map((s) => [s.id, s])) as Record<StationId, Station>;
@@ -78,6 +105,19 @@ export function road(from: StationId, to: StationId): Point[] {
 /** Where the horse's road leaves its island, at the foot of the gangplank. */
 export const HORSE_GATE: Point = { x: 0, y: 62, z: 0 };
 
+/**
+ * The stairs down from the street, along the inside of the right wall: the top step at the street's
+ * height near the archive, the foot toward approval. Walkers come in at the foot.
+ */
+export const STAIRS = { top: { x: ROOM_CENTER.x - 78, y: ROOM.y0 + 12 }, foot: { x: ROOM_CENTER.x + 26, y: ROOM.y0 + 12 }, width: 22, steps: 14 };
+/**
+ * The loft along the back half of the left wall (reference: a mezzanine over the room): a deck
+ * `depth` deep at `z`, from the top corner to `y1`. Nobody walks there; it holds the analytics wall.
+ */
+export const LOFT = { z: 48, depth: 20, y1: ROOM.y0 + (ROOM.y1 - ROOM.y0) * 0.35 };
+
+export const STAIRS_FOOT: Point = { x: STAIRS.foot.x + 12, y: STAIRS.foot.y + 8, z: 0 };
+
 /** Where the hitching rail stands on the scouts' island (it runs along y, horses on its -x side). */
 export const STABLE = { x: -30, y: 5 };
 
@@ -88,7 +128,16 @@ export const STABLE_GATE = { x: STABLE.x - 4, y: STABLE.y + 24 };
 export type Node = StationId | "horse";
 
 /** The roads: the horse's road to the scouts, then the ring of sandbars. */
-const EDGES: Array<[Node, Node]> = [["horse", "scouts"], ...STATIONS.map((s, i): [Node, Node] => [s.id, STATIONS[(i + 1) % STATIONS.length].id])];
+const EDGES: Array<[Node, Node]> = [
+  // The walkways of the basement: a ring around the command table, in through the stairs.
+  ["horse", "oracle"],
+  ["horse", "theatre"],
+  ["oracle", "scouts"],
+  ["scouts", "tent"],
+  ["tent", "workshop"],
+  ["workshop", "agora"],
+  ["agora", "theatre"],
+];
 
 /**
  * Where a walker passing through an island goes between the two sandbars, relative to its centre:
@@ -100,26 +149,35 @@ export const HUBS: Record<StationId, Array<{ x: number; y: number }>> = {
   scouts: [{ x: 2, y: -6 }],
   oracle: [{ x: 4, y: 4 }],
   tent: [{ x: 0, y: 24 }],
+  // Round the front of the editing desks, between them and the room's front edge.
   workshop: [
-    { x: -30, y: -10 },
-    { x: -32, y: 10 },
+    { x: -24, y: 24 },
+    { x: 14, y: 20 },
   ],
-  theatre: [{ x: 10, y: 10 }],
-  agora: [{ x: 0, y: -22 }],
+  // Behind the lounge's back row, clear of the benches.
+  theatre: [
+    { x: -34, y: 18 },
+    { x: 12, y: 20 },
+  ],
+  // Round the uplink on its far side.
+  agora: [
+    { x: 18, y: -14 },
+    { x: 14, y: 22 },
+  ],
 };
 
 /** How far inside an island a road starts (the sandbar meets the island here). */
 const LANDING = 34;
 
 function centre(node: Node): Point {
-  if (node === "horse") return HORSE_GATE;
+  if (node === "horse") return STAIRS_FOOT;
   const s = STATION[node];
   return { x: s.x, y: s.y, z: 0 };
 }
 
 /** A node's (first) crossing point in world units. */
 export function hub(node: Node): Point {
-  if (node === "horse") return HORSE_GATE;
+  if (node === "horse") return STAIRS_FOOT;
   const s = STATION[node];
   return { x: s.x + HUBS[node][0].x, y: s.y + HUBS[node][0].y, z: 0 };
 }
@@ -215,33 +273,36 @@ export type Land = {
   row: number;
 };
 
-/** Screen x of the high road, and of the lands between it and the camp ("near") and beyond it ("far"). */
-const ROAD_SX = -660;
-const SIDE_SX = { near: -580, far: -740 };
-/** Screen y of each row of lands, and of the crossroads (between the second and third rows). */
-const ROW_SY = [22, 124, 250, 352, 454];
-const JUNCTION_SY = 180;
-
 export const LAND_RADIUS = 30;
 
-function land(id: LandId, name: string, what: string, prop: PropId, color: string, row: number, side: keyof typeof SIDE_SX): Land {
-  const sx = SIDE_SX[side];
-  const sy = ROW_SY[row];
-  const p = ground(sx, sy);
-  return { id, name, what, prop, color, x: p.x, y: p.y, sx, sy, row };
+/**
+ * The lands are shop fronts along the street above the HQ, across the road from the stairs: one
+ * per website or API the research reads. Scouts ride up the stairs and along the street to them.
+ */
+export const LAND_Z = ROOM.wall;
+/** The road's driving lane (world y), between the pavement by the wall and the shop fronts. */
+export const STREET_LANE = ROOM.y0 - 46;
+const LAND_ROW_Y = ROOM.y0 - 78;
+const LAND_X0 = ROOM.x0 + 34;
+const LAND_STEP = 42;
+
+function land(id: LandId, name: string, what: string, prop: PropId, color: string, row: number): Land {
+  const x = LAND_X0 + row * LAND_STEP;
+  const y = LAND_ROW_Y;
+  return { id, name, what, prop, color, x, y, sx: x - y, sy: (x + y) / 2 - 1.2247 * LAND_Z, row };
 }
 
 export const LANDS: Land[] = [
-  land("chatgpt", "ChatGPT", "AI answers about the brand", "orbshrine", "#18a07c", 0, "near"),
-  land("perplexity", "Perplexity", "AI answers about the brand", "crystal", "#2d7b98", 0, "far"),
-  land("ahrefs", "Ahrefs", "Domain rating and keywords", "beacon", "#df7c22", 1, "near"),
-  land("similarweb", "SimilarWeb", "Sites like the brand's", "huts", "#2b6be0", 1, "far"),
-  land("site", "The brand's site", "Brand profile and website", "gate", "#b73a31", 2, "near"),
-  land("tiktok", "TikTok", "Top videos and ads", "phone", "#e0264f", 2, "far"),
-  land("instagram", "Instagram", "Top Reels", "gallery", "#d65a45", 3, "near"),
-  land("youtube", "YouTube", "Top Shorts", "bigscreen", "#b73a31", 3, "far"),
-  land("metaads", "Meta Ad Library", "Rivals' running ads", "billboards", "#2b6be0", 4, "near"),
-  land("reddit", "Reddit", "What people say", "forum", "#de6c4a", 4, "far"),
+  land("site", "The brand's site", "Brand profile and website", "gate", "#f05ccd", 0),
+  land("similarweb", "SimilarWeb", "Sites like the brand's", "huts", "#52d9ed", 1),
+  land("ahrefs", "Ahrefs", "Domain rating and keywords", "beacon", "#f5b86a", 2),
+  land("chatgpt", "ChatGPT", "AI answers about the brand", "orbshrine", "#4dc3a0", 3),
+  land("perplexity", "Perplexity", "AI answers about the brand", "crystal", "#52d9ed", 4),
+  land("tiktok", "TikTok", "Top videos and ads", "phone", "#f05ccd", 5),
+  land("instagram", "Instagram", "Top Reels", "gallery", "#f78ade", 6),
+  land("youtube", "YouTube", "Top Shorts", "bigscreen", "#ff5a6e", 7),
+  land("metaads", "Meta Ad Library", "Rivals' running ads", "billboards", "#5b93f2", 8),
+  land("reddit", "Reddit", "What people say", "forum", "#f5b86a", 9),
 ];
 
 export const LAND = Object.fromEntries(LANDS.map((l) => [l.id, l])) as Record<LandId, Land>;
@@ -276,8 +337,34 @@ export function landRuns<T extends { key: string }>(runs: T[], land: LandId): T[
   return runs.filter((run) => landFor(run.key) === land);
 }
 
-/** The crossroads where the road from the camp meets the high road (world). */
-export const JUNCTION: Point = ground(ROAD_SX, JUNCTION_SY);
+/** Where the street meets the stairs: the top landing (world, at the street's height). */
+export const STAIRS_TOP: Point = { x: STAIRS.top.x - 8, y: STAIRS.top.y, z: ROOM.wall };
+
+/**
+ * The HQ's street door (where the Trojan horse stood): a shop front across the road from the
+ * stairs, at the world's origin. Agents come out of it, cross the road and go down the stairs.
+ */
+export const ENTRANCE = { x: 0, y: -50, half: 20, depth: 8, tall: 58, door: 7, doorTall: 17 };
+
+/** Kept for the signpost: where the stairs come out on the pavement. */
+export const JUNCTION: Point = { x: STAIRS.top.x - 8, y: ROOM.y0 - 22, z: ROOM.wall };
+
+/** Out of the HQ's door, across the street and down the stairs to their foot (world points). */
+export function entrancePath(): Point[] {
+  const z = ROOM.wall;
+  const front = ENTRANCE.y + ENTRANCE.depth;
+  return [
+    { x: 0, y: front - 5, z },
+    { x: 0, y: front + 1, z },
+    { x: 0, y: STREET_LANE, z },
+    { x: JUNCTION.x, y: STREET_LANE + 6, z },
+    JUNCTION,
+    STAIRS_TOP,
+    { x: STAIRS.top.x, y: STAIRS.top.y, z },
+    { x: STAIRS.foot.x - 4, y: STAIRS.foot.y, z: 0 },
+    STAIRS_FOOT,
+  ];
+}
 
 /** The stable's gate in world units. */
 export function stableGate(): Point {
@@ -285,36 +372,29 @@ export function stableGate(): Point {
   return { x: s.x + STABLE_GATE.x, y: s.y + STABLE_GATE.y, z: 0 };
 }
 
-/** Points along the high road, north to south, the crossroads among them. */
-function highRoad(): Array<{ sy: number; p: Point }> {
-  return [...ROW_SY, JUNCTION_SY].sort((a, b) => a - b).map((sy) => ({ sy, p: ground(ROAD_SX, sy) }));
-}
-
-/** The sandbars of the wider world: the road from the stable, the high road, and a spur to each land. */
+/** The old roads of the wider world: none now, the street is part of the room. */
 export function worldTrails(): Array<{ a: Point; b: Point }> {
-  const road = highRoad();
-  const trails: Array<{ a: Point; b: Point }> = [{ a: stableGate(), b: JUNCTION }];
-  for (let i = 0; i < road.length - 1; i++) trails.push({ a: road[i].p, b: road[i + 1].p });
-  for (const l of LANDS) trails.push({ a: ground(ROAD_SX, ROW_SY[l.row]), b: { x: l.x, y: l.y, z: 0 } });
-  return trails;
+  return [];
 }
 
-/** The way from the crossroads to where a land's spur reaches its shore (world points). */
+/**
+ * The way from the scouts' bike bay to a shop front: across the basement to the foot of the stairs,
+ * up them, out onto the pavement, along the road and up to the shop (world points).
+ */
 export function roadToLand(id: LandId): Point[] {
   const l = LAND[id];
-  const target = ROW_SY[l.row];
-  const road = highRoad();
-  const from = road.findIndex((r) => r.sy === JUNCTION_SY);
-  const to = road.findIndex((r) => r.sy === target);
-  const step = to >= from ? 1 : -1;
-  const points: Point[] = [];
-  for (let i = from; i !== to + step; i += step) points.push(road[i].p);
-  const spur = points[points.length - 1];
-  const dx = spur.x - l.x;
-  const dy = spur.y - l.y;
-  const len = Math.hypot(dx, dy) || 1;
-  points.push({ x: l.x + (dx / len) * (LAND_RADIUS - 7), y: l.y + (dy / len) * (LAND_RADIUS - 7), z: 0 });
-  return points;
+  const z = LAND_Z;
+  return [
+    hub("scouts"),
+    ...travel("scouts", "horse"),
+    { x: STAIRS.foot.x - 4, y: STAIRS.foot.y, z: 0 },
+    { x: STAIRS.top.x, y: STAIRS.top.y, z },
+    STAIRS_TOP,
+    JUNCTION,
+    { x: JUNCTION.x, y: STREET_LANE, z },
+    { x: l.x + 10, y: STREET_LANE, z },
+    { x: l.x + 10, y: l.y + LAND_RADIUS - 8, z },
+  ];
 }
 
 export function landIsland(l: Land, index: number): IslandSpec {
@@ -322,10 +402,10 @@ export function landIsland(l: Land, index: number): IslandSpec {
 }
 
 /** The screen rectangle (art px) that holds the camp and every land, for the camera's view of the world. */
-export const WORLD_VIEW = { x0: SIDE_SX.far - 62, x1: 300, y0: ROW_SY[0] - 48, y1: ROW_SY[ROW_SY.length - 1] + 52 };
+export const WORLD_VIEW = { x0: CAMP_CENTER.sx - 2 * ROOM_HALF - 30, x1: CAMP_CENTER.sx + 2 * ROOM_HALF + 120, y0: CAMP_CENTER.sy - ROOM_HALF - 190, y1: CAMP_CENTER.sy + ROOM_HALF + 20 };
 
 /** The lands and the roads west, out to the scouts' island (the east edge of the scouts' errands). */
-export const LANDS_VIEW = { ...WORLD_VIEW, x1: CAMP_CENTER.sx - COLUMN + ISLAND_RADIUS + 40 };
+export const LANDS_VIEW = { ...WORLD_VIEW };
 
 // --- The expedition: the harbour below the agora, the sea, and the rival's city across it --------
 //

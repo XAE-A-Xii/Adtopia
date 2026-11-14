@@ -51,6 +51,17 @@ export const R = {
   tile: defineRamp("tile", ["#5a1f14", "#7c2d1b", "#9e3f24", "#bd5631", "#d5774a", "#e7a074"]),
   ochre: defineRamp("ochre", ["#7a5222", "#9a6c2e", "#b98a3f", "#d1a757", "#e4c37c", "#f2dfab"]),
   cypress: defineRamp("cypress", ["#18261a", "#213622", "#2d4a2b", "#3d6136", "#557a46", "#7a9a5f"]),
+  // The underground HQ: midnight-blue and violet architecture, magenta and cyan neon, amber lamps.
+  hqWall: defineRamp("hqWall", ["#0e1127", "#151a35", "#1c2246", "#242b56", "#2e3667", "#3a437b"]),
+  hqWallViolet: defineRamp("hqWallViolet", ["#17132b", "#1f1a3a", "#292447", "#322c56", "#3d3566", "#4a4178"]),
+  hqFloor: defineRamp("hqFloor", ["#0b0d1f", "#11142b", "#171b37", "#1e2343", "#262c51", "#30375f"]),
+  hqPurple: defineRamp("hqPurple", ["#251d3a", "#30264a", "#3e3159", "#51406d", "#644f83", "#7a6499"]),
+  hqMetal: defineRamp("hqMetal", ["#171927", "#212433", "#2c3041", "#3a3f52", "#4d5368", "#666d84"]),
+  hqAsphalt: defineRamp("hqAsphalt", ["#0c0d18", "#121423", "#191b2e", "#212439", "#2a2e46", "#363b56"]),
+  neonPink: defineRamp("neonPink", ["#4e1347", "#7d1f6d", "#b33397", "#f05ccd", "#f78ade", "#ffc8f1"]),
+  neonCyan: defineRamp("neonCyan", ["#0e3944", "#175e6e", "#2595ab", "#52d9ed", "#8be8f5", "#ccf7fc"]),
+  neonBlue: defineRamp("neonBlue", ["#0d1a4a", "#15307a", "#2050c0", "#3d7bff", "#79a6ff", "#c2d6ff"]),
+  amber: defineRamp("amber", ["#4f2c12", "#82501f", "#b97b34", "#f5b86a", "#f9cf95", "#fde8c6"]),
 };
 
 export type RampName = keyof typeof R;

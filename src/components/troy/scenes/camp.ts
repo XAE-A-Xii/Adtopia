@@ -1,5 +1,8 @@
 import { type Act, ACT_FRAMES, ACT_RATE, dirFor, type Job, RIDER_FRAMES } from "../engine/jobs";
 import { exitPath } from "../engine/models/horse";
+import { HUB_STATES } from "../engine/models/cyber";
+import { wallLamps } from "../engine/models/hq";
+import { type GlowSource, GlowLayer, NEON } from "../engine/glow";
 import { SCREEN } from "../engine/models/props";
 import type { CameraTarget, Entity, Stage } from "../engine/stage";
 import { projectX, projectY } from "../engine/tracer";
@@ -7,7 +10,7 @@ import type { Point } from "../engine/walker";
 import type { AgentPlan, CampPlan } from "./derive";
 import type { LandingScene } from "./landing";
 import { type Enlisted, Expedition } from "./expedition";
-import { CAMP_CENTER, HARBOR_VIEW, hub, ISLAND_RADIUS, JUNCTION, LAND, type LandId, LANDS, LANDS_VIEW, MAP_BOUNDS, type Node, ROME, ROME_VIEW, roadToLand, sandbars, scoutLand, STATION, type StationId, STATIONS, travel, WORLD_VIEW, worldTrails } from "./layout";
+import { CAMP_CENTER, ENTRANCE, LAND_Z, LOFT, ROOM, STREET_LANE, ROOM_CENTER, ROOM_HALF, STAIRS, STAIRS_TOP, HARBOR_VIEW, hub, ISLAND_RADIUS, JUNCTION, LAND, type LandId, LANDS, LANDS_VIEW, MAP_BOUNDS, type Node, ROME, ROME_VIEW, roadToLand, sandbars, scoutLand, STATION, type StationId, STATIONS, travel, WORLD_VIEW, worldTrails } from "./layout";
 import { COURIER_STALL, DESK_SLOTS, LAND_SPOTS, PROPS, SPOTS, STABLE_AISLE, STABLE_GATE, STALLS, type Waypoint } from "./stations";
 
 // The camp: station islands, their furniture and the agents, below the horse. This file owns the
@@ -104,13 +107,13 @@ type Trip = "camp" | "out" | "there" | "back" | "done" | "empty";
 type Stall = { steed: Entity; rider: Agent | null };
 
 /** How a station is named in a sentence ("walking over to the war tent"). */
-const PLACE: Record<Node, string> = { horse: "the horse", scouts: "the scouts' island", oracle: "the oracle", tent: "the war tent", workshop: "the workshop", theatre: "the theatre", agora: "the agora" };
+const PLACE: Record<Node, string> = { horse: "the street door", scouts: "the intelligence desk", oracle: "the reference archive", tent: "the strategy table", workshop: "the production studio", theatre: "the approval desk", agora: "the publishing terminal" };
 
 /** What a figure standing at its post looks like it is doing, by its act. */
 const ACT_WORDS: Record<Act, string> = {
   stand: "Standing by",
   march: "On the march",
-  carry: "Carrying a scroll case",
+  carry: "Carrying a data package",
   climb: "Climbing",
   type: "Typing at the desk",
   paint: "Painting at the easel",
@@ -164,13 +167,34 @@ export type CampEvents = {
 /** What the soldiers call out at the big moments. */
 export const LINES = {
   /** The first soldier out of the horse, leading the column into the camp: the brand's men. */
-  rollOut: (brand: string | null) => `Men of ${brand?.trim() || "Achaea"}, out of the horse! Let's roll out!`,
+  rollOut: (brand: string | null) => `Team ${brand?.trim() || "Surreel"}, down to the HQ! Let's roll out!`,
 };
+
+/** Where the street's cars drive from and to (world x); they wrap round. */
+const CAR_X0 = -80;
+const CAR_X1 = ROOM.x1 + 190;
+
+/** "#rrggbb" as "r, g, b". */
+function hexRgb(hex: string) {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+}
 
 export class CampScene {
   readonly grounds: Entity[] = [];
   private readonly props: Entity[] = [];
   private readonly keyed = new Map<string, Entity>();
+  private readonly streetLamps: Entity[] = [];
+  /** Packets of work running between stations along the floor (see dispatch). */
+  private readonly packets: Array<{ from: StationId; to: StationId; at: number }> = [];
+  private readonly cars: Array<{ entity: Entity; dir: number; rgb: string }> = [];
+  private readonly glow: GlowLayer;
+  private staticGlow: GlowSource[] | null = null;
+  /** The command table: its lights follow the stations' states. */
+  private readonly hub: Entity;
+  /** The six stations' states as the table's digits (HUB_STATES), and whether posts are going out. */
+  private hubCode = 0;
+  private uplinkOn = false;
   private readonly desks = new Map<number, Entity & { state: number }>();
   private readonly agents = new Map<string, Agent>();
   /** Agents waiting to come out of the horse, in order. */
@@ -220,11 +244,9 @@ export class CampScene {
       this.grounds.push(stage.add(entity));
       this.revealAt.set(entity, at);
     };
-    sandbars().forEach((_, i) => ground({ x: 0, y: 0, z: 0, ground: true, job: { k: "bar", i }, reveal: 0, priority: 5 - i * 0.1 }, i * 0.28));
-    worldTrails().forEach((_, i) => ground({ x: 0, y: 0, z: 0, ground: true, job: { k: "road", i }, reveal: 0, priority: 4.2 }, 1.5 + i * 0.07));
-    ground({ x: JUNCTION.x, y: JUNCTION.y, z: 0, ground: true, job: { k: "junction" }, reveal: 0, priority: 4.2 }, 1.6);
-    STATIONS.forEach((s, i) => ground({ x: s.x, y: s.y, z: 0, ground: true, job: { k: "island", id: s.id }, reveal: 0, priority: 5 - i * 0.1 }, i * 0.28 + 0.14));
-    LANDS.forEach((l, i) => ground({ x: l.x, y: l.y, z: 0, ground: true, job: { k: "land", id: l.id }, reveal: 0, priority: 4.1 }, 1.9 + i * 0.12));
+    ground({ x: 0, y: 0, z: 0, ground: true, job: { k: "room" }, reveal: 0, priority: 6 }, 0);
+    // Bake the room while the visitor is still on the landing (after the HQ's door, which asks higher).
+    void stage.baker.request({ k: "room" }, 3).catch(() => undefined);
     for (const station of STATIONS) {
       for (const placement of PROPS[station.id]) {
         const entity = stage.add({
@@ -240,17 +262,66 @@ export class CampScene {
         if (placement.key) this.keyed.set(`${station.id}:${placement.key}`, entity);
       }
     }
+    // The command table in the middle of the room, and the light trails out of the uplink.
+    this.hub = stage.add({ x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 0, job: { k: "prop", id: "hub", v: 0 }, reveal: 0, priority: 4 });
+    this.props.push(this.hub);
+    stage.add({ x: STATION.agora.x, y: STATION.agora.y, z: 0, sort: 60, paint: (ctx, sx, sy, px, time) => this.paintUplink(ctx, sx, sy, px, time) });
+    // The street's lamps along the kerb, and hover cars passing both ways.
+    for (let x = -50, i = 0; x < ROOM.x1 + 170; x += 52, i++) {
+      if (Math.abs(x - STAIRS_TOP.x) < 16 || Math.abs(x - ENTRANCE.x) < 26) continue;
+      const lamp = stage.add({ x, y: ROOM.y0 - 29, z: LAND_Z, job: { k: "prop", id: "streetlamp", v: i }, reveal: 0, priority: 3.8 });
+      this.props.push(lamp);
+      this.streetLamps.push(lamp);
+    }
+    const lanes = [
+      { y: ROOM.y0 - 52, dir: 1 },
+      { y: ROOM.y0 - 68, dir: -1 },
+    ];
+    for (let i = 0; i < 5; i++) {
+      const lane = lanes[i % 2];
+      const span = CAR_X1 - CAR_X0;
+      const car: Entity = stage.add({
+        x: CAR_X0 + ((i * 0.37 + 0.1) % 1) * span,
+        y: lane.y,
+        z: LAND_Z + 2.4,
+        sort: 2,
+        job: { k: "prop", id: "car", v: (i % 4) + (lane.dir < 0 ? 4 : 0) },
+        priority: 3.6,
+        tick: (dt) => {
+          car.x += lane.dir * (22 + (i % 3) * 7) * dt;
+          if (car.x > CAR_X1) car.x = CAR_X0;
+          if (car.x < CAR_X0) car.x = CAR_X1;
+          car.z = LAND_Z + 2.4 + Math.sin(this.time * 2 + i) * 0.4;
+          // On the landing only the slice of street in front of the HQ's door is there to drive on.
+          car.hidden = this.showing ? this.revealT < 1.2 : Math.abs(car.x) > 40;
+        },
+      });
+      this.cars.push({ entity: car, dir: lane.dir, rgb: [NEON.pink, NEON.cyan, NEON.amber, NEON.blue][i % 4] });
+    }
+    // The light over everything: neon halos that breathe and flicker, and drifting motes.
+    this.glow = new GlowLayer(() => this.glowSources(), { x0: ROOM.x0 - 40, y0: ROOM.y0 - 110, x1: ROOM.x1 + 160, y1: ROOM.y1, z: ROOM.wall + 60 });
+    // Steam off the coffee on every editing desk (the cup sits at the desk's back right).
+    this.glow.steam = () => [...this.desks.values()].filter((d) => (d.reveal ?? 1) > 0.9).map((d) => ({ x: d.x - 1.7, y: d.y + 3.7, z: 9.5 }));
+    this.glow.addMotes({ x0: -45, y0: ENTRANCE.y - 10, x1: 45, y1: STREET_LANE + 20, z: ROOM.wall + 70, z0: ROOM.wall }, 26, true);
+    stage.add({ x: 0, y: 0, z: 0, sort: 100_000, paint: (ctx, sx, sy, px, time) => this.glow.paint(ctx, sx, sy, px, time) });
     // Each land's landmark, and the signpost at the crossroads.
     LANDS.forEach((l, i) => {
-      const landmark = stage.add({ x: l.x + LAND_SPOTS.landmark.x, y: l.y + LAND_SPOTS.landmark.y, z: 0, job: { k: "prop", id: l.prop, v: 0 }, reveal: 0, priority: 3.9 });
+      const landmark = stage.add({ x: l.x + LAND_SPOTS.landmark.x, y: l.y + LAND_SPOTS.landmark.y, z: LAND_Z, job: { k: "prop", id: l.prop, v: 0 }, reveal: 0, priority: 3.9 });
       this.props.push(landmark);
       this.revealAt.set(landmark, 2.3 + i * 0.12);
     });
-    const signpost = stage.add({ x: JUNCTION.x - 3, y: JUNCTION.y - 3, z: 0, job: { k: "prop", id: "signpost", v: 0 }, reveal: 0, priority: 3.9 });
+    const signpost = stage.add({ x: JUNCTION.x - 3, y: JUNCTION.y - 3, z: JUNCTION.z, job: { k: "prop", id: "signpost", v: 0 }, reveal: 0, priority: 3.9 });
     this.props.push(signpost);
     this.revealAt.set(signpost, 2);
     // The harbour below the agora, the sea and the rival's city: they appear as you look at them.
-    this.expedition = new Expedition(stage, {
+    // The HQ has no harbour: the expedition still keeps its books (the agora's panel reads them), but
+    // nothing of it is drawn.
+    const unseen = Object.create(stage) as Stage;
+    unseen.add = <T extends Entity>(entity: T) => {
+      entity.hidden = true;
+      return stage.add(entity);
+    };
+    this.expedition = new Expedition(unseen, {
       scenery: (entity) => this.far.push(entity),
       claim: (id) => {
         const agent = this.agents.get(id);
@@ -289,8 +360,11 @@ export class CampScene {
   prepare(brandId: string) {
     if (this.brandId !== null && this.brandId !== brandId) this.reset();
     this.brandId = brandId;
-    for (const entity of [...this.grounds, ...this.props]) if (entity.job) void this.stage.baker.request(entity.job, 5);
-    for (const entity of this.far) if (entity.job) void this.stage.baker.request(entity.job, 2);
+    // The room first (it is what everyone sees), then the furniture, the street and its shops. The
+    // expedition's scenery is never drawn in the HQ, so it is never baked: its sea and city tiles
+    // are the biggest sprites there are and would hold up the workers.
+    for (const entity of this.grounds) if (entity.job) void this.stage.baker.request(entity.job, 9);
+    for (const entity of this.props) if (entity.job && !entity.hidden) void this.stage.baker.request(entity.job, 5);
   }
 
   /** The column is about to march out of the horse: everyone in the first plan walks in. */
@@ -336,13 +410,14 @@ export class CampScene {
   /** The camera that frames the whole camp, leaving room for the panels around it. */
   camera(insets: { top: number; bottom: number; right: number } = this.insets): CameraTarget {
     const { width, height } = this.stage.size;
-    const spanX = 2 * (196 + ISLAND_RADIUS + 34);
-    const spanY = 76 + 80 + 140 + 46;
+    // The basement from wall to wall, and the street above the right wall.
+    const spanX = 2 * (ROOM_HALF * 2 + 16);
+    const spanY = ROOM_HALF * 2 + ROOM.wall * 1.22 + 130;
     const usableW = width - insets.right - 24;
     const usableH = height - insets.top - insets.bottom;
     const fit = Math.min(usableW / spanX, usableH / spanY, 3.5);
     const zoom = this.stage.fitZoom(fit);
-    const midY = CAMP_CENTER.sy - 4;
+    const midY = CAMP_CENTER.sy - 70;
     return { x: CAMP_CENTER.sx + insets.right / 2 / zoom, y: midY + (insets.bottom - insets.top) / 2 / zoom, zoom };
   }
 
@@ -492,7 +567,10 @@ export class CampScene {
 
     // Agents.
     const seen = new Set<string>();
+    // The battle's companies stay in the plan (the agora's panel reads them), but the HQ sends no
+    // army to sea: they never come out of the door.
     for (const agentPlan of plan.agents) {
+      if (agentPlan.army) continue;
       seen.add(agentPlan.id);
       this.post(agentPlan, instantly);
     }
@@ -507,6 +585,8 @@ export class CampScene {
       } else this.settle(agent);
     }
     this.updateBasket();
+    this.hubCode = STATIONS.reduce((code, s, i) => code + HUB_STATES.indexOf(plan.stations[s.id].state) * 6 ** i, 0);
+    this.uplinkOn = plan.stations.agora.state === "working";
     const army: Enlisted[] = plan.agents.filter((a) => a.army).map((a) => ({ id: a.id, ...a.army! }));
     this.expedition.apply(plan.battle, army, instantly);
   }
@@ -517,6 +597,9 @@ export class CampScene {
    */
   dispatch(from: StationId, to: StationId, key = `${from}>${to}`) {
     if (from === to) return;
+    // A packet of data runs along the floor's cables from one station, via the command table, to the next.
+    this.packets.push({ from, to, at: this.time });
+    if (this.packets.length > 6) this.packets.shift();
     const last = this.dispatches[this.dispatches.length - 1];
     if (last && last.from === from && last.to === to) return;
     // A long backlog only delays the picture: keep the latest few.
@@ -554,7 +637,7 @@ export class CampScene {
 
   private create(plan: AgentPlan): Agent {
     const entity: Figure = { x: 0, y: 0, z: 0, look: plan.look, act: plan.act, dir: plan.dir, coat: 0, sort: plan.sort ?? 0, shadow: 5, priority: 3, job: null };
-    return { plan, entity, where: "queued", busy: false, node: "horse", up: null, dismissed: false, finished: false, delivered: false, stall: null, onFoot: false, gatherSince: 0, phase: Math.random() * 10, lane: 0, doing: "Waiting inside the horse", errand: null, deliveries: 0, trip: "camp", slot: null, frame: -1 };
+    return { plan, entity, where: "queued", busy: false, node: "horse", up: null, dismissed: false, finished: false, delivered: false, stall: null, onFoot: false, gatherSince: 0, phase: Math.random() * 10, lane: 0, doing: "Waiting at the street door", errand: null, deliveries: 0, trip: "camp", slot: null, frame: -1 };
   }
 
   /** Puts an agent straight at its post (opening a camp directly, not through the march). */
@@ -672,7 +755,7 @@ export class CampScene {
     const route = travel("horse", agent.plan.station, agent.lane);
     const steps: Step[] = [...out.slice(1), ...route, ...this.approach(agent.plan)];
     agent.node = agent.plan.station;
-    agent.doing = `Marching out of the horse to ${PLACE[agent.plan.station]}`;
+    agent.doing = `Heading down into the HQ to ${PLACE[agent.plan.station]}`;
     this.run(
       agent,
       steps,
@@ -709,7 +792,7 @@ export class CampScene {
   private goHome(agent: Agent) {
     const steps: Step[] = [...this.descend(agent), ...travel(agent.node, "horse"), ...exitPath().reverse()];
     agent.node = "horse";
-    agent.doing = agent.finished ? "Job done: marching back into the horse" : "Marching back into the horse";
+    agent.doing = agent.finished ? "Job done: heading back up to the street" : "Heading back up to the street";
     this.run(
       agent,
       steps,
@@ -732,7 +815,7 @@ export class CampScene {
     agent.trip = "out";
     if (stall < 0) {
       agent.onFoot = true;
-      agent.doing = `Every horse is out: running to ${name} for ${this.source(agent)}`;
+      agent.doing = `Every bike is out: running to ${name} for ${this.source(agent)}`;
       const out = this.descend(agent);
       if (!this.atStable(agent)) out.push(this.gate());
       this.run(agent, [...out, ...roadToLand(land)], SPEED.run, () => this.reachLand(agent));
@@ -741,11 +824,11 @@ export class CampScene {
     agent.onFoot = false;
     this.stalls[stall].rider = agent;
     agent.stall = stall;
-    agent.doing = "Hurrying to the stable for a horse";
+    agent.doing = "Hurrying to the bike bay";
     this.run(agent, this.toStall(agent, stall), SPEED.run, () => {
       agent.doing = "Saddling up";
       this.mount(agent, stall, () => {
-        agent.doing = `Galloping to ${name} for ${this.source(agent)}`;
+        agent.doing = `Riding up to ${name} for ${this.source(agent)}`;
         this.ride(agent, [...this.outOfStable(agent), ...roadToLand(land)], SPEED.ride, 0, () => this.reachLand(agent));
       });
     });
@@ -761,13 +844,13 @@ export class CampScene {
     if (agent.onFoot) return walkUp();
     const horse = LAND_SPOTS.horses[slot];
     this.ride(agent, [{ ...this.landPoint(land, horse), dir: horse.dir }], SPEED.walk * 1.6, 0, () => {
-      agent.doing = `Tying up the horse at ${LAND[land].name}`;
+      agent.doing = `Parking the bike at ${LAND[land].name}`;
       this.pause(agent, BEAT.dismount, () => {
         this.tieUp(agent, land, slot, 1);
         // Down from the saddle, beside the horse.
         const e = agent.entity;
         const p = this.landPoint(land, { x: horse.x - 3, y: horse.y - 3 });
-        Object.assign(e, { x: p.x, y: p.y, z: 0, shadow: 5, act: "march" });
+        Object.assign(e, { x: p.x, y: p.y, z: p.z, shadow: 5, act: "march" });
         e.job = { k: "soldier", look: e.look, act: "march", dir: e.dir, f: 0 };
         walkUp();
       });
@@ -778,7 +861,7 @@ export class CampScene {
   private tieUp(agent: Agent, land: LandId, slot: number, reveal: number) {
     const horse = LAND_SPOTS.horses[slot];
     const p = this.landPoint(land, horse);
-    this.landSteeds.set(agent, this.stage.add({ x: p.x, y: p.y, z: 0, shadow: 8, job: { k: "steed", dir: horse.dir, h: agent.entity.coat } as Job, reveal, priority: 3 }));
+    this.landSteeds.set(agent, this.stage.add({ x: p.x, y: p.y, z: p.z, shadow: 8, job: { k: "steed", dir: horse.dir, h: agent.entity.coat } as Job, reveal, priority: 3 }));
   }
 
   /** Gathering at the landmark, for as long as the run lasts (and a moment at least, so it reads). */
@@ -807,7 +890,7 @@ export class CampScene {
     const basket = { ...this.rel("scouts", SPOTS.basket.x, SPOTS.basket.y, 0), dir: SPOTS.basket.dir };
     const deliver = () => {
       agent.busy = true;
-      agent.doing = "Dropping the scroll case in the basket";
+      agent.doing = "Dropping the data package in the intake bin";
       agent.entity.act = "stand";
       this.later(BEAT.drop, () => {
         agent.delivered = true;
@@ -827,25 +910,25 @@ export class CampScene {
     };
     if (agent.onFoot || agent.stall === null) {
       agent.onFoot = false;
-      agent.doing = carrying ? `Running back from ${name} with a scroll case` : `Running back from ${name}`;
+      agent.doing = carrying ? `Running back from ${name} with a data package` : `Running back from ${name}`;
       if (carrying) return this.run(agent, [...home, this.gate(), basket], SPEED.run, deliver, "carry");
       backEmpty();
       return this.run(agent, [...home, this.gate()], SPEED.run, () => undefined);
     }
     const steed = this.landSteeds.get(agent);
     const horse = LAND_SPOTS.horses[slot ?? 0];
-    const at = steed ? { x: steed.x, y: steed.y, z: 0 } : this.landPoint(land, horse);
-    agent.doing = "Going back to the horse";
-    this.run(agent, [{ x: at.x - 3, y: at.y - 3, z: 0 }], SPEED.walk, () => {
+    const at = steed ? { x: steed.x, y: steed.y, z: steed.z } : this.landPoint(land, horse);
+    agent.doing = "Going back to the bike";
+    this.run(agent, [{ x: at.x - 3, y: at.y - 3, z: at.z }], SPEED.walk, () => {
       if (steed) this.stage.remove(steed);
       this.landSteeds.delete(agent);
       const e = agent.entity;
-      Object.assign(e, { x: at.x, y: at.y, z: 0, shadow: 9 });
+      Object.assign(e, { x: at.x, y: at.y, z: at.z, shadow: 9 });
       e.job = { k: "rider", look: e.look, dir: e.dir, f: -1, c: carrying ? 1 : 0, h: e.coat };
       this.pause(agent, BEAT.mount, () => {
-        agent.doing = carrying ? `Riding back from ${name} with a scroll case` : agent.dismissed ? "Called back to camp" : `Riding back from ${name} empty-handed`;
+        agent.doing = carrying ? `Riding back from ${name} with a data package` : agent.dismissed ? "Called back to the HQ" : `Riding back from ${name} empty-handed`;
         this.ride(agent, [...home, ...this.intoStable(agent.stall!, "horse")], SPEED.ride, carrying ? 1 : 0, () => {
-          agent.doing = "Tying up the horse";
+          agent.doing = "Parking the bike";
           this.dismount(agent, carrying, () => {
             if (agent.dismissed) return this.settle(agent);
             if (!carrying) {
@@ -854,7 +937,7 @@ export class CampScene {
             }
             // Into the basket with it.
             agent.entity.act = "carry";
-            agent.doing = "Carrying the scroll case to the basket";
+            agent.doing = "Carrying the data package to the intake bin";
             this.run(agent, [...this.outOfStable(agent), basket], SPEED.run, deliver, "carry");
           });
         });
@@ -870,7 +953,7 @@ export class CampScene {
     this.stalls[stall].rider = agent;
     agent.stall = stall;
     agent.node = "scouts";
-    agent.doing = "Going to the stable for his horse";
+    agent.doing = "Going to the bike bay for a scooter";
     this.run(agent, this.toStall(agent, stall), SPEED.walk, () => {
       agent.doing = "Saddling up";
       this.mount(agent, stall, () => this.courierLeg(agent));
@@ -888,7 +971,7 @@ export class CampScene {
       const steps: Step[] = [...lead, ...home, ...this.intoStable(stall, "horse")];
       agent.node = "scouts";
       agent.errand = null;
-      agent.doing = "Riding back to the stable";
+      agent.doing = "Riding back to the bike bay";
       this.ride(agent, steps, SPEED.courier, 1, () => this.dismount(agent, false, () => this.settle(agent)));
       return;
     }
@@ -1039,11 +1122,14 @@ export class CampScene {
         const b = steps[leg];
         const dx = b.x - e.x;
         const dy = b.y - e.y;
-        const left = Math.hypot(dx, dy);
-        if (left > 0.05) e.dir = dirFor(dx, dy);
+        const dz = b.z - e.z;
+        const flat = Math.hypot(dx, dy);
+        const left = Math.hypot(dx, dy, dz);
+        if (flat > 0.05) e.dir = dirFor(dx, dy);
         if (left <= remaining) {
           e.x = b.x;
           e.y = b.y;
+          e.z = b.z;
           remaining -= left;
           travelled += left;
           leg++;
@@ -1051,6 +1137,7 @@ export class CampScene {
         } else {
           e.x += (dx / left) * remaining;
           e.y += (dy / left) * remaining;
+          e.z += (dz / left) * remaining;
           travelled += remaining;
           remaining = 0;
         }
@@ -1102,7 +1189,7 @@ export class CampScene {
     const e = agent.entity;
     const posted = agent.where === "posted" && !agent.busy;
     const away = agent.where === "expedition" ? (this.expedition.doing(id) ?? "With the expedition") : null;
-    const doing = away ?? (agent.where === "home" ? (agent.finished ? "Back inside the horse, the job done" : "Inside the horse, about to march out") : agent.where === "queued" ? "Waiting inside the horse for a place in the column" : posted ? ACT_WORDS[e.act] : agent.doing);
+    const doing = away ?? (agent.where === "home" ? (agent.finished ? "Back up on the street, the job done" : "On the street, about to head down") : agent.where === "queued" ? "Waiting at the street door" : posted ? ACT_WORDS[e.act] : agent.doing);
     return { where: agent.where, doing, mounted: e.job?.k === "rider", visible: this.stage.has(e), errand: agent.errand, deliveries: agent.deliveries, trip: agent.trip, land: agent.plan.id.startsWith("scout:") ? this.landOf(agent) : null, coat: e.coat };
   }
 
@@ -1267,7 +1354,7 @@ export class CampScene {
 
   private landPoint(land: LandId, at: { x: number; y: number }): Point {
     const l = LAND[land];
-    return { x: l.x + at.x, y: l.y + at.y, z: 0 };
+    return { x: l.x + at.x, y: l.y + at.y, z: LAND_Z };
   }
 
   /** A spot at the land for this scout (its own if it has one); four, shared beyond that. */
@@ -1295,6 +1382,123 @@ export class CampScene {
     const delivered = scouts.filter((a) => a.delivered).length;
     const basket = this.keyed.get("scouts:basket");
     if (basket?.job?.k === "prop") basket.job = { ...basket.job, v: scouts.length ? Math.round((delivered / scouts.length) * 7) : 0 };
+  }
+
+  /**
+   * While posts go out, packets of light leave the uplink's antennas for the street: one trail per
+   * platform (TikTok, Instagram, YouTube) in its colour.
+   */
+  private paintUplink(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number, time: number) {
+    if (!this.uplinkOn) return;
+    const from = { x: -6, y: -6, z: 18 };
+    const colours = ["#52d9ed", "#f05ccd", "#ff5a6e"];
+    for (let k = 0; k < 3; k++) {
+      const to = { x: -40 + k * 30, y: -150 - k * 20, z: ROOM.wall + 40 };
+      for (let j = 0; j < 4; j++) {
+        const t = (time * 0.6 + j / 4 + k * 0.13) % 1;
+        const x = from.x + (to.x - from.x) * t;
+        const y = from.y + (to.y - from.y) * t;
+        const z = from.z + (to.z - from.z) * t + Math.sin(t * Math.PI) * 20;
+        const ox = (x - y) * px;
+        const oy = ((x + y) / 2 - 1.2247 * z) * px;
+        ctx.globalAlpha = 1 - t * 0.7;
+        ctx.fillStyle = colours[k];
+        const size = Math.max(1, Math.round(px * 2));
+        ctx.fillRect(Math.round(sx + ox), Math.round(sy + oy), size, size);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** Every light in the HQ for the glow layer: the fixed ones (built once) and the cars. */
+  private glowSources(): GlowSource[] {
+    if (!this.staticGlow) this.staticGlow = this.fixedGlow();
+    const moving: GlowSource[] = [];
+    this.cars.forEach((car, i) => {
+      if (car.entity.hidden) return;
+      const e = car.entity;
+      moving.push({ a: { x: e.x + car.dir * 8, y: e.y, z: e.z + 3.4 }, rgb: NEON.white, r: 14, strength: 0.5, pulse: 0, phase: i, always: true });
+      moving.push({ a: { x: e.x, y: e.y, z: e.z + 1.6 }, rgb: car.rgb, r: 16, strength: 0.45, pulse: 0.1, phase: i + 0.5, always: true });
+    });
+    // Packets: a bright core with a halo, out along the cable to the table and on to the next station.
+    const centre = { x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 1 };
+    for (const p of this.packets) {
+      const t = (this.time - p.at) / 2.6;
+      if (t < 0 || t > 1) continue;
+      const a = { x: STATION[p.from].x, y: STATION[p.from].y, z: 1 };
+      const b = { x: STATION[p.to].x, y: STATION[p.to].y, z: 1 };
+      const [u, v, k] = t < 0.5 ? [a, centre, t * 2] : [centre, b, t * 2 - 1];
+      const at = { x: u.x + (v.x - u.x) * k, y: u.y + (v.y - u.y) * k, z: 2 };
+      moving.push({ a: at, rgb: NEON.white, r: 6, strength: 0.9, pulse: 0, phase: 0 });
+      moving.push({ a: at, rgb: t < 0.5 ? NEON.cyan : NEON.pink, r: 20, strength: 0.6, pulse: 0, phase: 0 });
+    }
+    if (this.uplinkOn) moving.push({ a: { x: STATION.agora.x - 6, y: STATION.agora.y - 6, z: 16 }, rgb: NEON.cyan, r: 26, strength: 0.55, pulse: 0.6, phase: 3 });
+    return [...this.staticGlow, ...moving];
+  }
+
+  private fixedGlow(): GlowSource[] {
+    const { x0, y0, x1, y1, wall } = ROOM;
+    const out: GlowSource[] = [];
+    const add = (src: Omit<GlowSource, "phase">) => out.push({ ...src, phase: out.length * 0.37 });
+    // The tubes along the tops of the walls, and the kerb lights round the floor's open edges.
+    add({ a: { x: x0 + 0.6, y: y0 + 30, z: wall - 6 }, b: { x: x0 + 0.6, y: y1 - 10, z: wall - 6 }, rgb: NEON.cyan, r: 18, strength: 0.38, flicker: 0.01 });
+    add({ a: { x: x0 + 130, y: y0 + 0.6, z: wall - 6 }, b: { x: x1 - 10, y: y0 + 0.6, z: wall - 6 }, rgb: NEON.pink, r: 18, strength: 0.38, flicker: 0.015 });
+    add({ a: { x: x1, y: y0, z: -1 }, b: { x: x1, y: y1, z: -1 }, rgb: NEON.cyan, r: 10, strength: 0.3 });
+    add({ a: { x: x0, y: y1, z: -1 }, b: { x: x1, y: y1, z: -1 }, rgb: NEON.pink, r: 10, strength: 0.3 });
+    // The stairs' rail and the lights under its treads.
+    add({ a: { x: STAIRS.top.x, y: STAIRS.top.y + STAIRS.width / 2, z: wall + 5 }, b: { x: STAIRS.foot.x, y: STAIRS.top.y + STAIRS.width / 2, z: 5 }, rgb: NEON.cyan, r: 12, strength: 0.35 });
+    add({ a: { x: STAIRS.top.x, y: STAIRS.top.y, z: wall - 2 }, b: { x: STAIRS.foot.x, y: STAIRS.top.y, z: 4 }, rgb: NEON.blue, r: 10, strength: 0.3 });
+    // The SURREEL sign on the left wall, the wall lamps and the posters.
+    add({ a: { x: x0 + 1, y: y0 + (y1 - y0) * 0.62, z: 70 }, rgb: NEON.pink, r: 38, strength: 0.5, pulse: 0.35, flicker: 0.02 });
+    for (const lamp of wallLamps()) add({ a: lamp, rgb: NEON.amber, r: 30, strength: 0.55, pulse: 0.15 });
+    add({ a: { x: x0 + 1, y: y0 + (y1 - y0) * 0.86, z: 62 }, rgb: NEON.blue, r: 14, strength: 0.3 });
+    // The loft: its rail, the racks and the analytics wall over it.
+    add({ a: { x: x0 + LOFT.depth, y: y0, z: LOFT.z + 7 }, b: { x: x0 + LOFT.depth, y: LOFT.y1, z: LOFT.z + 7 }, rgb: NEON.pink, r: 10, strength: 0.3 });
+    add({ a: { x: x0 + 1.5, y: y0 + 32, z: LOFT.z + 26 }, rgb: NEON.blue, r: 40, strength: 0.4, pulse: 0.35 });
+    add({ a: { x: x0 + 9, y: y0 + 14, z: LOFT.z + 9 }, rgb: NEON.cyan, r: 14, strength: 0.35, pulse: 0.6 });
+    add({ a: { x: x0 + 1, y: y0 + (y1 - y0) * 0.78, z: 32 }, rgb: NEON.cyan, r: 14, strength: 0.3 });
+    add({ a: { x: x0 + (x1 - x0) * 0.74, y: y0 + 1, z: 62 }, rgb: NEON.pink, r: 14, strength: 0.3 });
+    add({ a: { x: x0 + (x1 - x0) * 0.62, y: y0 + 1.5, z: 30 }, rgb: NEON.cyan, r: 16, strength: 0.35, pulse: 0.5 });
+    // The stations: the command table, the archive's sign and monitors, the desks, the approval
+    // screen's warm bar, the uplink, the strategy corner's notes.
+    add({ a: { x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 14 }, rgb: NEON.cyan, r: 30, strength: 0.5, pulse: 0.4 });
+    add({ a: { x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 19 }, rgb: NEON.pink, r: 14, strength: 0.5 });
+    const st = (id: StationId, dx: number, dy: number, z: number) => ({ x: STATION[id].x + dx, y: STATION[id].y + dy, z });
+    add({ a: st("oracle", -12, -3, 19.6), rgb: NEON.pink, r: 16, strength: 0.4, flicker: 0.02 });
+    add({ a: st("oracle", -21, -12, 10), rgb: NEON.cyan, r: 22, strength: 0.4, pulse: 0.5 });
+    add({ a: st("workshop", -14, -10, 12), rgb: NEON.cyan, r: 30, strength: 0.4, pulse: 0.3 });
+    add({ a: st("workshop", 18, -28, 10), rgb: NEON.jade, r: 14, strength: 0.3 });
+    add({ a: st("theatre", -15, -15, 24), rgb: NEON.amber, r: 30, strength: 0.45 });
+    add({ a: st("tent", -24, -12, 12), rgb: NEON.pink, r: 22, strength: 0.35, pulse: 0.3 });
+    add({ a: st("tent", 12, 8, 8), rgb: NEON.cyan, r: 16, strength: 0.45, pulse: 0.5 });
+    add({ a: st("scouts", -16, -14, 36), rgb: NEON.pink, r: 8, strength: 0.7, pulse: 0.9 });
+    add({ a: st("agora", -6, -6, 16), rgb: NEON.cyan, r: 12, strength: 0.4, pulse: 0.6 });
+    // The street: the HQ's sign and door, the shops' signs and awnings, the lamps.
+    const front = ENTRANCE.y + ENTRANCE.depth;
+    add({ a: { x: 0, y: front + 1.2, z: wall + 38 }, rgb: NEON.pink, r: 40, strength: 0.6, pulse: 0.3, flicker: 0.03, always: true });
+    add({ a: { x: 0, y: front + 1.2, z: wall + 27 }, rgb: NEON.cyan, r: 18, strength: 0.5, flicker: 0.01, always: true });
+    add({ a: { x: 0, y: front + 4, z: wall + 6 }, rgb: NEON.amber, r: 22, strength: 0.45, always: true });
+    for (const side of [-1, 1]) {
+      add({ a: { x: side * (ENTRANCE.half - 0.8), y: front, z: wall + 2 }, b: { x: side * (ENTRANCE.half - 0.8), y: front, z: wall + ENTRANCE.tall }, rgb: NEON.pink, r: 10, strength: 0.35, always: true });
+      add({ a: { x: side * (ENTRANCE.door + 3), y: front + 0.7, z: wall + 12 }, rgb: NEON.amber, r: 12, strength: 0.45, always: true });
+    }
+    add({ a: { x: 10, y: ENTRANCE.y, z: wall + ENTRANCE.tall + 14.4 }, rgb: NEON.pink, r: 8, strength: 0.8, pulse: 0.9, always: true });
+    // The puddles on the landing's slice of street catch the sign.
+    for (const [px, py, rgb] of [
+      [18, STREET_LANE + 9, NEON.pink],
+      [-22, STREET_LANE - 6, NEON.cyan],
+      [30, STREET_LANE - 14, NEON.blue],
+    ] as const) add({ a: { x: px, y: py, z: wall + 0.2 }, rgb, r: 12, strength: 0.35, pulse: 0.5, always: true });
+    for (const land of LANDS) {
+      const rgb = hexRgb(land.color);
+      add({ a: { x: land.x, y: land.y - 7, z: LAND_Z + 15.5 }, rgb, r: 26, strength: 0.5, pulse: 0.3, flicker: 0.012 });
+      add({ a: { x: land.x - 16, y: land.y - 3.6, z: LAND_Z + 10.2 }, b: { x: land.x + 16, y: land.y - 3.6, z: LAND_Z + 10.2 }, rgb, r: 9, strength: 0.3 });
+    }
+    for (const lamp of this.streetLamps) {
+      const cyan = lamp.job?.k === "prop" && lamp.job.v % 2 === 1;
+      add({ a: { x: lamp.x, y: lamp.y - 7.5, z: lamp.z + 24.6 }, rgb: cyan ? NEON.cyan : NEON.pink, r: 26, strength: 0.45, pulse: 0.15, flicker: 0.008 });
+    }
+    return out;
   }
 
   private readonly timers: Array<{ at: number; run: () => void }> = [];
@@ -1337,13 +1541,25 @@ export class CampScene {
       const banner = this.keyed.get(`agora:banner${i}`);
       if (banner?.job?.k === "prop") banner.job = { k: "prop", id: "banner", v: i * 4 + ((wave + i) % 4) };
     }
+    // The working stations' lights on the command table pulse.
+    if (this.hub.job?.k === "prop") this.hub.job = { k: "prop", id: "hub", v: this.hubCode * 2 + (Math.floor(this.time / 0.5) % 2) };
+    // The archive's racks blink and its monitors scroll; the strategy table's hologram turns; the
+    // uplink's chart refreshes.
+    const frame = Math.floor(this.time / 0.35) % 4;
     const shrine = this.keyed.get("oracle:shrine");
-    if (shrine?.job?.k === "prop") shrine.job = { k: "prop", id: "shrine", v: this.tvOn ? 1 + (Math.floor(this.time / 0.3) % 4) : 0 };
+    if (shrine?.job?.k === "prop") shrine.job = { k: "prop", id: "shrine", v: (this.tvOn ? 4 : 0) + (Math.floor(this.time / 0.3) % 4) };
+    const table = this.keyed.get("tent:maptable");
+    if (table?.job?.k === "prop") table.job = { k: "prop", id: "maptable", v: frame };
+    const uplinkProp = this.keyed.get("agora:podium");
+    if (uplinkProp?.job?.k === "prop") uplinkProp.job = { k: "prop", id: "podium", v: Math.floor(this.time / 0.8) % 4 };
     this.expedition.tick(dt);
   }
 
   private revealTick(dt: number) {
     const targets = [...this.grounds, ...this.props];
+    // The landing's lights come on with the HQ's door.
+    if (this.stage.baker.has({ k: "horse-body" })) this.glow.landingLevel = Math.min(1, this.glow.landingLevel + dt * 1.5);
+    this.glow.level = this.showing ? Math.min(1, Math.max(0, (this.revealT - 0.6) / 1.2)) : Math.max(0, this.glow.level - dt * 2);
     this.expedition.revealTick(dt, this.showing && this.revealT > 0.4);
     if (!this.showing) {
       for (const entity of targets) entity.reveal = Math.max(0, (entity.reveal ?? 0) - dt * 2);

@@ -40,7 +40,7 @@ export function GateForm({ next }: { next: string }) {
       <form key={attempt} onSubmit={submit} className={`${styles.enter} ${error ? styles.shake : ""} w-full max-w-[380px] text-center`} aria-label="Enter the password">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/nomen-logo.png" alt="" width={120} height={85} className="mx-auto mb-3 h-[85px] w-auto" />
-        <h1 className={`${styles.pixel} text-[34px] font-semibold tracking-tight`}>Nomen</h1>
+        <h1 className={`${styles.pixel} text-[34px] font-semibold tracking-tight`}>Surreel</h1>
         <p className="mt-2 text-[14px] text-[var(--ink-soft)]">Private preview. Enter the password to continue.</p>
         <div className={`${styles.box} mt-7 flex items-center gap-2 py-1.5 pl-4 pr-1.5`}>
           <label htmlFor="gate-password" className="sr-only">

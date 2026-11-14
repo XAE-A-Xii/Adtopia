@@ -157,7 +157,7 @@ export function TourCard({
         </div>
         <p className="mt-1 text-[13px] leading-snug text-[var(--ink-soft)]">{step.body}</p>
         {/* How far through the tour; on autoplay it fills on through each step's time. */}
-        <span aria-hidden="true" className="mt-2 block h-[3px] bg-[rgba(43,29,20,0.12)]">
+        <span aria-hidden="true" className="mt-2 block h-[3px] bg-[rgba(200,196,255,0.12)]">
           {tour.auto ? (
             <TimerBar key={tour.timer.key} from={(n - 1) / tour.steps.length} to={n / tour.steps.length} dwell={tour.timer.dwell} spent={tour.timer.spent} running={tour.timer.running} />
           ) : (

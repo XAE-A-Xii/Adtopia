@@ -1,6 +1,6 @@
-# Naive in Nomen
+# Naive in Surreel
 
-[Naive](https://usenaive.ai) is the hosted agent platform Nomen runs its agents on. This page
+[Naive](https://usenaive.ai) is the hosted agent platform Surreel runs its agents on. This page
 explains the setup in plain terms, what Naive can and cannot change, and how to use it day to day.
 
 ## The three commands
@@ -46,7 +46,7 @@ The guard requires every agent, app, skill, vault and identity name, and every n
 organization; the prefix means `naive up` can never match, change or delete one of theirs. The
 guard also refuses `tasks`, because they create or edit the organization's CEO agent.
 
-## The agents Nomen runs
+## The agents Surreel runs
 
 `nomen-director` (Claude Sonnet 5.5) is the creative engine's director: it reads the product brief
 and the beat-by-beat breakdowns of proven reference videos and returns the brand brief, the search
@@ -54,7 +54,7 @@ plan and one video brief per ad. Its standing instructions live in `naive/agents
 `settings.strategist_agent` names it. It has no tools and the same budget as the strategist below.
 
 `naive.config.ts` also declares the original agent, `nomen-strategist` (Claude Sonnet 5.5). It reads the research
-Nomen already collected and returns the brand brief, the search plan and the video concepts as a
+Surreel already collected and returns the brand brief, the search plan and the video concepts as a
 structured answer. Its standing instructions live in `naive/agents/strategist.md`. It has no tools,
 so it cannot browse, buy, post or spend on its own, and its budget is $4 per run and $40 a month.
 Video renders, images, the format study and quality checks are called directly by the app; they
@@ -70,7 +70,7 @@ Any new agent needs a budget you choose, in integer micro-USD (1 USD = 1,000,000
 ([tools reference](https://usenaive.ai/docs/capabilities/tools)). Keep them on `ask` until you
 trust the agent.
 
-## What else Nomen uses on Naive
+## What else Surreel uses on Naive
 
 | Primitive | Used for |
 | --- | --- |
@@ -80,12 +80,12 @@ trust the agent.
 | Identities and Social | one identity per brand (`nomen-brand-<domain>`), its connection page and the posts |
 
 Naive's media-skill builder was tried for the format study and could not fetch public TikTok or
-Instagram links (November 2026), so Nomen studies the videos itself from Monid's download links.
+Instagram links (November 2026), so Surreel studies the videos itself from Monid's download links.
 
 ## Why there is no blueprint clone
 
 The usual Naive onboarding ([skill.md](https://usenaive.ai/skill.md)) clones a ready-made company
-repo (`naive template agency` or `media`) and builds on it. Nomen is its own product, so
+repo (`naive template agency` or `media`) and builds on it. Surreel is its own product, so
 `naive init` created a `naive.config.ts` in this repo instead. If you want to look at one of
 Naive's templates, clone it next to this repo: `npm run naive -- template agency --dir ../agency`.
 

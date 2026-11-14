@@ -1,6 +1,7 @@
 import { deck, planks, rope, solid, torchlight, wheel } from "../materials";
 import { R } from "../palette";
 import { type HitInfo, Model, mul, rotX, rotY, rotZ, type ShadeOut, translate } from "../tracer";
+import { entrancePath } from "../../scenes/layout";
 
 // The Trojan horse: a wooden horse on a wheeled cart, facing +x. Its +y flank has double doors;
 // once they swing open, a gangplank slides out of the belly and tips down to the sand, and the
@@ -18,8 +19,13 @@ export const HORSE = {
 /** The plank's resting angle below horizontal: its foot touches the ground. */
 export const PLANK_REST = Math.asin(HORSE.sillZ / HORSE.plankLength);
 
-/** Points the soldiers walk through on their way out (world units). */
+/** Points the agents walk through on their way out: the HQ's street door, the road, the stairs. */
 export function exitPath() {
+  return entrancePath();
+}
+
+/** The horse's own way down its plank (no longer walked: the HQ replaced it). */
+export function horseExitPath() {
   const footY = HORSE.sillY + HORSE.plankLength * Math.cos(PLANK_REST);
   return [
     { x: 0, y: HORSE.sillY - 5, z: HORSE.sillZ + 0.6 },

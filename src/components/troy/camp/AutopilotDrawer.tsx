@@ -106,7 +106,7 @@ export function AutopilotDrawer({ brandId, autopilot, wide, onClose, onChange }:
 
   return (
     <aside aria-label="Autopilot" className={`${styles.box} ${styles.enter} absolute z-20 flex flex-col ${wide ? "bottom-4 right-4 top-[76px] w-[420px]" : "inset-x-3 bottom-3 h-[64vh]"}`}>
-      <header className="flex items-start gap-3 border-b-2 border-[rgba(43,29,20,0.12)] px-5 pb-3 pt-4">
+      <header className="flex items-start gap-3 border-b-2 border-[rgba(200,196,255,0.12)] px-5 pb-3 pt-4">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wider text-[var(--ink-soft)]">The next campaign · {view ? (view.settings.enabled ? "On" : "Off") : "…"}</p>
           <h2 ref={headingRef} tabIndex={-1} className={`${styles.pixel} mt-1 text-[24px] font-semibold leading-none outline-none`}>
@@ -175,7 +175,7 @@ export function AutopilotDrawer({ brandId, autopilot, wide, onClose, onChange }:
                     setBudget(event.target.value);
                     setDirty(true);
                   }}
-                  className={`${styles.input} mt-1 block h-10 w-full border-2 border-[rgba(43,29,20,0.2)] bg-[var(--paper)] px-2 text-[14px]`}
+                  className={`${styles.input} mt-1 block h-10 w-full border-2 border-[rgba(200,196,255,0.2)] bg-[var(--paper)] px-2 text-[14px]`}
                 />
                 <span className="mt-1 block text-[12px] leading-snug text-[var(--ink-faint)]">Everything this brand&apos;s campaigns spend in any 7 days counts, including ones you start yourself.</span>
               </label>
@@ -191,7 +191,7 @@ export function AutopilotDrawer({ brandId, autopilot, wide, onClose, onChange }:
                     setCadence(event.target.value);
                     setDirty(true);
                   }}
-                  className={`${styles.input} mt-1 block h-10 w-24 border-2 border-[rgba(43,29,20,0.2)] bg-[var(--paper)] px-2 text-[14px]`}
+                  className={`${styles.input} mt-1 block h-10 w-24 border-2 border-[rgba(200,196,255,0.2)] bg-[var(--paper)] px-2 text-[14px]`}
                 />
               </label>
               <label className="flex cursor-pointer items-start gap-2.5">
@@ -252,7 +252,7 @@ export function AutopilotDrawer({ brandId, autopilot, wide, onClose, onChange }:
 
 function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[rgba(43,29,20,0.05)] px-2 py-2 text-center">
+    <div className="bg-[rgba(200,196,255,0.05)] px-2 py-2 text-center">
       <div className={`${styles.pixel} text-[15px] leading-tight`}>{value}</div>
       <div className="mt-1 text-[10px] uppercase leading-tight tracking-wide text-[var(--ink-soft)]">{label}</div>
     </div>

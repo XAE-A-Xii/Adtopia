@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="public/brand/nomen-logo.png" alt="Nomen" width="88" />
+<img src="public/brand/nomen-logo.png" alt="Surreel" width="88" />
 
-# Nomen
+# Surreel
 
 **UGC that runs itself. Agents find what's winning, make the videos, post them, learn from the numbers and start the next round, on their own.**
 
@@ -12,7 +12,7 @@
 
 <br/>
 
-<img src="assets/readme/hero.webp" alt="The Nomen camp replaying a real campaign for Naïve: the website typed in, the agents marching out of the horse, scouts fanning out to ten research sources, the workshop, a finished video in the screening room, and the battle for the rival's city" width="100%" />
+<img src="assets/readme/hero.webp" alt="The Surreel camp replaying a real campaign for Naïve: the website typed in, the agents marching out of the horse, scouts fanning out to ten research sources, the workshop, a finished video in the screening room, and the battle for the rival's city" width="100%" />
 
 <sub>A real campaign for Naïve (usenaive.ai), replayed in the camp at <code>/demo</code>. Every number on screen comes from the recorded run.</sub>
 
@@ -20,7 +20,7 @@
 
 ## What it does
 
-Nomen is an autonomous UGC studio that keeps itself running. Point it at a brand's website once: it researches the brand, its competitors and the short-form videos that are outperforming their accounts; picks the formats worth copying; writes and produces original videos in those formats; checks every shot; lets a person approve each video or hand the brief to a real creator; posts to the brand's own accounts; and feeds the analytics into the next campaign. An autopilot starts that next campaign by itself, but only inside a weekly budget a person typed in.
+Surreel is an autonomous UGC studio that keeps itself running. Point it at a brand's website once: it researches the brand, its competitors and the short-form videos that are outperforming their accounts; picks the formats worth copying; writes and produces original videos in those formats; checks every shot; lets a person approve each video or hand the brief to a real creator; posts to the brand's own accounts; and feeds the analytics into the next campaign. An autopilot starts that next campaign by itself, but only inside a weekly budget a person typed in.
 
 The whole run is visible as a camp: each agent is a soldier walking between stations, and each station opens onto the work behind it.
 
@@ -197,7 +197,7 @@ The organic, code-ad, brainrot and clone generators were built in parallel and a
 
 ```bash
 git clone https://github.com/XAE-A-Xii/Nomen.git
-cd Nomen
+cd Surreel
 npm install
 npm run dev
 ```
@@ -272,9 +272,9 @@ On `main` at the time of writing: 57 test files, 697 tests passed and 18 skipped
 
 Tests that call paid services only run when their variable is set, for example `NOMEN_CASTING_LIVE=1` (casting), `NOMEN_LIVE_STATICS` (static ads) or `MOBILERUN_LIVE=1` (read-only phone checks). Tests that need ffmpeg or Chrome skip themselves when those are missing.
 
-## Rules Nomen keeps
+## Rules Surreel keeps
 
-- **Brand-owned accounts only.** Posting goes through accounts the brand connects itself; Nomen never creates accounts or posts as invented people.
+- **Brand-owned accounts only.** Posting goes through accounts the brand connects itself; Surreel never creates accounts or posts as invented people.
 - **Labeled.** Every post sets Naïve's `ai_generated` flag.
 - **No fake testimonials.** Creators share the product; they never claim results or experiences that did not happen, and claims stay within what the brand's own site says.
 - **Copies stay internal.** One-to-one remakes and clones are held from posting unless someone clears them.
@@ -297,7 +297,7 @@ Measured on the team's accounts in November 2026:
 
 ## Status and limits
 
-Nomen is a hackathon prototype. What that means today:
+Surreel is a hackathon prototype. What that means today:
 
 - The organic, 3D code-ad, brainrot and faceless-clone generators and phone posting live on `generators/*` branches and are not merged into `main`.
 - The format study in `src/lib/format.ts` only runs from its live test; the style stage's work is the reference breakdowns.

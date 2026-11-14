@@ -4,7 +4,7 @@ import { PLACEMENTS } from "@/lib/statics/specs";
 import type { ResearchPack } from "@/lib/research";
 
 // Output shapes follow real Monid responses (Meta ad library search, X timelines, Google Ads
-// Transparency, context.dev screenshots), trimmed to the fields Nomen reads.
+// Transparency, context.dev screenshots), trimmed to the fields Surreel reads.
 
 const NOW = Date.parse("2026-11-08T00:00:00Z");
 const day = (n: number) => Math.round((NOW - n * 24 * 3600 * 1000) / 1000);

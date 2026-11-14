@@ -288,7 +288,7 @@ export function Steps({ steps, current, failed = false }: { steps: string[]; cur
       {steps.map((step, i) => {
         const done = i < current;
         const now = i === current;
-        const color = now && failed ? "var(--crimson-dark)" : done ? "var(--olive)" : now ? "var(--crimson)" : "rgba(43,29,20,0.12)";
+        const color = now && failed ? "var(--crimson-dark)" : done ? "var(--olive)" : now ? "var(--crimson)" : "rgba(200,196,255,0.12)";
         return (
           <li key={step} className="min-w-0 flex-1">
             <span className={`block h-[6px] ${now && !failed ? styles.blink : ""}`} style={{ background: color }} />
@@ -311,7 +311,7 @@ export function Chip({ children, tone = "ink" }: { children: ReactNode; tone?: "
 
 export function Stat({ n, label, icon }: { n: ReactNode; label: string; icon?: IconName }) {
   return (
-    <div className="bg-[rgba(43,29,20,0.05)] px-2 py-2 text-center">
+    <div className="bg-[rgba(200,196,255,0.05)] px-2 py-2 text-center">
       <div className={`${styles.pixel} flex items-center justify-center gap-1.5 text-[20px] leading-none`}>
         {icon && <Icon name={icon} size={14} />}
         {n}

@@ -27,7 +27,7 @@ export function exchangeOf(from: StationId, to: StationId, campaign: CampaignVie
 }
 
 function linesFor(from: StationId, to: StationId, campaign: CampaignView | null): string[] {
-  if (!campaign) return [`${STATION[from].name} hand their work to ${STATION[to].name}.`];
+  if (!campaign) return [`${STATION[from].name} hands its work to ${STATION[to].name}.`];
   switch (from) {
     case "scouts":
       return research(campaign);
@@ -67,7 +67,7 @@ function linesFor(from: StationId, to: StationId, campaign: CampaignView | null)
         : ["The approved videos, to post."];
     }
     default:
-      return [`${STATION[from].name} hand their work to ${STATION[to].name}.`];
+      return [`${STATION[from].name} hands its work to ${STATION[to].name}.`];
   }
 }
 

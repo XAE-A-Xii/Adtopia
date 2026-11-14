@@ -227,7 +227,7 @@ export function LinkForm({ status, niche, onSaved, onCancel }: Props) {
         <input type="checkbox" className="mt-0.5 accent-violet-500" checked={official} onChange={(event) => setOfficial(event.target.checked)} />
         <span>
           This is the brand&apos;s own official account.
-          <span className="mt-0.5 block text-xs text-zinc-500">Required. Nomen never creates accounts and only warms up accounts {status.brand.name} owns.</span>
+          <span className="mt-0.5 block text-xs text-zinc-500">Required. Surreel never creates accounts and only warms up accounts {status.brand.name} owns.</span>
         </span>
       </label>
 

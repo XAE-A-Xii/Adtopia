@@ -1,8 +1,8 @@
 // The outreach the casting agent drafted in the Naïve recording (public/demo/usenaive-ai/script.json:
 // "I told Naïve I'm exhausted", concept.casting): the creator it picked, the client-taste agent's
-// verdict and the first DM, word for word. Nomen drafts the message (src/lib/creative/casting.ts);
+// verdict and the first DM, word for word. Surreel drafts the message (src/lib/creative/casting.ts);
 // once a person approves the brief, the brand's phone sends it from the brand's own account
-// (src/lib/phones, an outreach session). The video shows that first message; Nomen does not
+// (src/lib/phones, an outreach session). The video shows that first message; Surreel does not
 // carry on the conversation.
 
 export const OUTREACH = {

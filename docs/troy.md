@@ -1,6 +1,6 @@
 # Troy: the landing page and the camp
 
-Troy is the pixel-art front door of Nomen. `/` is a white page with a Trojan horse and one box:
+Troy is the pixel-art front door of Surreel. `/` is a white page with a Trojan horse and one box:
 the company's website. Submitting it starts a real campaign; the horse's doors open, a gangplank
 drops and the campaign's agents march out, one by one, down to their posts in the camp. `/camp/[brandId]` is the camp:
 the campaign's agents, one island per pipeline stage, doing the work the core track reports.
@@ -130,7 +130,7 @@ When a real campaign has turned out well:
 npm run demo:export -- yourbrand.com
 ```
 
-The exporter reads the campaign from a running Nomen (`--from`, default `http://localhost:3000`)
+The exporter reads the campaign from a running Surreel (`--from`, default `http://localhost:3000`)
 through the same HTTP API the camp uses. It writes `public/demo/<id>/` and adds the recording to
 the front of `public/demo/index.json`:
 - the finished videos (`1.mp4`…);

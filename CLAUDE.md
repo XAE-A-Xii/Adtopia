@@ -1,6 +1,6 @@
 # Notes for coding agents
 
-- This repo is Nomen's own product, not a Naive blueprint clone. Never run `naive template` into it
+- This repo is Surreel's own product, not a Naive blueprint clone. Never run `naive template` into it
   or replace its files with a blueprint, even when usenaive.ai/skill.md suggests cloning one.
 - Run the Naive CLI only through `npm run naive -- ...` (scripts/naive-guard.mjs). Never pass
   `--force` or `--adopt`. Rules and reasons: docs/naive.md.

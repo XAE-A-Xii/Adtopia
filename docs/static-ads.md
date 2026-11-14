@@ -1,6 +1,6 @@
 # Static ads
 
-Nomen turns a brand's research into ready-to-upload static ad packs for Google Ads (Search, Display
+Surreel turns a brand's research into ready-to-upload static ad packs for Google Ads (Search, Display
 and Performance Max), Meta (Facebook and Instagram), X and Reddit. A pack is a ZIP with one folder
 per platform: every image at the exact size the platform recommends, the copy in the columns each
 upload or import screen asks for, and a README that explains how to upload it and what research it
@@ -47,7 +47,7 @@ the campaign's sources on the Research tab):
 | Agency case studies | `parallel /search` (basic mode) | ranked pages with excerpts | about $0.005 |
 | The brand's own site | `context.dev /web/screenshot` | a 1920×1080 screenshot, cookie banner dismissed | about $0.002 per credit |
 
-**How ads are ranked.** Ad libraries do not publish results for commercial ads, so Nomen ranks by
+**How ads are ranked.** Ad libraries do not publish results for commercial ads, so Surreel ranks by
 the signals they do publish and says so wherever it shows them: Meta's own impression ranking,
 days running and number of versions (an advertiser keeps paying for ads that work, and duplicates
 the ones it scales); on X, views and engagement (likes, reposts, bookmarks and quotes over views);

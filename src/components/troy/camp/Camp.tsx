@@ -8,7 +8,7 @@ import { projectX, projectY } from "../engine/tracer";
 import type { CampScene } from "../scenes/camp";
 import { activeStation, derive, stationForEvent } from "../scenes/derive";
 import { type BattlePlan, type Company } from "../scenes/battle";
-import { type Land, LAND_RADIUS, type LandId, LANDS, ROME_LINES, romePoint, STATION, type StationId, STATIONS } from "../scenes/layout";
+import { type Land, LAND_RADIUS, LAND_Z, type LandId, LANDS, ROOM_CENTER, ROME_LINES, romePoint, STATION, type StationId, STATIONS } from "../scenes/layout";
 import type { LandingScene } from "../scenes/landing";
 import styles from "../troy.module.css";
 import { DEMO_ID, demoCreativeId, type PublishMode } from "./demo";
@@ -290,7 +290,8 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
   }, [selected]);
   // Once the videos go out, the agora's army sails for the rival's city: the camera goes with it,
   // from the harbour below the agora, along with the fleet across the sea, to the battle there.
-  const battling = plan.battle.phase === "advance" || plan.battle.phase === "clash";
+  // The HQ draws no battle at sea: the camera stays in the basement while posts go out.
+  const battling = false as boolean;
   const [voyage, setVoyage] = useState<"harbor" | "fleet" | "rome" | null>(null);
   // Each company's part of the story (boarding, under sail, fighting...), and whether the city has fallen.
   const [fleetWords, setFleetWords] = useState<string[]>([]);
@@ -744,9 +745,19 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
           />
         ))}
 
-      {arrived && view && LANDS.map((land) => <LandTag key={land.id} engine={engine} land={land} scouts={busyLands[land.id] ?? 0} detail={detail} />)}
+      {/* Only the shops a scout is at say their name: the street stays the artwork, not a list. */}
+      {arrived && view && LANDS.filter((land) => (busyLands[land.id] ?? 0) > 0).map((land) => <LandTag key={land.id} engine={engine} land={land} scouts={busyLands[land.id] ?? 0} detail={detail} />)}
+      {arrived && view && (
+        <HubTag
+          engine={engine}
+          done={STATIONS.filter((s) => plan.stations[s.id].state === "done" || plan.stations[s.id].state === "skipped").length}
+          autopilot={demo ? null : autopilot.view}
+          onClick={demo ? null : () => (drawer === "autopilot" ? setDrawer(null) : actions.openAutopilot?.())}
+        />
+      )}
 
-      {arrived && view && plan.battle.phase !== "none" && (
+      {/* The HQ draws no battle at sea, so its companies and the rival's banner have no tags. */}
+      {arrived && view && battling && plan.battle.phase !== "none" && (
         <>
           {/* Once the city falls the banner at its gate says it for all of them. */}
           {!taken &&
@@ -905,12 +916,12 @@ function TopBar({
     <header
       data-topbar
       className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-3 px-4 pb-6 pt-4 sm:gap-5 sm:px-6 ${visible ? styles.fadeIn : "opacity-0"}`}
-      style={{ background: "linear-gradient(var(--page) 62%, rgba(246, 244, 239, 0))" }}
+      style={{ background: "linear-gradient(var(--page) 62%, rgba(21, 26, 53, 0))" }}
     >
-      <a href={home} className={`${styles.pixel} ${styles.link} pointer-events-auto flex shrink-0 items-center gap-2 text-[20px] font-semibold text-[var(--ink)]`} aria-label="Nomen home">
+      <a href={home} className={`${styles.pixel} ${styles.link} pointer-events-auto flex shrink-0 items-center gap-2 text-[20px] font-semibold text-[var(--ink)]`} aria-label="Surreel home">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/nomen-logo.png" alt="" width={40} height={28} className="h-7 w-auto" />
-        <span className="hidden sm:inline">Nomen</span>
+        <span className="hidden sm:inline">Surreel</span>
       </a>
       {view && (
         <div className={`${styles.boxSoft} pointer-events-auto flex min-w-0 items-center gap-2.5 px-2 py-1.5 sm:px-3`} title={`${view.brand.name} · ${view.brand.domain}`}>
@@ -1066,6 +1077,36 @@ export function Pip({ state }: { state: string }) {
 
 const STATE_WORD: Record<string, string> = { waiting: "Waiting", working: "Working", done: "Done", failed: "Stopped", skipped: "Skipped", yours: "Your turn" };
 
+/**
+ * The command table's tag: the campaign's progress through the six stations, and the autopilot at a
+ * glance (on or paused, and what is left of this week's budget). Clicking it opens the autopilot.
+ */
+function HubTag({ engine, done, autopilot, onClick }: { engine: RefObject<Engine | null>; done: number; autopilot: { settings: { enabled: boolean; weeklyBudgetUsd: number }; status: { spendThisWeekUsd: number } } | null; onClick: (() => void) | null }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const e = engine.current;
+    if (!e || !ref.current) return;
+    return e.stage.anchor(ref.current, () => ({ x: ROOM_CENTER.x + 16, y: ROOM_CENTER.y + 16, z: 0 }));
+  }, [engine]);
+  const on = autopilot?.settings.enabled ?? false;
+  const left = autopilot ? Math.max(0, autopilot.settings.weeklyBudgetUsd - autopilot.status.spendThisWeekUsd) : null;
+  const budget = left !== null ? " · $" + left.toFixed(0) + " left" : "";
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick ?? undefined}
+      disabled={!onClick}
+      title={onClick ? "The command table: open the autopilot" : "The command table"}
+      className={styles.box + " " + styles.pixel + " pointer-events-auto absolute left-0 top-0 flex items-center gap-2 whitespace-nowrap px-2 py-1 text-[11px] -translate-x-1/2"}
+    >
+      <span className="text-[var(--teal)]">Command</span>
+      <span className="text-[var(--ink-soft)]">{done}/6</span>
+      {autopilot && <span style={{ color: on ? "var(--olive)" : "var(--ink-faint)" }}>{on ? "Autopilot on" + budget : "Autopilot paused"}</span>}
+    </button>
+  );
+}
+
 function StationTag({
   engine,
   id,
@@ -1087,11 +1128,15 @@ function StationTag({
   const ref = useRef<HTMLDivElement>(null);
   const emoteRef = useRef<HTMLDivElement>(null);
   const station = STATION[id];
+  // Small tags keep the room the picture: a tag opens to its status while hovered or focused, or
+  // while its station is the one selected.
+  const [peek, setPeek] = useState(false);
+  compact = !(active || peek) || compact;
   useLayoutEffect(() => {
     const e = engine.current;
     if (!e || !ref.current) return;
     // Under the island's front edge.
-    return e.stage.anchor(ref.current, () => ({ x: station.x + 34, y: station.y + 34, z: 0 }));
+    return e.stage.anchor(ref.current, () => ({ x: station.x + 30, y: station.y + 30, z: 0 }));
   }, [engine, station]);
   useLayoutEffect(() => {
     const e = engine.current;
@@ -1110,14 +1155,18 @@ function StationTag({
         <button
           type="button"
           onClick={onClick}
+          onMouseEnter={() => setPeek(true)}
+          onMouseLeave={() => setPeek(false)}
+          onFocus={() => setPeek(true)}
+          onBlur={() => setPeek(false)}
           aria-pressed={active}
           aria-label={`${station.name}, ${station.role}: ${STATE_WORD[plan.state]}. ${plan.status}`}
           title={compact ? `${station.role}: ${plan.status}` : undefined}
-          className={`${active || yours ? styles.box : styles.boxSoft} ${styles.enter} ${yours && !active ? styles.beckon : ""} pointer-events-auto block -translate-x-1/2 text-left transition-transform hover:-translate-y-0.5 ${compact ? "whitespace-nowrap px-2 py-1" : "w-[208px] px-3 py-2"}`}
+          className={`${active || yours ? styles.box : styles.boxSoft} ${styles.enter} ${yours && !active ? styles.beckon : ""} pointer-events-auto block -translate-x-1/2 text-left transition-transform hover:-translate-y-0.5 ${compact ? "whitespace-nowrap px-1.5 py-0.5" : "w-[208px] px-3 py-2"}`}
         >
           <span className="flex items-center gap-2">
             <Pip state={plan.state} />
-            <span className={`${styles.pixel} font-semibold uppercase tracking-wide ${compact ? "text-[12px]" : "text-[14px]"}`}>{station.name}</span>
+            <span className={`${styles.pixel} font-semibold uppercase tracking-wide ${compact ? "text-[10px]" : "text-[14px]"}`}>{station.name}</span>
             {!compact && <span className="ml-auto text-[11px] text-[var(--ink-soft)]">{station.role}</span>}
             {compact && yours && <span className={`${styles.pixel} bg-[var(--teal)] px-1.5 text-[11px] text-[var(--paper)]`}>Your turn</span>}
           </span>
@@ -1151,7 +1200,7 @@ function StationTag({
                             : plan.state === "yours"
                               ? "var(--teal)"
                               : "var(--crimson)"
-                        : "rgba(43,29,20,0.1)",
+                        : "rgba(200,196,255,0.1)",
                   }}
                 />
               ))}
@@ -1222,7 +1271,7 @@ function LandTag({ engine, land, scouts, detail }: { engine: RefObject<Engine | 
   useLayoutEffect(() => {
     const e = engine.current;
     if (!e || !ref.current) return;
-    return e.stage.anchor(ref.current, () => ({ x: land.x + LAND_RADIUS * 0.72, y: land.y + LAND_RADIUS * 0.72, z: 0 }));
+    return e.stage.anchor(ref.current, () => ({ x: land.x, y: land.y + LAND_RADIUS * 0.72, z: LAND_Z + 34 }));
   }, [engine, land]);
   const count = scouts > 0 && (
     <span className={`${styles.pixel} bg-[var(--crimson)] px-1 text-[10px] leading-[14px] text-[var(--paper)]`} aria-label={`${scouts} ${scouts === 1 ? "scout" : "scouts"} on this errand`}>
@@ -1475,7 +1524,7 @@ function ZoomControls({ wide, panel, manual, onZoom, onFit }: { wide: boolean; p
         style={manual ? { background: "var(--crimson)" } : undefined}
         onClick={onFit}
         aria-label="Fit the view"
-        title="Fit the view (0): the camera frames the camp again, and the lands while scouts are out"
+        title="Fit the view (0): the camera frames the whole HQ and the street again"
       >
         <PixelIcon name="fit" />
       </button>
@@ -1518,7 +1567,7 @@ function StationStrip({ plan, shown, bubbles, onPick }: { plan: ReturnType<typeo
               {p.progress !== null && (
                 <span className="mt-1.5 flex gap-[3px]" aria-hidden="true">
                   {Array.from({ length: segments }, (_, i) => (
-                    <span key={i} className="h-[4px] flex-1" style={{ background: i < filled ? (p.state === "done" ? "var(--olive)" : p.state === "yours" ? "var(--teal)" : "var(--crimson)") : "rgba(43,29,20,0.1)" }} />
+                    <span key={i} className="h-[4px] flex-1" style={{ background: i < filled ? (p.state === "done" ? "var(--olive)" : p.state === "yours" ? "var(--teal)" : "var(--crimson)") : "rgba(200,196,255,0.1)" }} />
                   ))}
                 </span>
               )}

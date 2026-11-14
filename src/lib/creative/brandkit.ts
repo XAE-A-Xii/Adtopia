@@ -1,4 +1,4 @@
-// Brand kit intake: the files a brand hands Nomen (uploads) and what a read-only scan of its code
+// Brand kit intake: the files a brand hands Surreel (uploads) and what a read-only scan of its code
 // finds, so the video agents can show the real product instead of two website screenshots.
 //
 //   data/brandkits/<brandId>/kit.json   the BrandKit, plus a private index (content hashes, vision state)
@@ -343,7 +343,7 @@ export async function requireBrand(brandId: string): Promise<{ id: string; name:
  * so there they can be read (empty) but not changed yet: see docs/convex.md.
  */
 export function requireKitDisk() {
-  if (store().kind !== "sqlite") throw new BrandKitError(501, "Brand kits aren't available on this deployment yet: they are kept on the server's disk, which a serverless host doesn't have. Run Nomen locally to import one.");
+  if (store().kind !== "sqlite") throw new BrandKitError(501, "Brand kits aren't available on this deployment yet: they are kept on the server's disk, which a serverless host doesn't have. Run Surreel locally to import one.");
 }
 
 /**

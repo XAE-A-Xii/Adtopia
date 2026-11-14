@@ -7,7 +7,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Nomen",
+  title: "Surreel",
   description: "From a website to researched, high-quality UGC video ads on the brand's own accounts.",
 };
 
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/nomen-logo.png" alt="" width={40} height={28} className="h-7 w-auto" />
-              Nomen
+              Surreel
             </Link>
             <nav className="flex items-center gap-1 text-sm text-zinc-400">
               <Link href="/" className="rounded-lg px-3 py-1.5 hover:bg-white/5 hover:text-white">

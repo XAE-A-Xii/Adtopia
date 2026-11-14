@@ -54,7 +54,7 @@ export function BrandKitDrawer({ brandId, brandName, stage, wide, onClose }: { b
 
   return (
     <aside aria-label="Brand kit" className={`${styles.box} ${styles.enter} absolute z-20 flex flex-col ${wide ? "bottom-4 right-4 top-[76px] w-[420px]" : "inset-x-3 bottom-3 h-[64vh]"}`}>
-      <header className="flex items-start gap-3 border-b-2 border-[rgba(43,29,20,0.12)] px-5 pb-3 pt-4">
+      <header className="flex items-start gap-3 border-b-2 border-[rgba(200,196,255,0.12)] px-5 pb-3 pt-4">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wider text-[var(--ink-soft)]">
             Supplies · {count}/{MAX_ASSETS} files{captioning ? " · describing images" : ""}
@@ -82,14 +82,14 @@ export function BrandKitDrawer({ brandId, brandName, stage, wide, onClose }: { b
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false);
           }}
           onDrop={onDrop}
-          className={`border-2 border-dashed px-4 py-6 text-center transition-colors ${dragging ? "border-[var(--crimson)] bg-[rgba(183,58,49,0.06)]" : "border-[rgba(43,29,20,0.25)] bg-[rgba(43,29,20,0.03)]"} ${uploading ? "pointer-events-none opacity-80" : ""}`}
+          className={`border-2 border-dashed px-4 py-6 text-center transition-colors ${dragging ? "border-[var(--crimson)] bg-[rgba(183,58,49,0.06)]" : "border-[rgba(200,196,255,0.25)] bg-[rgba(200,196,255,0.03)]"} ${uploading ? "pointer-events-none opacity-80" : ""}`}
         >
           {progress ? (
             <div className="space-y-2">
               <p className={`${styles.pixel} flex items-center justify-center gap-2`}>
                 <span className={styles.spinner} aria-hidden="true" /> Loading the wagon: {progress.sent} of {progress.files} · {percent}%
               </p>
-              <div className="h-2 bg-[rgba(43,29,20,0.1)]">
+              <div className="h-2 bg-[rgba(200,196,255,0.1)]">
                 <div className="h-full bg-[var(--crimson)] transition-all" style={{ width: `${percent}%` }} />
               </div>
             </div>
@@ -202,7 +202,7 @@ function Repo({ kitState }: { kitState: ReturnType<typeof useBrandKit> }) {
           autoCapitalize="none"
           disabled={busy !== null}
           aria-label="Repository link or folder"
-          className={`${styles.input} min-w-0 flex-1 border-2 border-[rgba(43,29,20,0.2)] bg-[var(--paper)] px-2 py-1.5 font-mono text-[12px]`}
+          className={`${styles.input} min-w-0 flex-1 border-2 border-[rgba(200,196,255,0.2)] bg-[var(--paper)] px-2 py-1.5 font-mono text-[12px]`}
         />
         <button type="submit" disabled={busy !== null || !source.trim()} className={`${styles.button} ${styles.buttonInk} ${styles.pixel} h-9 shrink-0 px-3 text-[13px]`}>
           {busy === "scan" ? <span className={styles.spinner} aria-hidden="true" /> : null} {repo ? "Scan again" : "Scan"}
@@ -211,7 +211,7 @@ function Repo({ kitState }: { kitState: ReturnType<typeof useBrandKit> }) {
       {busy === "scan" && <p className="mt-1.5 text-[12px] text-[var(--ink-soft)]">Reading the code… {elapsed} s. Cloning and scanning can take a minute or two.</p>}
       {error && <p className="mt-1.5 text-[12px] text-[var(--crimson-dark)]">{error}</p>}
       {repo && (
-        <div className="mt-3 bg-[rgba(43,29,20,0.04)] px-3 py-2 text-[12px]">
+        <div className="mt-3 bg-[rgba(200,196,255,0.04)] px-3 py-2 text-[12px]">
           <p className="flex items-baseline gap-2">
             <span className="min-w-0 truncate font-semibold">{repo.name || "Your code"}</span>
             <span className="shrink-0 text-[var(--ink-faint)]">{repo.origin.replace(/^local:/, "folder ").replace(/^(github|gitlab):/, "$1 ")}</span>
@@ -225,7 +225,7 @@ function Repo({ kitState }: { kitState: ReturnType<typeof useBrandKit> }) {
           {repo.colors.length > 0 && (
             <p className="mt-1.5 flex flex-wrap gap-1">
               {repo.colors.slice(0, 10).map((color) => (
-                <span key={`${color.name}-${color.hex}`} title={`${color.name} ${color.hex}`} className="size-5 border border-[rgba(43,29,20,0.2)]" style={{ backgroundColor: color.hex }} />
+                <span key={`${color.name}-${color.hex}`} title={`${color.name} ${color.hex}`} className="size-5 border border-[rgba(200,196,255,0.2)]" style={{ backgroundColor: color.hex }} />
               ))}
             </p>
           )}
@@ -239,7 +239,7 @@ function Tile({ asset, src, captioning, removing, onRemove }: { asset: BrandAsse
   const name = asset.path.split(/[\\/]/).pop()?.replace(/^a\d+-/, "") ?? asset.id;
   return (
     <li className="group relative text-[11px]" title={`${name} · ${size(asset.bytes)}${asset.caption ? ` · ${asset.caption}` : ""}`}>
-      <div className="grid aspect-square place-items-center overflow-hidden bg-[rgba(43,29,20,0.06)]">
+      <div className="grid aspect-square place-items-center overflow-hidden bg-[rgba(200,196,255,0.06)]">
         {asset.kind === "video" ? (
           <video src={src} muted playsInline preload="metadata" className="size-full object-cover" />
         ) : asset.kind === "font" || asset.kind === "doc" ? (
@@ -257,7 +257,7 @@ function Tile({ asset, src, captioning, removing, onRemove }: { asset: BrandAsse
         onClick={onRemove}
         disabled={removing}
         aria-label={`Remove ${name}`}
-        className="absolute right-1 top-1 grid size-6 place-items-center bg-[rgba(43,29,20,0.75)] text-[12px] text-[var(--paper)] opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 disabled:opacity-100"
+        className="absolute right-1 top-1 grid size-6 place-items-center bg-[rgba(200,196,255,0.75)] text-[12px] text-[var(--paper)] opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 disabled:opacity-100"
       >
         {removing ? <span className={styles.spinner} aria-hidden="true" /> : "×"}
       </button>

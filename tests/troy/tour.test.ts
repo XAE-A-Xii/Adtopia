@@ -63,7 +63,7 @@ describe("the tour", () => {
     // The fan-out waits where he sets out; he is followed until he is back, before the findings.
     expect(by.scouts.hold).toBe(by.agent.at);
     expect(by.agent.hold).toBe(Math.min(ride.back + 1, tl.research[1] - 1));
-    expect(by.agent.body).toContain(`rides to TikTok for ${ride.runs.length} searches`);
+    expect(by.agent.body).toContain(`rides up to TikTok for ${ride.runs.length} searches`);
   });
 
   it("holds each stage until what it made is on screen, and never before the step starts", () => {

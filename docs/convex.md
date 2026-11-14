@@ -1,4 +1,4 @@
-# Nomen on Vercel with Convex
+# Surreel on Vercel with Convex
 
 The core keeps its rows in a store with two backends (`src/lib/store/`):
 

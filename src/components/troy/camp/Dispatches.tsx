@@ -31,7 +31,7 @@ export function Dispatches({ events, wide }: { events: EventView[]; wide: boolea
         <span className={`${styles.pixel} shrink-0 text-[12px] text-[var(--ink-soft)]`}>{open ? "▾" : "▴"}</span>
       </button>
       {open && (
-        <ol className="min-h-0 flex-1 overflow-y-auto border-t-2 border-[rgba(43,29,20,0.12)] px-3 py-2">
+        <ol className="min-h-0 flex-1 overflow-y-auto border-t-2 border-[rgba(200,196,255,0.12)] px-3 py-2">
           {events.length === 0 && <li className="py-2 text-[12px] text-[var(--ink-soft)]">Nothing yet.</li>}
           {events.map((event, i) => (
             <li key={`${event.ts}-${i}`} className="flex gap-2.5 py-1.5 text-[12px] leading-snug">

@@ -116,7 +116,7 @@ export function useDemo(enabled: boolean, arrived: boolean, site: string | null 
       toggleAuto: () => {
         const on = !autoRef.current;
         setAuto(on);
-        setNotice(on ? "Autoplay on: the videos get approved and posted by themselves" : "Autoplay off: the camp waits for your review");
+        setNotice(on ? "Autoplay on: the videos get approved and posted by themselves" : "Autoplay off: the HQ waits for your review");
       },
       approve: (idx: number, value: boolean) => setState((s) => ({ ...s, approved: { ...s.approved, [idx]: value } })),
       approveAll: () => script && setState((s) => approveAll(script, s)),

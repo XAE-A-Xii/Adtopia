@@ -20,7 +20,7 @@ export type Look = {
   emblem: "chevron" | "dot" | "n" | "bar" | "eye";
   cape: boolean;
   /** What the body wears: a hoplite unless said otherwise. */
-  kit?: "hoplite" | "archer" | "legionary" | "centurion";
+  kit?: "hoplite" | "archer" | "legionary" | "centurion" | "agent";
 };
 
 /**
@@ -58,13 +58,15 @@ export type Pose = {
 
 export const STANDING: Pose = { facing: 0, walk: 0, stride: 0, sit: 0, lean: 0, armL: 0, armR: 0, work: 0, hold: "spear", shield: true, nod: 0 };
 
+// The HQ's agents: jackets in the room's dark blues and violets, each with its own neon accent
+// (visor, zip and sneaker soles) so a figure reads from across the room. `crest` is the hair.
 const LOOKS: Look[] = [
-  { skin: R.skinLight, crest: R.crimson, tunic: R.crimson, armour: R.white, trim: R.crimson, shield: R.crimson, emblem: "chevron", cape: true },
-  { skin: R.skinMid, crest: R.crimson, tunic: R.navy, armour: R.white, trim: R.navy, shield: R.cream, emblem: "n", cape: true },
-  { skin: R.skinDeep, crest: R.navy, tunic: R.crimson, armour: R.white, trim: R.crimson, shield: R.navy, emblem: "dot", cape: true },
-  { skin: R.skinMid, crest: R.gold, tunic: R.teal, armour: R.white, trim: R.teal, shield: R.teal, emblem: "bar", cape: true },
-  { skin: R.skinLight, crest: R.white, tunic: R.crimson, armour: R.white, trim: R.gold, shield: R.cream, emblem: "eye", cape: true },
-  { skin: R.skinDeep, crest: R.crimson, tunic: R.navy, armour: R.white, trim: R.crimson, shield: R.gold, emblem: "chevron", cape: true },
+  { skin: R.skinLight, crest: R.neonPink, tunic: R.hqPurple, armour: R.hqPurple, trim: R.neonCyan, shield: R.neonCyan, emblem: "chevron", cape: false, kit: "agent" },
+  { skin: R.skinMid, crest: R.hair, tunic: R.navy, armour: R.navy, trim: R.neonPink, shield: R.neonPink, emblem: "n", cape: false, kit: "agent" },
+  { skin: R.skinDeep, crest: R.cyan, tunic: R.black, armour: R.black, trim: R.amber, shield: R.amber, emblem: "dot", cape: false, kit: "agent" },
+  { skin: R.skinMid, crest: R.violet, tunic: R.teal, armour: R.teal, trim: R.neonPink, shield: R.neonPink, emblem: "bar", cape: false, kit: "agent" },
+  { skin: R.skinLight, crest: R.hair, tunic: R.magenta, armour: R.hqWallViolet, trim: R.neonCyan, shield: R.neonCyan, emblem: "eye", cape: false, kit: "agent" },
+  { skin: R.skinDeep, crest: R.amber, tunic: R.hqMetal, armour: R.hqMetal, trim: R.jade, shield: R.jade, emblem: "chevron", cape: false, kit: "agent" },
 ];
 
 export function look(index: number): Look {
@@ -99,7 +101,48 @@ export function lookByIndex(index: number): Look {
 }
 
 /** The strategist: purple-trimmed bronze, a tall crest and a long cape. */
-export const GENERAL: Look = { skin: R.skinMid, crest: R.crimson, tunic: R.violet, armour: R.bronze, trim: R.violet, shield: R.crimson, emblem: "n", cape: true };
+export const GENERAL: Look = { skin: R.skinMid, crest: R.hqWall, tunic: R.violet, armour: R.violet, trim: R.amber, shield: R.amber, emblem: "n", cape: true, kit: "agent" };
+
+/** Cargo trousers in a dark tone, with a lighter knee patch. */
+function pantsMat(h: HitInfo, out: ShadeOut) {
+  out.dither = 0;
+  out.ramp = R.hqWall;
+  out.tone = Math.abs(h.lz) < 0.6 ? 1.2 : 0.6;
+}
+
+/** A jacket in the look's colour, its zip down the front a neon line, a collar at the top. */
+function jacketMat(l: Look) {
+  return (h: HitInfo, out: ShadeOut) => {
+    out.dither = 0;
+    out.ramp = l.armour;
+    out.tone = 0.4;
+    if (h.lx > 1.5 && Math.abs(h.ly) < 0.3) {
+      out.ramp = l.trim;
+      out.tone = 0.6;
+      out.glow = 1;
+    } else if (h.lz > 1.9) out.tone = 1;
+  };
+}
+
+/** A visor band across the eyes: neon, so every agent's colour shows even from far away. */
+function visorMat(l: Look) {
+  return (_h: HitInfo, out: ShadeOut) => {
+    out.dither = 0;
+    out.ramp = l.trim;
+    out.tone = 0.7;
+    out.glow = 1;
+  };
+}
+
+/** A glowing cube of data, the HQ's parcel: what a scout brings back, what the courier carries. */
+function dataCube(h: HitInfo, out: ShadeOut) {
+  out.dither = 0;
+  out.ramp = R.neonCyan;
+  const edge = (v: number) => Math.abs(Math.abs(v) - 1.15) < 0.32;
+  const rim = [edge(h.lx), edge(h.ly), edge(h.lz)].filter(Boolean).length >= 2;
+  out.tone = rim ? 1.6 : 0.2;
+  out.glow = 1;
+}
 
 const skinMat = (rampId: number) => solid(rampId, 0.3, 0);
 
@@ -250,6 +293,10 @@ export function soldierInto(m: Model, pose: Pose, l: Look) {
   if (pose.fallen) return fallenInto(m, pose, l);
   const roman = l.kit === "legionary" || l.kit === "centurion";
   const archer = l.kit === "archer";
+  const agent = l.kit === "agent";
+  // An agent carries no spear or shield: empty hands, or the thing the act gives them.
+  if (agent && (pose.hold === "spear" || pose.hold === "lance" || pose.hold === "standard")) pose = { ...pose, hold: "none" };
+  if (agent) pose = { ...pose, shield: false };
   // An archer carries his bow where a hoplite would carry a spear or a shield.
   if (archer && (pose.hold === "spear" || pose.hold === "lance")) pose = { ...pose, hold: "bow", draw: 0, armL: Math.max(pose.armL, 0.5) };
   // A legionary is drawn shield-right, weapon-left: facing the Greeks, his scutum then faces the
@@ -271,34 +318,39 @@ export function soldierInto(m: Model, pose: Pose, l: Look) {
         // Astride: thighs out over the horse's flanks, shins hanging along them.
         const knee: [number, number, number] = [1.8, y * 2.6, hipZ - 3.2];
         foot = [1.2, y * 2.5, hipZ - 6.6];
-        m.capsule([0.2, y, hipZ], knee, 1.05, { mat: skinMat(l.skin) });
-        m.capsule(knee, foot, 1, { mat: greaveLeg(l.skin) });
-        m.box(foot[0] + 0.7, foot[1], foot[2] - 0.3, 1.4, 0.85, 0.5, { mat: solid(R.woodDark, 0.6, 0) });
+        m.capsule([0.2, y, hipZ], knee, 1.05, { mat: agent ? pantsMat : skinMat(l.skin) });
+        m.capsule(knee, foot, 1, { mat: agent ? pantsMat : greaveLeg(l.skin) });
+        m.box(foot[0] + 0.7, foot[1], foot[2] - 0.3, 1.4, 0.85, 0.5, { mat: solid(agent ? R.white : R.woodDark, agent ? 0.4 : 0.6, 0) });
         continue;
       }
-      const legMat = roman ? romanLeg(l.skin) : archer ? trousers(l) : greaveLeg(l.skin);
+      const legMat = agent ? pantsMat : roman ? romanLeg(l.skin) : archer ? trousers(l) : greaveLeg(l.skin);
       if (sitting) {
         // Thighs forward, shins down to the floor.
         const knee: [number, number, number] = [3.6, y * 1.1, hipZ];
         foot = [4.2, y * 1.15, 0.9];
-        m.capsule([0.2, y, hipZ], knee, 1.05, { mat: archer ? legMat : skinMat(l.skin) });
+        m.capsule([0.2, y, hipZ], knee, 1.05, { mat: archer || agent ? legMat : skinMat(l.skin) });
         m.capsule(knee, foot, 1, { mat: legMat });
       } else {
         const a = swing * side;
         foot = [Math.sin(a) * 6.6, y, Math.max(0.9, hipZ - Math.cos(a) * 6.6)];
         m.capsule([0, y, hipZ], foot, 1.05, { mat: legMat });
       }
-      m.box(foot[0] + 0.7, foot[1], 0.55, 1.55, 0.95, 0.55, { mat: solid(R.woodDark, 0.6, 0) });
+      if (agent) {
+        // Sneakers: white uppers on a sole in the agent's neon.
+        m.box(foot[0] + 0.7, foot[1], 0.75, 1.55, 0.95, 0.5, { mat: solid(R.white, 0.3, 0) });
+        m.box(foot[0] + 0.7, foot[1], 0.18, 1.6, 1.0, 0.18, { mat: visorMat(l) });
+      } else m.box(foot[0] + 0.7, foot[1], 0.55, 1.55, 0.95, 0.55, { mat: solid(R.woodDark, 0.6, 0) });
     }
 
     m.with(mul(translate(0, 0, hipZ), rotY(pose.lean)), () => {
       // Skirt (pteruges, or a Roman's tunic hem), body armour, belt.
-      m.frustum(0, 0, -0.2, 2.65, 2.15, 1.55, { mat: roman ? solid(l.tunic, 0.2, 0) : skirt(l.tunic) });
+      if (agent) m.frustum(0, 0, -0.1, 2.25, 2.1, 1.3, { mat: solid(l.tunic, 0.1, 0) });
+      else m.frustum(0, 0, -0.2, 2.65, 2.15, 1.55, { mat: roman ? solid(l.tunic, 0.2, 0) : skirt(l.tunic) });
       if (roman) {
         // The cingulum: leather straps hanging down the front.
         for (const y of [-0.9, -0.3, 0.3, 0.9]) m.box(2.45, y, -0.6, 0.18, 0.18, 1.3, { mat: solid(R.woodDark, 0.4, 0) });
       }
-      m.ellipsoid(0.1, 0, 3.4, 1.95, 2.45, 2.6, { mat: roman ? segmentata(l) : cuirass(l) });
+      m.ellipsoid(0.1, 0, 3.4, 1.95, 2.45, 2.6, { mat: agent ? jacketMat(l) : roman ? segmentata(l) : cuirass(l) });
       if (l.cape) m.box(-2.15, 0, 1.9, 0.4, 2.6, 3.9, { mat: solid(l.tunic, -0.2, 0), rot: rotY(0.12 + pose.stride * 0.15) });
       if (archer) {
         // A quiver slung across the back, fletchings showing.
@@ -314,6 +366,14 @@ export function soldierInto(m: Model, pose: Pose, l: Look) {
         const y = side * 2.55;
         const reach = 4.9;
         const hand: [number, number, number] = [Math.sin(pitch) * reach, y + side * 0.15 - (pitch > 0.6 ? side * 1.1 : 0), shoulderZ - Math.cos(pitch) * reach];
+        if (agent) {
+          // A sleeve to the wrist, then the hand.
+          const wrist: [number, number, number] = [hand[0] * 0.8, y + (hand[1] - y) * 0.8, shoulderZ + (hand[2] - shoulderZ) * 0.8];
+          m.capsule([0, y, shoulderZ], wrist, 0.9, { mat: solid(l.armour, 0.4, 0) });
+          m.sphere(hand[0], hand[1], hand[2], 0.75, { mat: skinMat(l.skin) });
+          m.sphere(0, y, shoulderZ + 0.1, 1.15, { mat: solid(l.armour, 0.6, 0) });
+          return hand;
+        }
         m.capsule([0, y, shoulderZ], hand, 0.82, { mat: skinMat(l.skin) });
         m.sphere(0, y, shoulderZ + 0.1, 1.15, { mat: solid(l.trim, 0.3, 0) });
         return hand;
@@ -379,8 +439,15 @@ export function soldierInto(m: Model, pose: Pose, l: Look) {
         m.box(handR[0] + 1.2, handR[1] - 2.9, 19.4, 0.12, 2.6, 2.1, { mat: solid(l.trim, 0.4, 0) });
         m.box(handR[0] + 1.2, handR[1] - 2.9, 19.4, 0.16, 1.0, 0.8, { mat: solid(R.cream, 1.2, 0) });
         m.sphere(handR[0] + 1.25, handR[1] - 0.3, 22.4, 0.55, { mat: solid(R.gold, 0.9, 0) });
+      } else if (pose.hold === "scroll" && agent) {
+        // A tablet, its screen lit.
+        m.box((handL[0] + handR[0]) / 2 + 0.6, 0, (handL[2] + handR[2]) / 2 + 1.1, 0.25, 1.9, 1.35, { mat: (h, out) => ((out.dither = 0), (out.ramp = h.lx > 0.1 ? R.neonCyan : R.black), (out.tone = h.lx > 0.1 ? 0 : 0.6), (out.glow = h.lx > 0.1 ? 0.8 : 0)), rot: rotY(-0.5) });
       } else if (pose.hold === "scroll") {
         m.cylinder((handL[0] + handR[0]) / 2 + 0.3, 0, (handL[2] + handR[2]) / 2 + 0.6, 0.8, 2.6, { mat: solid(R.cream, 0.6, 0), rot: rotX(Math.PI / 2) });
+      } else if (pose.hold === "case" && agent) {
+        const cx = (handL[0] + handR[0]) / 2 + 1.2;
+        const cz = (handL[2] + handR[2]) / 2 + 1.2;
+        m.box(cx, 0, cz, 1.45, 1.45, 1.45, { mat: dataCube });
       } else if (pose.hold === "case") {
         // A leather scroll case held across the body, the rolled papyrus showing at both ends.
         const cx = (handL[0] + handR[0]) / 2 + 0.3;
@@ -416,7 +483,14 @@ export function soldierInto(m: Model, pose: Pose, l: Look) {
       // Head: face below a Corinthian helmet and its crest, a Roman galea, or an archer's cap.
       m.with(mul(translate(0.15, 0, 7.6), rotY(pose.nod)), () => {
         m.sphere(0.2, 0, 0, 2.05, { mat: skinMat(l.skin) });
-        if (roman) {
+        if (agent) {
+          // Hair: a short crop with a swept top, in the look's colour; the visor across the eyes.
+          m.ellipsoid(-0.25, 0, 0.75, 2.3, 2.25, 2.0, { mat: solid(l.crest, 0.5, 0), clip: [0, 0, -1, -0.05] });
+          m.ellipsoid(-1.0, 0, 0.1, 1.5, 2.15, 1.7, { mat: solid(l.crest, 0.2, 0) });
+          m.ellipsoid(0.6, 0.4, 2.0, 1.6, 1.4, 0.8, { mat: solid(l.crest, 0.8, 0) });
+          m.box(1.55, 0, 0.15, 0.55, 2.15, 0.45, { mat: visorMat(l) });
+          for (const side of [1, -1]) m.box(0.2, side * 2.1, 0.15, 0.8, 0.22, 0.45, { mat: solid(R.hqMetal, 0.8, 0) });
+        } else if (roman) {
           m.ellipsoid(-0.1, 0, 0.55, 2.35, 2.3, 2.3, { mat: galea, clip: [0, 0, -1, 0.15] });
           // The neck guard flares out behind; hinged cheek pieces at the sides.
           m.box(-2.15, 0, -0.35, 0.8, 2.25, 0.2, { mat: galea, rot: rotY(-0.55) });

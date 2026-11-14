@@ -1,4 +1,4 @@
-/** A failed call to one of Nomen's providers, with enough detail to decide what to do next. */
+/** A failed call to one of Surreel's providers, with enough detail to decide what to do next. */
 export class ApiError extends Error {
   constructor(
     readonly service: "naive" | "monid" | "mobilerun" | "elevenlabs" | "fal" | "anthropic",

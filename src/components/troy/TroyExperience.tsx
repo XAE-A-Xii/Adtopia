@@ -8,6 +8,7 @@ import { easeInOutCubic, easeInOutSine, Stage } from "./engine/stage";
 import { pixelFont } from "./fonts";
 import { CampScene } from "./scenes/camp";
 import { LandingScene, OPEN_SECONDS } from "./scenes/landing";
+import { ROOM } from "./scenes/layout";
 import { Camp } from "./camp/Camp";
 import { DEMO_ID } from "./camp/demo";
 import { useInertSiblings, useReducedMotion } from "./hooks";
@@ -140,7 +141,7 @@ export function TroyExperience({ initialView, brandId: initialBrandId, demoOnly 
     const e = engine.current;
     const el = formAnchorRef.current;
     if (!e || !el) return;
-    return e.stage.anchor(el, () => ({ x: FORM_AT, y: FORM_AT, z: 0 }));
+    return e.stage.anchor(el, () => ({ x: FORM_AT.x, y: FORM_AT.y, z: FORM_AT.z }));
   }, [engineReady, view]);
 
   // Returning visitors: their camps, from the core's brand list (none in demo builds).
@@ -192,7 +193,7 @@ export function TroyExperience({ initialView, brandId: initialBrandId, demoOnly 
       } catch (err) {
         clearInterval(knocking);
         setPhase("idle");
-        setError(err instanceof ApiFailure && err.status === 404 ? "Nomen's API isn't running here yet. Start the app with the core track merged." : err instanceof Error ? err.message : String(err));
+        setError(err instanceof ApiFailure && err.status === 404 ? "Surreel's API isn't running here yet. Start the app with the core track merged." : err instanceof Error ? err.message : String(err));
         setShakeKey((k) => k + 1);
       }
     },
@@ -211,7 +212,7 @@ export function TroyExperience({ initialView, brandId: initialBrandId, demoOnly 
           <span className={`${styles.pixel} pointer-events-auto mr-auto flex items-center gap-2.5 text-[22px] font-semibold tracking-tight`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand/nomen-logo.png" alt="" width={44} height={31} className="h-[31px] w-auto" />
-            Nomen
+            Surreel
           </span>
           {brands && brands.length > 0 && <BrandsMenu brands={brands} />}
           {!demoOnly && (
@@ -270,11 +271,11 @@ export function TroyExperience({ initialView, brandId: initialBrandId, demoOnly 
             <p id="troy-site-hint" className="mt-4 text-center text-[13px] leading-relaxed text-[var(--ink-soft)]">
               {demoOnly && (
                 <span className="block text-[12px] text-[var(--ink-faint)]">
-                  This is the demo: the camp replays {demoSites.length ? `the finished campaign for ${list(demoSites)}` : "a finished campaign"}, so nothing is spent.
+                  This is the demo: the HQ replays {demoSites.length ? `the finished campaign for ${list(demoSites)}` : "a finished campaign"}, so nothing is spent.
                 </span>
               )}
               <a href={demoOnly ? "/camp/demo" : "/demo"} className={`${styles.link} ${styles.pixel} mt-2 inline-block text-[13px] underline decoration-dotted underline-offset-4`}>
-                {demoOnly ? "Or skip straight to the camp →" : "Or try the demo, which spends nothing →"}
+                {demoOnly ? "Or skip straight to the HQ →" : "Or try the demo, which spends nothing →"}
               </a>
             </p>
             <p id="troy-site-error" role="alert" className="mt-2 min-h-5 text-center text-[13px] font-medium text-[var(--crimson)]">
@@ -301,21 +302,23 @@ function frame(e: { stage: Stage; camp: CampScene } | null, view: View, animate:
   e.stage.look(target, animate ? 1.6 : 0, easeInOutCubic);
 }
 
-/** The form sits this far below the horse (art px on screen), over the island's dissolving rim. */
-const FORM_AT = 64;
+/** The form sits on the road in front of the HQ's door (world point). */
+const FORM_AT = { x: 46, y: 46, z: ROOM.wall };
+/** Its screen y (art px). */
+const FORM_SY = 46 - 1.2247 * ROOM.wall;
 
 export function landingCamera(stage: Stage) {
   const { width, height } = stage.size;
   const formHeight = 232;
-  const top = -150; // the horse's ears
-  const bottom = FORM_AT;
+  const top = FORM_SY - 160; // the top of the HQ's building and its aerial
+  const bottom = FORM_SY;
   // On phones the island's rim may run off the sides; the horse itself must fit.
   const halfWidth = width < 640 ? 94 : 170;
   const fit = Math.min((height - formHeight - 40) / (bottom - top), (width - 24) / (halfWidth * 2), 3.5);
   const zoom = stage.fitZoom(fit);
   const total = (bottom - top) * zoom + formHeight;
   const topPx = Math.max(20, (height - total) / 2);
-  return { x: 0, y: top - (topPx - height / 2) / zoom, zoom };
+  return { x: 20, y: top - (topPx - height / 2) / zoom, zoom };
 }
 
 /** Seconds the camera takes to follow the column from the horse down to the camp. */
@@ -374,7 +377,7 @@ function BrandsMenu({ brands }: { brands: BrandListItem[] }) {
               </a>
             </li>
           ))}
-          <li className="mt-1 border-t-2 border-[rgba(43,29,20,0.1)] px-4 pt-2">
+          <li className="mt-1 border-t-2 border-[rgba(200,196,255,0.1)] px-4 pt-2">
             <a href="/brands" className={`${styles.link} ${styles.pixel} text-[13px]`}>
               All brands and workspaces →
             </a>

@@ -178,7 +178,7 @@ export function derive(view: BrandView | null): CampPlan {
     else if (state === "skipped") set("oracle", "Skipped this time");
     else if (state === "done") set("oracle", campaign?.study?.studied ? `${plural(campaign.study.studied, "viral video")} broken down` : "Format learned", 1);
     else if (state === "failed") set("oracle", campaign?.error ?? "Stopped");
-    else set("oracle", "Waiting for the scouts");
+    else set("oracle", "Waiting for the research");
   }
 
   // War tent: the creative director's briefs, then the script room writes each video.
@@ -238,7 +238,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "lookout",
     station: "scouts",
-    role: "Lookout",
+    role: "Signal watcher",
     task: scouting ? "Watching the scouts come and go" : "On watch",
     look: 0,
     act: scouting ? "lookout" : "stand",
@@ -270,7 +270,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "watcher",
     station: "oracle",
-    role: "Oracle",
+    role: "Reference analyst",
     task:
       style === "working"
         ? (study?.task ?? "Watching the best short videos in the category and writing down why they work")
@@ -302,7 +302,7 @@ export function derive(view: BrandView | null): CampPlan {
             : "Writing the brief, the search plan and the concepts"
         : strat === "done"
           ? "Signed off the battle plan"
-          : "Waiting for the scouts",
+          : "Waiting for the research",
     look: -1,
     act: directing ? "point" : "stand",
     ...SPOTS.general,
@@ -333,7 +333,7 @@ export function derive(view: BrandView | null): CampPlan {
       id: `editor:${slot}`,
       station: "workshop",
       role: "Editor",
-      task: creative ? editorTask(creative) : "Waiting at the desk for a concept from the war tent",
+      task: creative ? editorTask(creative) : "Waiting at the desk for a concept from the strategy table",
       look: slot % 6,
       act: state === 1 ? "type" : "sit",
       x: desk.x + EDITOR_OFFSET.x,
@@ -348,7 +348,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "painter",
     station: "workshop",
-    role: "Painter",
+    role: "Frame artist",
     task: framing ? "Painting the first frame of each shot so the product looks right" : "Waiting at the easel for shots to paint",
     look: 2,
     act: framing ? "paint" : "stand",
@@ -361,7 +361,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "inspector",
     station: "workshop",
-    role: "Inspector",
+    role: "QA inspector",
     task: checked ? "Checking every frame for warped hands, wrong labels and garbled text" : "Waiting for a rendered shot to check",
     look: 3,
     act: checked ? "inspect" : "stand",
@@ -374,7 +374,7 @@ export function derive(view: BrandView | null): CampPlan {
   const reviewing = (campaign?.stageIndex ?? 0) >= 4 && ready.length > 0;
   const seated = reviewing ? Math.min(SPOTS.audience.length, Math.max(2, ready.length)) : 0;
   SPOTS.audience.forEach((spot, i) => {
-    const base = { id: `audience:${i}`, station: "theatre" as const, role: "Audience", look: (i + 2) % 6 };
+    const base = { id: `audience:${i}`, station: "theatre" as const, role: "Reviewer", look: (i + 2) % 6 };
     if (i < seated) {
       agents.push({ ...base, task: "Watching the cut", act: "watch", x: spot.x, y: spot.y, z: (spot.z ?? 0) - WATCH_DROP + 1.2, dir: spot.dir, sort: 0, via: [{ x: spot.x + 7, y: spot.y + 7, z: 0 }], state: "working" });
     } else {
@@ -390,7 +390,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "herald",
     station: "agora",
-    role: "Herald",
+    role: "Publisher",
     task: posting ? "Announcing each video on the brand's own accounts" : allOut ? "Announced every video" : "Waiting for approved videos",
     look: 1,
     act: posting ? "herald" : "stand",

@@ -159,7 +159,7 @@ function CaptionCard({ caption, length }: { caption: Caption; length: number }) 
 /**
  * The creator outreach as a DM thread on a phone: the casting agent's draft types in, you approve it,
  * and the phone agent sends it from the brand's own account (the phones track's outreach session,
- * src/lib/phones). It ends sent: Nomen sends the first message; it does not carry on a conversation.
+ * src/lib/phones). It ends sent: Surreel sends the first message; it does not carry on a conversation.
  */
 function DmThread({ length }: { length: number }) {
   const frame = useCurrentFrame();
@@ -294,7 +294,7 @@ function EndCard() {
     <AbsoluteFill style={{ background: `rgba(251,246,234,${0.92 * fade})`, alignItems: "center", justifyContent: "center" }}>
       <div style={{ opacity: rise, transform: `translateY(${(1 - rise) * 24}px)`, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <Img src={staticFile("nomen-logo.png")} style={{ height: 230, width: "auto", marginBottom: 18, transform: `scale(${0.9 + 0.1 * rise})` }} />
-        <div style={{ fontFamily: "Geist", fontWeight: 700, fontSize: 96, color: INK, letterSpacing: -1, lineHeight: 1 }}>Nomen</div>
+        <div style={{ fontFamily: "Geist", fontWeight: 700, fontSize: 96, color: INK, letterSpacing: -1, lineHeight: 1 }}>Surreel</div>
         <div style={{ fontFamily: "Inter", fontWeight: 500, fontSize: 34, color: "#5a4636", marginTop: 10 }}>UGC ad campaigns, run by agents.</div>
       </div>
     </AbsoluteFill>

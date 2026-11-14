@@ -1,4 +1,4 @@
-// The creative engine's contract: the typed documents Nomen's agents hand to each other.
+// The creative engine's contract: the typed documents Surreel's agents hand to each other.
 //
 //   brand site ─► ProductBrief ─┐
 //   research   ─► ReferenceCandidate[] ─► ReferenceBreakdown[] ─► CreativeBrief[] ─► Script[] ─► ProductionPlan ─► EditTimeline ─► final.mp4
@@ -17,7 +17,7 @@ export type ProductVisual = {
   /** Stable id within a campaign, e.g. "v1". Scripts point at visuals by this id. */
   id: string;
   kind: "photo" | "screenshot" | "video";
-  /** A URL Nomen can download (https) or a local path under data/media once captured. */
+  /** A URL Surreel can download (https) or a local path under data/media once captured. */
   url: string;
   /**
    * The store's file key of a captured copy ("visuals-cmp_…/site-pricing.png"). On a serverless host
@@ -415,7 +415,7 @@ export type FilmedPlate = { path: string; quad: Quad };
 
 // ---------- the brand kit (assets the brand gives us) ----------
 
-/** One file the brand uploaded or Nomen found in its repo. */
+/** One file the brand uploaded or Surreel found in its repo. */
 export type BrandAsset = {
   /** Stable id within the brand, e.g. "a3". */
   id: string;
