@@ -10,6 +10,7 @@ const KEYS = [
   { key: "naive_api_key", label: "Naive", help: "Strategy, video rendering, quality checks and posting. Create a key in the Naive Studio (app.usenaive.ai)." },
   { key: "monid_api_key", label: "Monid", help: "Research data and the backup video renderer. Create a key at app.monid.ai/access/api-keys." },
   { key: "mobilerun_api_key", label: "Mobilerun", help: "Cloud phones for warming up the brand's own accounts. Optional." },
+  { key: "elevenlabs_api_key", label: "ElevenLabs", help: "Voice-overs, transcription and remake voices, called directly instead of through Naive and Monid. Optional." },
 ];
 
 const VEO_PER_SECOND = 0.4;

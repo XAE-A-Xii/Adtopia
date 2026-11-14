@@ -19,10 +19,11 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { ElevenLabsClient, hasElevenLabs } from "../elevenlabs";
 import { probe } from "../media";
 import { type MonidRunner, outputLink, runCostMicro, runToEnd } from "../monid";
 import { ffmpeg, ffmpegBin } from "./clone";
@@ -503,18 +504,49 @@ export type Voice = {
 };
 
 
-type Speaker = { run: (endpoint: string, body: Record<string, unknown>) => Promise<unknown>; transcribe: (path: string) => Promise<TimedWord[]> };
+/** The ElevenLabs steps a remake takes. Audio steps keep their file and return its key. */
+type Speaker = {
+  tts: (text: string, voiceId: string, name: string) => Promise<string>;
+  sts: (path: string, voiceId: string, name: string) => Promise<string>;
+  isolate: (path: string, name: string) => Promise<string>;
+  transcribe: (path: string) => Promise<TimedWord[]>;
+};
 
-/** ElevenLabs calls through Monid, with their spend counted. */
+const STS_MODEL = "eleven_multilingual_sts_v2";
+
+/** ElevenLabs with the brand's own key when there is one; otherwise through Monid, with the spend counted. */
 function speaker(work: Work, monid: MonidRunner, seconds: number): Speaker {
+  return hasElevenLabs() ? directSpeaker(work, new ElevenLabsClient()) : monidSpeaker(work, monid, seconds);
+}
+
+function directSpeaker(work: Work, eleven: ElevenLabsClient): Speaker {
+  const keep = async (bytes: Buffer, name: string) => {
+    const local = join(work.dir, name.replace(/\//g, "-"));
+    await writeFile(local, bytes);
+    return work.keep(name, local, contentType(name));
+  };
+  return {
+    tts: async (text, voiceId, name) => keep(await eleven.tts(voiceId, { text, ...TTS_MODEL }), name),
+    sts: async (path, voiceId, name) => keep(await eleven.sts(voiceId, path, STS_MODEL), name),
+    isolate: async (path, name) => keep(await eleven.isolate(path), name),
+    transcribe: async (path) => parseWords(await eleven.transcribe(path, { model_id: "scribe_v2" })),
+  };
+}
+
+function monidSpeaker(work: Work, monid: MonidRunner, seconds: number): Speaker {
   const minutes = round(Math.max(0.05, seconds / 60), 2);
   const run = async (endpoint: string, body: Record<string, unknown>) => {
     const done = await runToEnd(monid, "elevenlabs", endpoint, { body }, { pollMs: work.pollMs || 1, timeoutMs: 10 * 60_000 });
     work.spend("monid", runCostMicro(done));
     return done.output;
   };
-  const transcribe = async (path: string) => parseWords(await run(ELEVENLABS.stt, { audio_url: await work.host(path, contentType(path)), model_id: "scribe_v2", timestamps_granularity: "word", tag_audio_events: false, expected_duration_minutes: minutes }));
-  return { run, transcribe };
+  const hosted = (path: string) => work.host(path, contentType(path));
+  return {
+    tts: async (text, voiceId, name) => keepLink(work, await run(ELEVENLABS.tts, { text, voice_id: voiceId, ...TTS_MODEL }), name),
+    sts: async (path, voiceId, name) => keepLink(work, await run(ELEVENLABS.sts, { audio_url: await hosted(path), voice_id: voiceId, model_id: STS_MODEL, expected_duration_minutes: minutes }), name),
+    isolate: async (path, name) => keepLink(work, await run(ELEVENLABS.isolation, { audio_url: await hosted(path), expected_duration_minutes: minutes }), name),
+    transcribe: async (path) => parseWords(await run(ELEVENLABS.stt, { audio_url: await hosted(path), model_id: "scribe_v2", timestamps_granularity: "word", tag_audio_events: false, expected_duration_minutes: minutes })),
+  };
 }
 
 /**
@@ -523,7 +555,7 @@ function speaker(work: Work, monid: MonidRunner, seconds: number): Speaker {
  */
 export async function referenceAudio(work: Work, monid: MonidRunner, record: AudioRecord, input: Pick<VoiceInput, "reference" | "end" | "separate">): Promise<{ stem: string; bed: string | null; words: TimedWord[] }> {
   const notes = (record.notes ??= []);
-  const { run, transcribe } = speaker(work, monid, input.end);
+  const { isolate, transcribe } = speaker(work, monid, input.end);
   const original = join(work.dir, "original.wav");
   if (!existsSync(original)) await ffmpeg(extractArgs(input.reference, input.end, original));
   if (!record.voice_key || !(await work.local(record.voice_key))) {
@@ -536,7 +568,7 @@ export async function referenceAudio(work: Work, monid: MonidRunner, record: Aud
     } else {
       work.say("No Demucs here: isolating the voice with ElevenLabs, without the music bed");
       try {
-        record.voice_key = await keepLink(work, await run(ELEVENLABS.isolation, { audio_url: await work.host(original, "audio/wav"), expected_duration_minutes: round(Math.max(0.05, input.end / 60), 2) }), "audio/voice-stem.mp3");
+        record.voice_key = await isolate(original, "audio/voice-stem.mp3");
         record.stems = "isolation";
       } catch (error) {
         record.voice_key = await work.keep("audio/original.wav", original, "audio/wav");
@@ -584,9 +616,7 @@ export function bestRead(takes: Array<{ seconds: number }>, target: number): num
  */
 export async function makeVoice(work: Work, monid: MonidRunner, record: AudioRecord, input: VoiceInput): Promise<Voice> {
   const notes = (record.notes ??= []);
-  const { run, transcribe } = speaker(work, monid, input.end);
-  const minutes = round(Math.max(0.05, input.end / 60), 2);
-  const speak = async (text: string, voiceId: string, name: string) => keepLink(work, await run(ELEVENLABS.tts, { text, voice_id: voiceId, ...TTS_MODEL }), name);
+  const { tts: speak, sts, transcribe } = speaker(work, monid, input.end);
   const text = input.lines.map((l) => l.text).join(" ");
 
   const { stem, bed, words } = await referenceAudio(work, monid, record, input);
@@ -611,7 +641,7 @@ export async function makeVoice(work: Work, monid: MonidRunner, record: AudioRec
     for (const voiceId of [...new Set(runs.map((r) => r.voiceId))]) {
       if (!record.converted[voiceId] || !(await work.local(record.converted[voiceId]))) {
         work.say("Converting the reference's voice to the persona's (speech-to-speech)");
-        record.converted[voiceId] = await keepLink(work, await run(ELEVENLABS.sts, { audio_url: await work.host(stem, contentType(stem)), voice_id: voiceId, model_id: "eleven_multilingual_sts_v2", expected_duration_minutes: minutes }), `audio/converted-${hash(voiceId)}.mp3`);
+        record.converted[voiceId] = await sts(stem, voiceId, `audio/converted-${hash(voiceId)}.mp3`);
         await work.save();
       }
       const mine = runs.filter((r) => r.voiceId === voiceId).map((r) => ({ start: ours[r.from]?.start ?? 0, end: ours[r.to - 1]?.end ?? input.end }));
@@ -715,7 +745,7 @@ export async function renderVoice(work: Work, monid: MonidRunner, record: Render
   const raw = join(work.dir, `${input.id}-voice.wav`);
   await ffmpeg(clipAudioArgs(input.clip, raw));
   const seconds = (await probe(raw)).duration || 10;
-  const { run, transcribe } = speaker(work, monid, seconds);
+  const { sts, transcribe } = speaker(work, monid, seconds);
   if (!record.words) {
     record.words = await transcribe(raw);
     await work.save();
@@ -723,8 +753,7 @@ export async function renderVoice(work: Work, monid: MonidRunner, record: Render
   record.stats ??= input.voiceStats(await samplesOf(raw), 16000);
   if (!input.matchVoice) return { audio: raw, words: record.words };
   if (record.matched_voice !== input.matchVoice || !(await work.local(record.matched_key))) {
-    const output = await run(ELEVENLABS.sts, { audio_url: await work.host(raw, "audio/wav"), voice_id: input.matchVoice, model_id: "eleven_multilingual_sts_v2", expected_duration_minutes: round(Math.max(0.05, seconds / 60), 2) });
-    record.matched_key = await keepLink(work, output, `audio/${input.id}-matched-${hash(input.matchVoice)}.mp3`);
+    record.matched_key = await sts(raw, input.matchVoice, `audio/${input.id}-matched-${hash(input.matchVoice)}.mp3`);
     record.matched_voice = input.matchVoice;
     record.matched_stats = undefined;
     await work.save();

@@ -4,6 +4,9 @@ import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
 import { logEvent, newId, now, parse, save, store } from "./db";
+import { DEFAULT_VOICES } from "./creative/persona";
+import { TTS_MODEL } from "./creative/dub";
+import { ElevenLabsClient, hasElevenLabs } from "./elevenlabs";
 import { ApiError } from "./http";
 import { chunkCaptions } from "./creative/captions";
 import { renderTimeline } from "./creative/edit";
@@ -916,7 +919,7 @@ async function editFinal(ctx: ProductionContext, creativeId: string, concept: Co
     // Kept between ticks: speech costs money, and a busy provider means trying again next tick.
     const key = fileKey(creativeId, "voiceover.wav");
     if (!(await files.exists(key))) {
-      if (!ctx.naive || ctx.naiveOut()) throw new Error("the voice-over needs Naive");
+      if (!hasElevenLabs() && (!ctx.naive || ctx.naiveOut())) throw new Error("the voice-over needs an ElevenLabs or Naive key");
       const target = script.beats.reduce((sum, beat) => sum + beat.seconds, 0);
       const speed = voiceSpeed(plan.voiceover.text, target);
       const rawKey = fileKey(creativeId, "voiceover-raw.wav");
@@ -994,7 +997,21 @@ export async function paceVoice(raw: string, target: number, out: string) {
   await execAsync(bin, ["-hide_banner", "-loglevel", "error", "-y", "-i", raw, "-af", `atempo=${factor.toFixed(3)}`, out]);
 }
 
-async function speakTo(naive: NonNullable<ProductionContext["naive"]>, voiceover: { text: string; voice: string }, speed: number, idempotencyKey: string, path: string) {
+/** ElevenLabs voice ids are 20 letters and digits; anything else (a Naive voice name, "") gets the default UGC voice. */
+const elevenVoice = (voice: string) => (/^[A-Za-z0-9]{20}$/.test(voice) ? voice : DEFAULT_VOICES.female.id);
+
+async function speakTo(naive: ProductionContext["naive"], voiceover: { text: string; voice: string }, speed: number, idempotencyKey: string, path: string) {
+  if (hasElevenLabs()) {
+    // ElevenLabs takes speed 0.7-1.2; paceVoice() stretches whatever is left over.
+    const settings = { ...TTS_MODEL.voice_settings, speed: Math.min(1.2, Math.max(0.7, speed)) };
+    const mp3 = path.replace(/\.wav$/, "") + ".mp3";
+    await writeFile(mp3, await new ElevenLabsClient().tts(elevenVoice(voiceover.voice), { text: voiceover.text.slice(0, 4000), model_id: TTS_MODEL.model_id, voice_settings: settings }));
+    const bin = await ffmpegPath();
+    if (!bin) throw new Error("ffmpeg is needed to convert the ElevenLabs voice-over");
+    await execAsync(bin, ["-hide_banner", "-loglevel", "error", "-y", "-i", mp3, path]);
+    return;
+  }
+  if (!naive) throw new Error("the voice-over needs an ElevenLabs or Naive key");
   const speech = await naive.speak({ text: voiceover.text.slice(0, 4000), ...(voiceover.voice ? { voice: voiceover.voice } : {}), ...(speed !== 1 ? { speed } : {}) }, idempotencyKey);
   const fileId = speechFileId(speech);
   if (!fileId) throw new ApiError("naive", 502, "no_file", "text-to-speech returned no file");

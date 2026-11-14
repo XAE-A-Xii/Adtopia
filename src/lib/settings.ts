@@ -6,9 +6,11 @@ export const DEFAULTS = {
   naive_api_key: "",
   monid_api_key: "",
   mobilerun_api_key: "",
+  elevenlabs_api_key: "",
   naive_base_url: "https://api.vetta.sh",
   monid_base_url: "https://api.monid.ai",
   mobilerun_base_url: "https://api.mobilerun.ai/v1",
+  elevenlabs_base_url: "https://api.elevenlabs.io",
   strategist_agent: "nomen-director",
   planner_model: "anthropic/claude-haiku-5.5",
   video_model: "google/veo-3.1",
@@ -53,15 +55,17 @@ export const DEFAULTS = {
 
 export type SettingKey = keyof typeof DEFAULTS;
 
-export const SECRET_KEYS: SettingKey[] = ["naive_api_key", "monid_api_key", "mobilerun_api_key"];
+export const SECRET_KEYS: SettingKey[] = ["naive_api_key", "monid_api_key", "mobilerun_api_key", "elevenlabs_api_key"];
 
 const ENV: Partial<Record<SettingKey, string>> = {
   naive_api_key: "NAIVE_API_KEY",
   monid_api_key: "MONID_API_KEY",
   mobilerun_api_key: "MOBILERUN_API_KEY",
+  elevenlabs_api_key: "ELEVENLABS_API_KEY",
   naive_base_url: "NAIVE_BASE_URL",
   monid_base_url: "MONID_BASE_URL",
   mobilerun_base_url: "MOBILERUN_BASE_URL",
+  elevenlabs_base_url: "ELEVENLABS_BASE_URL",
 };
 
 // SQLite answers in a microsecond, so it is read on every call, as before. Convex is a network

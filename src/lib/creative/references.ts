@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { ElevenLabsClient, hasElevenLabs, segmentsFromWords } from "../elevenlabs";
 import { ApiError } from "../http";
 import { download, ffmpegPath, probe } from "../media";
 import type { NaiveClient, TranscriptSegment } from "../naive";
@@ -595,12 +596,17 @@ async function extractAudio(bin: string, video: string, dir: string): Promise<{ 
   }
 }
 
-/** Speech to text on Naive: upload the audio, transcribe with timestamps, wait if it was queued. */
+/** Speech to text: ElevenLabs with the brand's own key, else Naive (upload, transcribe with timestamps, wait if queued). */
 async function transcribe(naive: BreakdownClient, video: string, dir: string, id: string, options: BreakdownOptions): Promise<{ text: string; segments: TranscriptSegment[] }> {
   const bin = (await ffmpegPath())!;
   const audio = await extractAudio(bin, video, dir);
-  const fileId = await naive.uploadFile(`${id}-audio.${audio.ext}`, audio.contentType, await readFile(/*turbopackIgnore: true*/ audio.path));
   const language = options.language === undefined ? "en" : options.language;
+  if (hasElevenLabs()) {
+    const result = await new ElevenLabsClient().transcribe(audio.path, { model_id: "scribe_v2", ...(language ? { language_code: language } : {}) });
+    const segments = segmentsFromWords(result.words ?? []);
+    return { text: (result.text ?? "").trim() || segments.map((segment) => segment.text).join(" "), segments };
+  }
+  const fileId = await naive.uploadFile(`${id}-audio.${audio.ext}`, audio.contentType, await readFile(/*turbopackIgnore: true*/ audio.path));
   let job = await naive.transcribe({ file_id: fileId, model: "stt/auto", timestamps: true, ...(language ? { language } : {}) }, `nomen-ref-stt-${fileId}`);
   const deadline = Date.now() + (options.transcriptionTimeoutMs ?? 180_000);
   while (job.status === "queued" || job.status === "processing") {
