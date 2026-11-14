@@ -1,6 +1,8 @@
 import { CLONE_EASY, cloneLine } from "./creative/cloneability";
 import type { ResearchPack } from "./research";
 import type { CreativeBrief, FunnelRole, ProductBrief, ProductionPlan, ReferenceBreakdown, Script, SuccessMetric, VideoFormat } from "./creative/types";
+import { canonicalUrl } from "./creative/references";
+import { preferencesSection } from "./preferences";
 
 // The strategist's contract: the JSON Schema Naive enforces on the session, and the types it fills.
 
@@ -146,7 +148,8 @@ export const STRATEGY_SCHEMA = {
   },
 } as const;
 
-export type StrategyOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string };
+/** `preferences`: what the customer asked for when the campaign started (see src/lib/preferences.ts). */
+export type StrategyOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; preferences?: string };
 
 /** The first message of a strategist session: the brief, the research and the house rules for this run. */
 export type PastResult = {
@@ -164,7 +167,8 @@ export type PastResult = {
 };
 
 /** What the director sees of a reference: its numbers, mechanics and beats, not its raw transcript. */
-export function referenceDigest(breakdowns: ReferenceBreakdown[]) {
+export function referenceDigest(breakdowns: ReferenceBreakdown[], shared: Iterable<string> = []) {
+  const sharedKeys = new Set([...shared].map(canonicalUrl));
   return breakdowns.map((ref) => ({
     id: ref.id,
     url: ref.url,
@@ -188,12 +192,14 @@ export function referenceDigest(breakdowns: ReferenceBreakdown[]) {
     delivery: ref.delivery,
     why_it_works: ref.why_it_works,
     fit_for_this_brand: ref.fit,
+    // Another brand remade it lately (a narrow niche): this brand's take must not look like theirs.
+    ...(sharedKeys.has(canonicalUrl(ref.url)) ? { already_remade_by_another_brand: true } : {}),
   }));
 }
 
 export function strategyMessage(
   pack: ResearchPack,
-  creative: { product: ProductBrief; breakdowns: ReferenceBreakdown[] },
+  creative: { product: ProductBrief; breakdowns: ReferenceBreakdown[]; shared?: string[] },
   options: StrategyOptions,
   past: PastResult[] = [],
 ) {
@@ -208,15 +214,18 @@ export function strategyMessage(
     reddit: pack.reddit.slice(0, 8),
     aeo: pack.aeo,
   };
-  const { product, breakdowns } = creative;
+  const { product, breakdowns, shared = [] } = creative;
+  const preferences = preferencesSection(options.preferences);
   return [
     `Build the campaign for ${product.name || pack.brand.name || pack.domain}.`,
     `Deliver exactly ${options.concepts} video briefs. Each brief remakes one of the proven reference videos below for this product, as closely as possible: the same hook, beats, wording, timing, shots and on-screen text, with an AI presenter of the same kind in the same kind of setting, and only the product-specific parts changed. Pick the references with the best mix of proof and fit for this product. Give the briefs different styles, not just different references: mix the lanes (a competitor's winning format, a niche breakout, a famous viral hook, a long-running ad) and the formats, so the campaign tests several ways to win.`,
     `Plan the campaign as a funnel mix, the way performance teams do: the customer pays for sales, not views. A video with 2 million likes can sell less than one with 100 thousand. Give every brief a role and the metric it is judged on: reach videos get the product seen and shared (judged on views, shares or saves) and remake references whose proof is reach (views far above the account's followers, or raw virality for a famous benchmark like Cluely or MrBeast); convert videos make viewers click, sign up or buy (judged on link clicks, sign-ups or purchases) and remake references whose proof is that they sell (role "convert": an ad an advertiser kept paying for, many saves per like, a review, demo or testimonial that asks for the sale), keeping their selling beats (problem, proof, objection, offer, call to action) with this product's real facts and offer. ${options.concepts >= 2 ? `With ${options.concepts} videos, include at least one of each role.` : "With one video, pick the role the evidence supports best."} Each video will get its own tracked link, so a convert video's call to action must be one concrete step.`,
     `Remakes are one-to-one, made from the reference's own footage: a lookalike AI presenter performs the original's exact motion (it needs one person, in continuous takes), the original audio is re-voiced with this product's words, and its graphics and captions are replaced in place. cloneability (0-10) says how faithfully that works for each reference, with the reasons, and hardest_to_clone names its hardest part. Face-to-camera UGC (one person talking to the lens: a talking-head testimonial, "I tried X", storytime, a POV reaction, green-screen commentary) is the format with the most return and the hardest to get right, and it is what the clone is built for: favour it, and vary the styles within it (the hook, the selling structure, the lane, the setting). Prefer references with cloneability ${CLONE_EASY} or more. Several people, a moving camera, crowds or real locations, hands working a product in close-up, songs or dialogue, and screens (a website walkthrough filmed off a monitor, a screen recording) are what it cannot reproduce: our product laid over someone else's screen looks fake, so prefer a person talking to the lens over any screen-led format. When you pick a reference below ${CLONE_EASY}, say in its brief's why what makes it worth the risk. When the evidence is close, take the shorter one: every second is rendered (about $0.40 a second with a presenter), so 45 seconds or less.`,
     breakdowns.length
-      ? `Reference videos, broken down beat by beat from their transcripts and frames, the most cloneable first. role and conversion_evidence say what each is proof of; how_it_sells quotes its selling beats; cloneability says how faithfully it can be remade:\n<references>\n${JSON.stringify(referenceDigest(breakdowns))}\n</references>`
+      ? `Reference videos, broken down beat by beat from their transcripts and frames, the most cloneable first. role and conversion_evidence say what each is proof of; how_it_sells quotes its selling beats; cloneability says how faithfully it can be remade:\n<references>\n${JSON.stringify(referenceDigest(breakdowns, shared))}\n</references>`
       : "No reference videos could be broken down for this run. Base each brief on the strongest patterns in the research and set reference_id to an empty string.",
+    `Make every video unmistakably this product's, not the category's. Other companies sell something similar and remake the same viral formats, so a hook any competitor could say word for word is a wasted video. Build each brief's angle and hook on what only this product has: its aha moment, its own proof, its offer, a feature or detail from the product brief that a rival could not claim. Keep the reference's structure and pacing; change the angle. A reference marked already_remade_by_another_brand was remade by another company lately: if you use it, its hook wording, setting and angle must be clearly different from a straight remake, and say how in the brief's why.`,
+    ...(preferences ? [preferences] : []),
     `The product brief (the only source of claims):\n<product>\n${JSON.stringify({ ...product, visuals: undefined })}\n</product>`,
     product.visuals.length
       ? `Real product visuals that can be on screen (refer to them by id):\n<visuals>\n${JSON.stringify(product.visuals.map(({ id, kind, caption, source }) => ({ id, kind, caption, source })))}\n</visuals>`

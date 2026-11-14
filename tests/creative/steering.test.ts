@@ -173,6 +173,23 @@ describe("scripts for convert videos", () => {
     expect(requests[1].system).toMatch(/ends without one clear call to action, fails/);
     expect(requests[1].tools?.[0].input_schema.properties.scores.required).toContain("does_its_job");
   });
+
+  it("tell the writer and the critic what the customer asked for, when they asked", async () => {
+    const requests: Array<{ messages: Array<{ content: string }> }> = [];
+    const naive = {
+      message: async (request: (typeof requests)[number]) => {
+        requests.push(request);
+        if (requests.length === 1) return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "script", input: { beats: [beat(1, "hook", "Your agent needs twelve API keys."), beat(2, "cta", "Get the free credit, link below.")] } }] };
+        return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "script_review", input: { scores: {}, score: 9, notes: [], revised_beats: [] } }] };
+      },
+    } as unknown as Parameters<typeof writeScript>[0];
+    await writeScript(naive, { ...ctx, preferences: "No slang, aimed at CTOs" });
+    expect(requests[0].messages[0].content).toContain("<customer_preferences>\nNo slang, aimed at CTOs\n</customer_preferences>");
+    expect(requests[1].messages[0].content).toContain("No slang, aimed at CTOs");
+    requests.length = 0;
+    await writeScript(naive, ctx);
+    expect(requests[0].messages[0].content).not.toContain("customer_preferences");
+  });
 });
 
 describe("the scout's view", () => {

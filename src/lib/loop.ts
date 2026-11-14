@@ -1,5 +1,5 @@
 import { logEvent, now as nowIso, parse, store } from "./db";
-import { type CampaignOptions, type CampaignStatus, defaultOptions, startCampaign } from "./pipeline";
+import { type CampaignOptions, type CampaignStatus, defaultOptions, lastPreferences, startCampaign } from "./pipeline";
 import { VEO_USD_PER_SECOND } from "./views";
 
 // The always-on loop ("Autopilot" on the brand page). For each brand that opts in, the worker starts
@@ -317,7 +317,8 @@ export async function advanceLoop(now = new Date()) {
     try {
       const { loop, decision } = await decide(brandId, now);
       if (decision.start) {
-        const campaignId = await startCampaign(brandId, defaultOptions());
+        // The next campaign keeps what the customer asked for last time.
+        const campaignId = await startCampaign(brandId, { ...defaultOptions(), preferences: await lastPreferences(brandId) });
         const n = (await store().find("campaigns", { brand_id: brandId })).length;
         await recordDecision(brandId, decision);
         await logEvent({ brandId, campaignId, message: `Autopilot started campaign ${n}. ${decision.reason}` });

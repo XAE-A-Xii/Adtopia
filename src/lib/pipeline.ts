@@ -12,13 +12,14 @@ import { planProduction } from "./creative/plan";
 import { getBrandKit } from "./creative/brandkit";
 import { analyzeProduct } from "./creative/product";
 import { cloneOf } from "./creative/cloneability";
-import { breakdownAll, canonicalUrl, orderBreakdowns, pickForBreakdown, scoreCandidates } from "./creative/references";
+import { breakdownAll, canonicalUrl, orderBreakdowns, pickAvoidingTaken, scoreCandidates } from "./creative/references";
 import { applyRelevance, screenRelevance } from "./creative/relevance";
 import { scout, scoutSpecs } from "./creative/scout";
 import { targetSeconds, writeScript } from "./creative/script";
 import type { ProductBrief, ProductVisual, ReferenceBreakdown, ReferenceCandidate } from "./creative/types";
 import { compactResearch, fallbackPlan, phaseASpecs, phaseCSpecs, planResearch, type ResearchPack, type ResearchPlan, type RunSpec, type Video } from "./research";
 import { ensureRuns, listRuns, progressRuns, requeueFailedRuns } from "./runs";
+import { cleanPreferences } from "./preferences";
 import { getBool, getInt, getSetting } from "./settings";
 import { type Concept, conceptFrom, normalizeStrategy, type PastResult, STRATEGY_SCHEMA, type Strategy, strategyMessage } from "./strategy";
 
@@ -35,7 +36,8 @@ export type CampaignStatus = "running" | "review" | "publishing" | "live" | "fai
  * concepts is the number of videos; 0 makes a static-ads-only campaign. statics starts a static ad pack when research is done.
  * production: "ai" renders every video; "creators" casts each brief to a real creator instead (casting-job.ts).
  */
-export type CampaignOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; learnStyle: boolean; statics?: boolean; production?: "ai" | "creators" };
+/** `preferences`: what the customer asked for when the campaign started (see src/lib/preferences.ts). */
+export type CampaignOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; learnStyle: boolean; statics?: boolean; production?: "ai" | "creators"; preferences?: string };
 
 export type BrandRow = { id: string; name: string; domain: string; url: string; profile_json: string | null; identity_id: string | null; social_activated: number; created_at: string };
 
@@ -102,6 +104,9 @@ export async function createBrand(input: string) {
 
 export async function startCampaign(brandId: string, options: CampaignOptions = defaultOptions()) {
   const id = newId("cmp");
+  const preferences = cleanPreferences(options.preferences);
+  options = { ...options, preferences };
+  if (!preferences) delete options.preferences;
   await store().insert("campaigns", {
     id,
     brand_id: brandId,
@@ -118,6 +123,7 @@ export async function startCampaign(brandId: string, options: CampaignOptions = 
     campaignId: id,
     message: options.concepts > 0 ? `Campaign started: ${options.concepts} videos, ${options.shotsPerConcept} shots each, ${options.videoModel}${options.statics ? ", plus static ads" : ""}` : "Campaign started: research and static ads, no videos",
   });
+  if (preferences) await logEvent({ brandId, campaignId: id, message: `The customer asked for: ${preferences}` });
   return id;
 }
 
@@ -270,6 +276,11 @@ export type CreativeState = {
   failures?: Array<{ url: string; error: string }>;
   /** Reference URLs whose breakdown failed for a passing reason, retried once on the next tick. */
   retry?: string[];
+  /**
+   * Picked references another brand remade recently (only when the niche left too few fresh ones):
+   * the director must give them a different angle so the two brands' ads don't look alike.
+   */
+  shared?: string[];
 };
 
 /** A researched video's lane, from the search that found it. */
@@ -354,7 +365,15 @@ async function stepStyle(campaign: CampaignRow) {
     // A second pass only retries the breakdowns that failed for a passing reason (a busy provider).
     // Never remake a video this brand already remade in an earlier campaign.
     const remade = await remadeReferences(brand.id, campaign.id);
-    const picks = state.retry?.length ? ranked.filter((c) => state.retry!.includes(c.url)) : options.learnStyle ? pickForBreakdown(candidates, 6, { keepOrder: Boolean(state.screened?.length), exclude: remade }) : [];
+    // Nor one another brand remade lately: two companies in one niche would get the same ad.
+    const taken = state.retry?.length || !options.learnStyle ? [] : await takenByOtherBrands(brand.id);
+    const choice = options.learnStyle && !state.retry?.length ? pickAvoidingTaken(candidates, 6, { keepOrder: Boolean(state.screened?.length), exclude: remade, taken }) : null;
+    const picks = state.retry?.length ? ranked.filter((c) => state.retry!.includes(c.url)) : (choice?.picks ?? []);
+    if (choice) {
+      state.shared = choice.shared;
+      if (choice.shared.length) await log(`Few fresh references in this niche: reusing ${choice.shared.length} that another brand remade lately; the director will give ${choice.shared.length === 1 ? "it" : "them"} a different angle`);
+      else if (choice.avoided) await log(`Skipped ${choice.avoided} viral ${choice.avoided === 1 ? "video" : "videos"} another brand remade lately, so this brand's ads don't look like theirs`);
+    }
     if (picks.length && !state.retry?.length) {
       // The shortlist shows (the camp's references) while the breakdowns run, which takes minutes.
       state.picked = picks.map((p) => p.url);
@@ -434,6 +453,7 @@ async function stepStrategy(campaign: CampaignRow) {
   const state = creativeState(campaign);
   const product = state?.product ?? (await import("./creative/product")).fallbackBrief(pack);
   const breakdowns = state?.breakdowns ?? [];
+  const shared = state?.shared ?? [];
 
   // The director's briefs are in: the script room writes each video, then production starts.
   if (campaign.strategy_json) return scriptRoom(campaign, naive, product, breakdowns);
@@ -460,7 +480,7 @@ async function stepStrategy(campaign: CampaignRow) {
       model: DIRECTOR_MODEL,
       max_tokens: 32_000,
       system,
-      messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns }, options, await pastResults(brand.id, campaign.id))}\n\n${Object.keys(naiveOnly).length ? `\n\nThis deployment cannot make the ${Object.keys(naiveOnly).join(" or ")} formats: choose from the others.` : ""}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
+      messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns, shared }, options, await pastResults(brand.id, campaign.id))}\n\n${Object.keys(naiveOnly).length ? `\n\nThis deployment cannot make the ${Object.keys(naiveOnly).join(" or ")} formats: choose from the others.` : ""}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
       tools: [{ name: "submit_strategy", description: "Return the brand brief, the search plan and one video brief per video.", input_schema: STRATEGY_SCHEMA }],
     });
     await save("campaigns", campaign.id, { strategy_spend_micro: claudeCostMicro(DIRECTOR_MODEL, reply.usage) });
@@ -478,7 +498,7 @@ async function stepStrategy(campaign: CampaignRow) {
     const session = await naive.createSession(
       {
         agent_id: strategistId,
-        message: strategyMessage(pack, { product, breakdowns }, options, await pastResults(brand.id, campaign.id)),
+        message: strategyMessage(pack, { product, breakdowns, shared }, options, await pastResults(brand.id, campaign.id)),
         output_schema: STRATEGY_SCHEMA,
         structured_output_required: true,
         budget_micro_usd: 4_000_000,
@@ -512,6 +532,7 @@ async function stepStrategy(campaign: CampaignRow) {
  * as they land, so a restart only rewrites the ones that were missing.
  */
 async function scriptRoom(campaign: CampaignRow, naive: NaiveClient, product: ProductBrief, breakdowns: ReferenceBreakdown[]) {
+  const { preferences } = parse<Partial<CampaignOptions>>(campaign.options_json, {});
   const strategy = parse<Strategy>(campaign.strategy_json, null as unknown as Strategy);
   const briefs = strategy.campaign.briefs ?? [];
   const done = strategy.campaign.concepts ?? [];
@@ -521,7 +542,7 @@ async function scriptRoom(campaign: CampaignRow, naive: NaiveClient, product: Pr
   const results = await Promise.allSettled(
     pending.map(async (brief) => {
       const reference = breakdowns.find((b) => b.id === brief.reference_id) ?? breakdowns[0];
-      const script = await writeScript(naive, { product, brief, reference: reference ?? emptyReference(), targetSeconds: reference ? targetSeconds(reference, brief.format) : 18 });
+      const script = await writeScript(naive, { product, brief, reference: reference ?? emptyReference(), targetSeconds: reference ? targetSeconds(reference, brief.format) : 18, preferences });
       const plan = planProduction(script, brief, product, reference?.delivery ?? "", reference?.beats ?? []);
       return conceptFrom(brief, script, plan, reference, product);
     }),
@@ -607,9 +628,33 @@ async function pastResults(brandId: string, currentCampaignId: string): Promise<
  */
 export async function remadeReferences(brandId: string, exceptCampaignId: string): Promise<string[]> {
   const campaigns = await store().find<{ id: string }>("campaigns", { brand_id: brandId, id: { ne: exceptCampaignId } });
-  const rows = campaigns.length ? await store().find<{ concept_json: string }>("creatives", { campaign_id: { in: campaigns.map((c) => c.id) }, status: { ne: "failed" } }) : [];
+  return referencesRemadeIn(campaigns.map((c) => c.id));
+}
+
+/** Days a reference stays taken once another brand remade it. */
+export const TAKEN_DAYS = 60;
+
+/**
+ * The reference videos other brands remade in the last TAKEN_DAYS days. Two brands that find the
+ * same viral video are in the same niche; if both remade it, their ads would look alike. Only the
+ * links leave this function: nothing about the other brand reaches this brand's agents.
+ */
+export async function takenByOtherBrands(brandId: string, now = new Date()): Promise<string[]> {
+  const since = new Date(now.getTime() - TAKEN_DAYS * 86_400_000).toISOString();
+  const campaigns = await store().find<{ id: string }>("campaigns", { brand_id: { ne: brandId }, created_at: { gte: since } });
+  return referencesRemadeIn(campaigns.map((c) => c.id));
+}
+
+async function referencesRemadeIn(campaignIds: string[]): Promise<string[]> {
+  const rows = campaignIds.length ? await store().find<{ concept_json: string }>("creatives", { campaign_id: { in: campaignIds }, status: { ne: "failed" } }) : [];
   const urls = rows.map((row) => parse<Partial<Concept>>(row.concept_json, {}).reference?.url).filter((url): url is string => Boolean(url));
   return [...new Set(urls)];
+}
+
+/** What the customer asked for in the brand's latest campaign, for the next one (autopilot, "new campaign"). */
+export async function lastPreferences(brandId: string): Promise<string | undefined> {
+  const [latest] = await store().find<{ options_json: string }>("campaigns", { brand_id: brandId }, { order: [["created_at", "desc"]], limit: 1 });
+  return latest ? cleanPreferences(parse<Partial<CampaignOptions>>(latest.options_json, {}).preferences) : undefined;
 }
 
 // ---------- production ----------

@@ -348,6 +348,30 @@ export function pickForBreakdown(
   return picked.sort((a, b) => usable.indexOf(a) - usable.indexOf(b));
 }
 
+/** Fewest fresh picks worth breaking down before references other brands took are allowed back. */
+export const MIN_FRESH = 3;
+
+/**
+ * pickForBreakdown that steers clear of `taken`: videos other brands already remade, so two
+ * companies in one niche don't get the same ad. If too few fresh videos are left (a narrow niche),
+ * it picks as if nothing were taken and returns the taken ones it used in `shared`, for the
+ * director to give a different angle.
+ */
+export function pickAvoidingTaken(
+  candidates: ReferenceCandidate[],
+  n: number,
+  options: Parameters<typeof pickForBreakdown>[2] & { taken: Iterable<string> },
+): { picks: ReferenceCandidate[]; shared: string[]; avoided: number } {
+  const { taken, ...rest } = options;
+  const takenKeys = new Set([...taken].map(canonicalUrl));
+  const isTaken = (candidate: ReferenceCandidate) => takenKeys.has(canonicalUrl(candidate.url));
+  const fresh = pickForBreakdown(candidates, n, { ...rest, exclude: [...(rest.exclude ?? []), ...takenKeys] });
+  const avoided = candidates.filter(isTaken).length;
+  if (fresh.length >= Math.min(MIN_FRESH, n)) return { picks: fresh, shared: [], avoided };
+  const picks = pickForBreakdown(candidates, n, rest);
+  return { picks, shared: picks.filter(isTaken).map((c) => c.url), avoided: 0 };
+}
+
 /**
  * The order the director reads the breakdowns in: the ones the footage clone can reproduce first,
  * then by fit for this brand, then by cloneability. A breakdown from before cloneability counts as

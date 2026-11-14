@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { body, handle } from "@/lib/api";
-import { type CampaignOptions, defaultOptions, getBrand, startCampaign } from "@/lib/pipeline";
+import { type CampaignOptions, defaultOptions, getBrand, lastPreferences, startCampaign } from "@/lib/pipeline";
 import { tick } from "@/lib/worker";
 
 export const runtime = "nodejs";
@@ -20,6 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       videoModel: typeof overrides.videoModel === "string" && overrides.videoModel ? overrides.videoModel : defaults.videoModel,
       learnStyle: typeof overrides.learnStyle === "boolean" ? overrides.learnStyle : defaults.learnStyle,
       statics: typeof overrides.statics === "boolean" ? overrides.statics : defaults.statics,
+      preferences: typeof overrides.preferences === "string" ? overrides.preferences : await lastPreferences(brandId),
     };
     const campaignId = await startCampaign(brandId, options);
     after(tick);

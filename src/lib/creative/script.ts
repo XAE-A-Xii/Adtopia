@@ -5,6 +5,7 @@ import { extractJson } from "../research";
 import { isTall, usesCreator } from "./plan";
 import type { BeatJob, CreativeBrief, ProductBrief, ReferenceBreakdown, Script, ScriptBeat } from "./types";
 import { diffWords, phraseSyllables, tokens } from "./words";
+import { preferencesSection } from "../preferences";
 
 // The script room: a writer remakes a proven viral video for our product, as close to it as the truth allows, a linter
 // catches what makes scripts sound like AI, and a critic sends weak drafts back. The reference's
@@ -147,7 +148,8 @@ const CRITIC_TOOL = {
   },
 };
 
-export type ScriptContext = { product: ProductBrief; brief: CreativeBrief; reference: ReferenceBreakdown; targetSeconds: number };
+/** `preferences`: what the customer asked for (tone, audience, what to avoid); see src/lib/preferences.ts. */
+export type ScriptContext = { product: ProductBrief; brief: CreativeBrief; reference: ReferenceBreakdown; targetSeconds: number; preferences?: string };
 
 // ---------- the writer ----------
 
@@ -219,6 +221,7 @@ function contextBlock(ctx: ScriptContext) {
     })}\n</reference>`,
     `Target length: about ${ctx.targetSeconds} seconds. Format: ${brief.format}. Role: ${roleOf(brief)} (judged on ${(brief.metric ?? (roleOf(brief) === "convert" ? "link_clicks" : "views")).replace(/_/g, " ")}).`,
     ...(brief.format === "remake" ? [remakeBudgets(reference)] : []),
+    ...(preferencesSection(ctx.preferences) ? [preferencesSection(ctx.preferences)!] : []),
   ].join("\n\n");
 }
 

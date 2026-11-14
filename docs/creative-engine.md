@@ -59,6 +59,26 @@ kind replaces the original person.
 
 These videos are posted by the brand on its own accounts and labeled AI-generated.
 
+## The customer's preferences, and not looking like a competitor
+
+**Preferences.** When a campaign starts, the landing's greeter asks "Do you have any preference or
+requirements?" The answer (at most 600 characters, `src/lib/preferences.ts`) is kept in the
+campaign's `options_json` as `preferences`, logged ("The customer asked for: …"), and given to the
+creative director and to the script writer and critic, fenced in `<customer_preferences>`. It
+shapes tone, audience, formats and emphasis; it is never a source of claims, and it cannot
+override the house rules. The autopilot's next campaign, and "new campaign", keep the last answer.
+
+**Two companies, one niche.** Brands that sell similar things find the same viral videos, and a
+one-to-one remake of the same video would give them the same ad. So:
+- A reference another brand remade in the last 60 days (`TAKEN_DAYS`) is skipped when the
+  breakdowns are picked (`takenByOtherBrands`, `pickAvoidingTaken`). Only its link is used: nothing
+  about the other brand reaches this brand's agents.
+- If that leaves fewer than 3 fresh references (`MIN_FRESH`, a narrow niche), the taken ones come
+  back marked `already_remade_by_another_brand`, and the director must give them a clearly
+  different hook, setting and angle, and say how in the brief.
+- Every brief's angle and hook must rest on what only this product has (its aha moment, proof,
+  offer or a detail from the product brief), not on a line any competitor could say.
+
 ## The edit
 
 - **Captions:** Poppins ExtraBold, white with a heavy outline, popping in two or three words at a
