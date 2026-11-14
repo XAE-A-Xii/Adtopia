@@ -1,5 +1,6 @@
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { claudeCostMicro, hasClaude } from "./claude";
 import { logEvent, newId, now, parse, save, store } from "./db";
 import { ApiError } from "./http";
 import { MonidClient } from "./monid";
@@ -417,6 +418,8 @@ export function referencesMarkdown(state: CreativeState) {
 // ---------- strategy ----------
 
 let strategistId: string | null = null;
+/** The director's model, as naive.config.ts gives it to the nomen-director agent. */
+const DIRECTOR_MODEL = "anthropic/claude-sonnet-5.5";
 
 async function stepStrategy(campaign: CampaignRow) {
   const { naive } = clients();
@@ -431,6 +434,34 @@ async function stepStrategy(campaign: CampaignRow) {
 
   // The director's briefs are in: the script room writes each video, then production starts.
   if (campaign.strategy_json) return scriptRoom(campaign, naive, product, breakdowns);
+  const keep = async (output: unknown) => {
+    const strategy = normalizeStrategy(output, options, { referenceIds: breakdowns.map((b) => b.id), visualIds: product.visuals.map((v) => v.id) });
+    if (!strategy.campaign.briefs?.length) throw new Error("The creative director returned no video briefs.");
+    await save("campaigns", campaign.id, { strategy_json: JSON.stringify(strategy) });
+    await logEvent({
+      brandId: brand.id,
+      campaignId: campaign.id,
+      message: `Campaign "${strategy.campaign.name}": ${strategy.campaign.briefs.map((b) => `"${b.title}" (${b.format.replace(/_/g, " ")})`).join(", ")}. The script room is writing them.`,
+    });
+  };
+
+  if (hasClaude()) {
+    // The director on the brand's own Anthropic key: one streamed call with the agent's own prompt,
+    // its answer as a tool call. ponytail: a tick that dies mid-call asks again (about $0.20).
+    await logEvent({ brandId: brand.id, campaignId: campaign.id, message: `The creative director is choosing which ${breakdowns.length ? "reference videos to transplant" : "patterns to use"} for ${options.concepts} videos` });
+    const system = await readFile(join(process.cwd(), "naive/agents/director.md"), "utf8");
+    const reply = await naive.messageStream({
+      model: DIRECTOR_MODEL,
+      max_tokens: 32_000,
+      system,
+      messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns }, options, await pastResults(brand.id, campaign.id))}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
+      tools: [{ name: "submit_strategy", description: "Return the brand brief, the search plan and one video brief per video.", input_schema: STRATEGY_SCHEMA }],
+    });
+    await save("campaigns", campaign.id, { strategy_spend_micro: claudeCostMicro(DIRECTOR_MODEL, reply.usage) });
+    const output = reply.content.find((block) => block.type === "tool_use" && block.name === "submit_strategy")?.input;
+    if (!output) throw new ApiError("anthropic", 502, "no_strategy", "the creative director answered without a structured plan");
+    return keep(output);
+  }
 
   if (!campaign.strategy_session_id) {
     if (!strategistId) {
@@ -457,17 +488,7 @@ async function stepStrategy(campaign: CampaignRow) {
   const session = await naive.getSession(campaign.strategy_session_id);
   await save("campaigns", campaign.id, { strategy_spend_micro: session.consumed_micro_usd ?? 0 });
   if (session.status === "queued" || session.status === "running") return;
-  if (session.structured_output && (session.status === "idle" || session.status === "completed")) {
-    const strategy = normalizeStrategy(session.structured_output, options, { referenceIds: breakdowns.map((b) => b.id), visualIds: product.visuals.map((v) => v.id) });
-    if (!strategy.campaign.briefs?.length) throw new Error("The creative director returned no video briefs.");
-    await save("campaigns", campaign.id, { strategy_json: JSON.stringify(strategy) });
-    await logEvent({
-      brandId: brand.id,
-      campaignId: campaign.id,
-      message: `Campaign "${strategy.campaign.name}": ${strategy.campaign.briefs.map((b) => `"${b.title}" (${b.format.replace(/_/g, " ")})`).join(", ")}. The script room is writing them.`,
-    });
-    return;
-  }
+  if (session.structured_output && (session.status === "idle" || session.status === "completed")) return keep(session.structured_output);
   if (session.status === "idle" && campaign.strategy_nudges < 2 && session.stop_reason !== "budget_paused") {
     await naive.sendMessage(
       session.id,

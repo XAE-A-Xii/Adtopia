@@ -10,6 +10,7 @@ const KEYS = [
   { key: "naive_api_key", label: "Naive", help: "Strategy, video rendering, quality checks and posting. Create a key in the Naive Studio (app.usenaive.ai)." },
   { key: "monid_api_key", label: "Monid", help: "Research data and the backup video renderer. Create a key at app.monid.ai/access/api-keys." },
   { key: "mobilerun_api_key", label: "Mobilerun", help: "Cloud phones for warming up the brand's own accounts. Optional." },
+  { key: "anthropic_api_key", label: "Anthropic", help: "Claude for the director, scripts, research planning and quality checks, instead of Naive. Optional." },
   { key: "fal_api_key", label: "fal", help: "First frames (Nano Banana Pro) and shot renders (Kling 3.0 Pro), instead of Naive and Monid. Optional." },
   { key: "elevenlabs_api_key", label: "ElevenLabs", help: "Voice-overs, transcription and remake voices, called directly instead of through Naive and Monid. Optional." },
 ];

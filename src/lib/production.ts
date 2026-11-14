@@ -334,7 +334,7 @@ function identityReady(ctx: ProductionContext, first: ShotState) {
 async function ensureIdentity(ctx: ProductionContext, creativeId: string, shots: ShotState[]) {
   const first = shots[0];
   if (!first) return; // a faceless video renders no A-roll
-  if (identityOf(first) || !first.frame_skipped || !first.local_path || !ctx.naive || ctx.naiveOut()) return;
+  if (identityOf(first) || !first.frame_skipped || !first.local_path || !ctx.naive?.hasKey || ctx.naiveOut()) return;
   try {
     const [still] = await extractFrames(await store().files.localPath(first.local_path), 1, 1080);
     first.identity_file_id = await ctx.naive.uploadFile(`${creativeId}-identity.jpg`, "image/jpeg", still);
@@ -807,7 +807,7 @@ async function cutFinal(ctx: ProductionContext, creative: CreativeRow, concept: 
   }
   await files.putFile(finalKey, finalPath, "video/mp4");
   fields.final_key = finalKey;
-  if (!fields.final_file_id && ctx.naive) {
+  if (!fields.final_file_id && ctx.naive?.hasKey) {
     try {
       const fileId = await ctx.naive.uploadFile(`${slug(concept.title)}.mp4`, "video/mp4", await readFile(finalPath));
       const link = await ctx.naive.fileUrl(fileId);

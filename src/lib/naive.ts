@@ -1,3 +1,4 @@
+import { claudeMessage, claudeStream, hasClaude } from "./claude";
 import { ApiError, requestJson } from "./http";
 import { getSetting } from "./settings";
 
@@ -53,10 +54,17 @@ export class NaiveClient {
     private readonly key = getSetting("naive_api_key"),
     private readonly base = getSetting("naive_base_url"),
   ) {
-    if (!key) throw new ApiError("naive", 401, "not_configured", "no Naive API key; add one in Settings");
+    // With an Anthropic key the client works for Claude alone; Naive's own services then say they need a key.
+    if (!key && !hasClaude()) throw new ApiError("naive", 401, "not_configured", "no Naive API key; add one in Settings");
+  }
+
+  /** Whether Naive's own services (files, media, sessions, posting) are available, not just Claude. */
+  get hasKey() {
+    return Boolean(this.key);
   }
 
   private async call<T>(method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: unknown, idempotencyKey?: string, timeoutMs?: number) {
+    if (!this.key) throw new ApiError("naive", 401, "not_configured", `${path.split("?")[0]} needs a Naive API key (Claude runs on your Anthropic key)`);
     const headers: Record<string, string> = { authorization: `Bearer ${this.key}`, "vetta-version": "2026-09-30" };
     if (idempotencyKey) headers["idempotency-key"] = idempotencyKey;
     // Writes are never retried here: the pipeline retries on a later tick with the same key.
@@ -102,6 +110,7 @@ export class NaiveClient {
 
   /** One model call through Naive's Messages-format proxy, billed to the organization. */
   message(input: { model: string; max_tokens: number; system?: string; messages: Array<{ role: "user" | "assistant"; content: unknown }>; tools?: object[] }, timeoutMs = 240_000 /* a long breakdown or script can take a few minutes */) {
+    if (hasClaude()) return claudeMessage(input, timeoutMs);
     return this.call<{
       content: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
       stop_reason: string;
@@ -115,6 +124,7 @@ export class NaiveClient {
    * the assembled message, with tool inputs parsed and every usage field summed.
    */
   async messageStream(input: { model: string; max_tokens: number; system?: string; messages: Array<{ role: "user" | "assistant"; content: unknown }>; tools?: object[] }, timeoutMs = 600_000) {
+    if (hasClaude()) return claudeStream(input, timeoutMs);
     let response: Response;
     try {
       response = await fetch(`${this.base}/v1/proxy/anthropic/v1/messages`, {
