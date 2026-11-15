@@ -1,6 +1,6 @@
 // Live, paid run of real-creator mode on a campaign that already has its research and briefs:
 // every brief is cast (creators from the research, ranked, briefed, judged by the client-taste
-// agent, outreach drafted) with Naive's model. People search runs on Monid when its wallet has
+// agent, outreach drafted) with Claude. People search runs on Monid when its wallet has
 // money; otherwise the research's creators are the pool. Reads data/nomen.db read-only and writes
 // the result to data/media/casting-live/<campaign>.json; nothing is sent to anyone.
 //
@@ -13,21 +13,21 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { clientTaste } from "@/lib/casting-job";
+import { claudeClient } from "@/lib/claude";
 import { type Casting, type CastingDeps, searchKeywords, stepCasting } from "@/lib/creative/casting";
 import type { ProductBrief } from "@/lib/creative/types";
 import { ApiError } from "@/lib/http";
 import { MonidClient } from "@/lib/monid";
-import { NaiveClient } from "@/lib/naive";
 import type { Video } from "@/lib/research";
 import type { Concept, Strategy } from "@/lib/strategy";
 
 const live = process.env.NOMEN_CASTING_LIVE === "1";
 const CAMPAIGN = process.env.NOMEN_CASTING_CAMPAIGN ?? "cmp_f98819d8b08f46a7a422";
 
-describe.skipIf(!live)("real-creator mode on a researched campaign (live, Naive)", () => {
+describe.skipIf(!live)("real-creator mode on a researched campaign (live)", () => {
   it("casts every brief to a creator the client approves", async () => {
     const data = join(process.cwd(), "data");
-    if ((!process.env.NAIVE_API_KEY || !process.env.MONID_API_KEY) && existsSync(".env.local")) process.loadEnvFile(".env.local");
+    if ((!process.env.ANTHROPIC_API_KEY || !process.env.MONID_API_KEY) && existsSync(".env.local")) process.loadEnvFile(".env.local");
     const db = new Database(join(data, "nomen.db"), { readonly: true, fileMustExist: true });
     const campaign = db.prepare("select brand_id, strategy_json, research_json, style_json from campaigns where id = ?").get(CAMPAIGN) as { brand_id: string; strategy_json: string; research_json: string; style_json: string };
     const brand = db.prepare("select name, domain from brands where id = ?").get(campaign.brand_id) as { name: string; domain: string };
@@ -38,12 +38,11 @@ describe.skipIf(!live)("real-creator mode on a researched campaign (live, Naive)
     const product = (JSON.parse(campaign.style_json) as { product: ProductBrief }).product;
     const research = (JSON.parse(campaign.research_json) as { videos?: Video[] }).videos ?? [];
 
-    const naive = new NaiveClient();
-    // Naive answers "at capacity" now and then, sometimes for minutes: wait it out (up to ten).
+    const claude = claudeClient();
     const message: CastingDeps["message"] = async (input) => {
       for (let attempt = 0; ; attempt++) {
         try {
-          return await naive.message(input);
+          return await claude.message(input);
         } catch (error) {
           if (!(error instanceof ApiError) || !error.retryable || attempt >= 40) throw error;
           await new Promise((done) => setTimeout(done, 15_000));

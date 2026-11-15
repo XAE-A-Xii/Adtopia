@@ -10,19 +10,16 @@ hf_cache = modal.Volume.from_name("hook-judge-hf-cache", create_if_missing=True)
 image = (
     modal.Image.from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.11")
     .apt_install("git", "build-essential")
+    # torch from the CUDA 12.8 index: the default wheel is built for a newer CUDA than this image.
+    .pip_install("torch", index_url="https://download.pytorch.org/whl/cu128")
     .pip_install(
-        "torch",
         "transformers>=5.0.0,<6.0.0",
         "peft",
         "accelerate",
         "fastapi[standard]",
-        "ninja",
-        "packaging",
+        "flash-linear-attention",  # pure Python/Triton; causal-conv1d is skipped (it needs a CUDA compile, and Qwen3.5 falls back without it)
     )
-    .run_commands(
-        "pip install --no-build-isolation flash-linear-attention causal-conv1d",
-        "pip uninstall -y torchao || true",
-    )
+    .run_commands("pip uninstall -y torchao || true")
 )
 
 

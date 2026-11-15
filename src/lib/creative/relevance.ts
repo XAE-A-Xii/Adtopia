@@ -1,4 +1,4 @@
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { QC_MODEL } from "../qc";
 import { extractJson } from "../research";
 import { cloneable, cloneabilityPrior, cloneLine } from "./cloneability";
@@ -62,7 +62,7 @@ const SCREEN_TOOL = {
   },
 };
 
-export async function screenRelevance(naive: Pick<NaiveClient, "message">, candidates: ReferenceCandidate[], input: { product: ProductBrief; scoutNotes?: string }): Promise<Relevance[]> {
+export async function screenRelevance(claude: Pick<ClaudeClient, "message">, candidates: ReferenceCandidate[], input: { product: ProductBrief; scoutNotes?: string }): Promise<Relevance[]> {
   const top = screenPool(candidates);
   if (!top.length) return [];
   const list = top.map((c, i) => ({
@@ -77,7 +77,7 @@ export async function screenRelevance(naive: Pick<NaiveClient, "message">, candi
     caption: c.caption.slice(0, 220),
     hashtags: hashtags(c.caption),
   }));
-  const reply = await naive.message({
+  const reply = await claude.message({
     model: QC_MODEL,
     max_tokens: 3000,
     system: [

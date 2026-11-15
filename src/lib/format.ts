@@ -1,14 +1,14 @@
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import type { ClaudeClient } from "./claude";
 import { download, extractFrames, ffmpegPath, scratchDir } from "./media";
-import type { NaiveClient } from "./naive";
 import { QC_MODEL } from "./qc";
 import type { ResearchPack, Video } from "./research";
 
 // The format study: what the best-performing videos in the category actually do, read from their
 // frames by a vision model. Its notes steer the strategist toward formats that already win.
 
-// Naive's model proxy takes at most 12 images per request: three videos at four frames each.
+// Up to 12 images per request: three videos at four frames each.
 const FRAMES_PER_VIDEO = 4;
 
 /** Up to three downloadable top videos, category searches first (they show what wins in the market). */
@@ -21,7 +21,7 @@ export function studyCandidates(pack: ResearchPack): Video[] {
   return [...category, ...brand].slice(0, 3);
 }
 
-export async function studyFormat(naive: NaiveClient, pack: ResearchPack, campaignId: string): Promise<{ markdown: string; urls: string[] } | null> {
+export async function studyFormat(claude: Pick<ClaudeClient, "message">, pack: ResearchPack, campaignId: string): Promise<{ markdown: string; urls: string[] } | null> {
   const candidates = studyCandidates(pack);
   if (candidates.length === 0 || !(await ffmpegPath())) return null;
   const dir = join(scratchDir(), `study-${campaignId}`);
@@ -59,7 +59,7 @@ export async function studyFormat(naive: NaiveClient, pack: ResearchPack, campai
     ].join("\n"),
   });
 
-  const reply = await naive.message({ model: QC_MODEL, max_tokens: 2500, messages: [{ role: "user", content }] });
+  const reply = await claude.message({ model: QC_MODEL, max_tokens: 2500, messages: [{ role: "user", content }] });
   const markdown = reply.content.map((block) => block.text ?? "").join("\n").trim();
   return markdown ? { markdown, urls: studied.map(({ video }) => video.url) } : null;
 }

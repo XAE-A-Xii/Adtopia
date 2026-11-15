@@ -52,7 +52,7 @@ The app's agents did the research, planning, writing and production. I did these
 | Breakdowns | 4 of 4, line by line with timing |
 | Director | Campaign "No more sign-ups for your agent": a faceless remake of @ai.with.ni and a split-screen remake of Cluely's billboard video |
 | Script room | Video 1 scored 8/10 from the critic. Video 2 scored 6/10: the critic flagged that it held one diagram on most beats. |
-| Screen builder | Video 1: 8 screens. Video 2: 4 screens; one was retried after Naive was at capacity. |
+| Screen builder | Video 1: 8 screens. Video 2: 4 screens; one was retried after the provider was at capacity. |
 
 ### The references
 
@@ -144,7 +144,7 @@ It keeps the reference's "we were like" quotes and its smug founder delivery.
 | Bug | Effect | Fix | Commit |
 | - | - | - | - |
 | The presenter's description vanished from prompts | The edit-direction filter dropped any sentence containing "logo", so "Man, 20s, …, plain black hoodie with no logo, …" was removed entirely. Frames had no presenter: a random person, phone UI drawn in, and every shot failed QC on wardrobe. | Descriptions are filtered clause by clause; "no logo" wording is dropped instead of the outfit. Frame prompts no longer name phones or status bars. | 2583ece |
-| A frame request stuck "in flight" at Naive | A server restart while Naive was at capacity left one request's key in flight for 20+ minutes; the worker waited forever | After 10 minutes in flight, ask again under a fresh key | 3e0a04e |
+| A frame request stuck "in flight" upstream | A server restart while the provider was at capacity left one request's key in flight for 20+ minutes; the worker waited forever | After 10 minutes in flight, ask again under a fresh key | 3e0a04e |
 | Banner images in split panels | See video 2, bad 1 | Banner-shaped images and software photos get screens in every panel | ff642e0 |
 
 The first-frame gate caught four bad stills before any render: two with phone UI, two with text
@@ -155,7 +155,7 @@ printed on the hoodie.
 - **The benchmark search keeps fan content.** A video that mentions the benchmark brand passes, so
   "Duolingo" returned fan memes. The relevance screen caught them this time. Better: keep only the
   brand's own accounts and its tagged creators.
-- **Per-video spend misses screens, voice and model calls.** The true cost comes from the Naive
+- **Per-video spend misses screens, voice and model calls.** The true cost comes from the provider
   balance.
 - **The worker does not reload code.** A code change needs a server restart to reach a running
   campaign.
@@ -167,7 +167,7 @@ printed on the hoodie.
 
 ## Spend
 
-- Naive: $144.98 to $115.04 (**$29.94**). Video 2's renders and frames were $27.55 of that, about half
+- Video/model provider: $144.98 to $115.04 (**$29.94**). Video 2's renders and frames were $27.55 of that, about half
   of it the first round lost to the prompt bug. Video 1, research, breakdowns, scripts and screens
   were the other ~$2.40.
 - Monid: **$0.07**.

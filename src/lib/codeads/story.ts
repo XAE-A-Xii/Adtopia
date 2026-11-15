@@ -3,8 +3,8 @@
 // short. Code checks keep it renderable (only gags and screens the engine knows, anchors that are really said) and true
 // (claims and numbers from the brief only). the original engine's build-genre formula (docs/BUILD.md there), cut to ad length.
 
+import type { ClaudeClient } from "../claude";
 import { ApiError } from "../http";
-import type { NaiveClient } from "../naive";
 import { QC_MODEL } from "../qc";
 import { extractJson } from "../research";
 import { BANNED } from "../creative/script";
@@ -76,7 +76,7 @@ const TOOL = {
       rival: { type: "object", required: ["name"], properties: { name: { type: "string", description: "versus only: the old way the rival stands for, 1-3 words in caps, printed on his tee and desk: 'DIY AGENTS', 'CRON JOBS', '9 SUBSCRIPTIONS'. Never a real company or product." } } },
       nameplate: { type: "string", description: "The lead's nameplate on his desk, 2-4 words in caps, e.g. 'DEV · FOUNDER' or 'SOLO DEV'." },
       poster: { type: "string", description: "The poster on the office wall: the brand's own tagline, verbatim from the brief's claims, at most 7 words." },
-      url: { type: "string", description: "The site the viewer goes to, as said and shown at the end, e.g. 'usenaive.ai'." },
+      url: { type: "string", description: "The site the viewer goes to, as said and shown at the end, e.g. 'fal.ai'." },
       beats: {
         type: "array",
         items: {
@@ -353,7 +353,7 @@ export function storyScript(story: CodeAdStory, review: Script["review"] = null)
 
 // ---------- writer + critic ----------
 
-function readTool(reply: Awaited<ReturnType<NaiveClient["message"]>>, name: string): Record<string, unknown> | null {
+function readTool(reply: Awaited<ReturnType<ClaudeClient["message"]>>, name: string): Record<string, unknown> | null {
   const call = reply.content.find((block) => block.type === "tool_use" && block.name === name);
   return (call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"))) as Record<string, unknown> | null;
 }
@@ -373,11 +373,11 @@ const CRITIC_TOOL = {
 };
 
 /** Writes the code ad: a draft, the code checks, then one critic pass that rewrites it when it scores under 8. */
-export async function writeCodeAd(naive: NaiveClient, ctx: CodeAdContext): Promise<{ story: CodeAdStory; script: Script }> {
+export async function writeCodeAd(claude: Pick<ClaudeClient, "message">, ctx: CodeAdContext): Promise<{ story: CodeAdStory; script: Script }> {
   const user = `${contextBlock(ctx)}\n\nWrite the code ad for "${ctx.brief.title}".`;
-  const reply = await naive.message({ model: QC_MODEL, max_tokens: 6000, system: writerSystem(ctx.targetSeconds, ctx.scene), messages: [{ role: "user", content: user }], tools: [TOOL] });
+  const reply = await claude.message({ model: QC_MODEL, max_tokens: 6000, system: writerSystem(ctx.targetSeconds, ctx.scene), messages: [{ role: "user", content: user }], tools: [TOOL] });
   let story = normalizeStory(readTool(reply, TOOL.name), ctx);
-  if (story.beats.length < 3) throw new ApiError("naive", 502, "code_ad_unreadable", "the code-ad writer returned no usable beats");
+  if (story.beats.length < 3) throw new ApiError("anthropic", 502, "code_ad_unreadable", "the code-ad writer returned no usable beats");
 
   const issues = lintStory(story, ctx);
   const system = [
@@ -389,7 +389,7 @@ export async function writeCodeAd(naive: NaiveClient, ctx: CodeAdContext): Promi
   const content = `${contextBlock(ctx)}\n\n<code_ad>\n${JSON.stringify(story)}\n</code_ad>\n\nAutomatic checks found: ${issues.length ? issues.join("; ") : "nothing"}.\n\nCall the code_ad_review tool once.`;
   let review: Script["review"] = { score: 0, notes: [...issues.map((i) => `lint: ${i}`), "critic unavailable"].slice(0, 10), rounds: 1 };
   try {
-    const answer = await naive.message({ model: QC_MODEL, max_tokens: 9000, system, messages: [{ role: "user", content }], tools: [CRITIC_TOOL] });
+    const answer = await claude.message({ model: QC_MODEL, max_tokens: 9000, system, messages: [{ role: "user", content }], tools: [CRITIC_TOOL] });
     const raw = readTool(answer, CRITIC_TOOL.name);
     const score = Number(raw?.score);
     const notes = Array.isArray(raw?.notes) ? (raw.notes as unknown[]).filter((n): n is string => typeof n === "string").slice(0, 6) : [];

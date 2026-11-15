@@ -14,7 +14,7 @@ import { planProduction } from "@/lib/creative/plan";
 import { targetSeconds, writeScript } from "@/lib/creative/script";
 import type { BrandKit, CreativeBrief, ProductBrief, ReferenceBreakdown } from "@/lib/creative/types";
 import { save } from "@/lib/db";
-import type { NaiveClient } from "@/lib/naive";
+import { ClaudeClient } from "@/lib/claude";
 import { createBrand, listCreatives, startCampaign } from "@/lib/pipeline";
 import { insertCreative, type ProductionContext } from "@/lib/production";
 import { useStore } from "@/lib/store";
@@ -26,7 +26,7 @@ import { type Concept, conceptFrom, FORMATS, normalizeStrategy } from "@/lib/str
 // clock, given a cue sheet, and made by the production hook (which says plainly where it cannot render).
 
 const product: ProductBrief = {
-  name: "Naïve",
+  name: "Acme",
   one_liner: "A team of AI agents runs a business for you.",
   kind: "software",
   audience: "solo founders",
@@ -42,19 +42,19 @@ const product: ProductBrief = {
   visuals: [{ id: "s1", kind: "screenshot", url: "https://example.com/s1.png", caption: "home", source: "capture" }],
 };
 const reference = { id: "ref_x", url: "https://www.tiktok.com/@a/video/1", author: "a", views: 600000, followers: 1700, outlier: 360, duration: 54, format: "explainer", hook: { line: "In six hours it made money.", on_screen_text: "", visual: "", mechanic: "result first" }, beats: [], pacing: { cuts: 10, avg_shot_seconds: 3, words_per_minute: 180 }, caption_style: "", delivery: "", why_it_works: "", fit: { score: 7, reason: "" }, transcript: "", platform: "tiktok" } as ReferenceBreakdown;
-const brief = { title: "Card to company", reference_id: "ref_x", role: "convert", metric: "link_clicks", format: "code_ad", angle: "", audience: "", hook_plan: "", keep: [], change: [], visuals: [], creator: "", setting: "", platforms: ["tiktok"], caption: "", hashtags: [], cta: "Pick a template at usenaive.ai", why: "" } as CreativeBrief;
-const ctx: CodeAdContext = { product, brief, reference, targetSeconds: 24, site: "usenaive.ai" };
+const brief = { title: "Card to company", reference_id: "ref_x", role: "convert", metric: "link_clicks", format: "code_ad", angle: "", audience: "", hook_plan: "", keep: [], change: [], visuals: [], creator: "", setting: "", platforms: ["tiktok"], caption: "", hashtags: [], cta: "Pick a template at acme.example", why: "" } as CreativeBrief;
+const ctx: CodeAdContext = { product, brief, reference, targetSeconds: 24, site: "acme.example" };
 
 const raw = {
   concept: { reference_id: "ref_x", premise: "An AI told to make money", mechanic: "result first", adaptation: "Gary's agent" },
   nameplate: "gary · founder",
   poster: "Build Your Dream Company with Agents",
-  url: "https://usenaive.ai/",
+  url: "https://acme.example/",
   beats: [
     { id: "Hook!", say: "You give an AI agent your card and one instruction: make money.", gag: "hack", hit: "money", labels: [], screen: { kind: "terminal", lines: ["agent --goal 'make money' and a lot more text than fits"] }, callouts: [{ at: "card", text: "your card", style: "label" }] },
     { id: "fail", say: "[shouting] [excited] It buys rubber ducks. Your card is a FOUNTAIN.", gag: "money", hit: "fountain", labels: [], screen: { kind: "none" }, callouts: [{ at: "geyser", text: "nope", style: "stamp" }] },
-    { id: "fix", say: "So you use Naïve. Pick a template, deploy it.", gag: "deliver", hit: "naive", labels: ["agent"], screen: { kind: "image", visual_id: "s9" }, callouts: [{ at: "Template", text: "Company templates", style: "term", until: "deploy" }] },
-    { id: "end", say: "Congratulations, you built a company — go to usenaive.ai.", gag: "dance", hit: "nowhere", labels: [], screen: { kind: "logo" }, callouts: [] },
+    { id: "fix", say: "So you use Coöp. Pick a template, deploy it.", gag: "deliver", hit: "coop", labels: ["agent"], screen: { kind: "image", visual_id: "s9" }, callouts: [{ at: "Template", text: "Company templates", style: "term", until: "deploy" }] },
+    { id: "end", say: "Congratulations, you built a company — go to acme.example.", gag: "dance", hit: "nowhere", labels: [], screen: { kind: "logo" }, callouts: [] },
   ],
 };
 
@@ -63,7 +63,7 @@ describe("the code-ad story", () => {
     const story = normalizeStory(raw, ctx);
     expect(story.beats.map((b) => b.id)).toEqual(["hook", "fail", "fix", "end"]);
     expect(story.nameplate).toBe("GARY · FOUNDER");
-    expect(story.url).toBe("usenaive.ai");
+    expect(story.url).toBe("acme.example");
     const [hook, fail, fix, end] = story.beats;
     expect(hook.screen.lines![0].length).toBeLessThanOrEqual(30);
     expect(hook.callouts[0]).toMatchObject({ at: "card", text: "YOUR CARD", style: "label" });
@@ -71,15 +71,15 @@ describe("the code-ad story", () => {
     expect(fail.say).toBe("[shouting] It buys rubber ducks. Your card is a FOUNTAIN.");
     expect(fail.callouts).toEqual([]);
     // the hit and anchors are the words as spoken (accents and all); an unknown visual becomes the logo card
-    expect(fix.hit).toBe("Naïve");
+    expect(fix.hit).toBe("Coöp");
     expect(fix.screen).toEqual({ kind: "logo" });
     expect(fix.callouts[0]).toMatchObject({ at: "template", until: "deploy" });
     expect(fix.labels).toEqual(["AGENT"]);
     // an unknown gag idles, a hit that is not said lands on the last long word, the url gets its label
     expect(end.gag).toBe("idle");
     expect(end.say).not.toContain("—");
-    expect(end.hit).toBe("usenaive.ai");
-    expect(end.callouts.at(-1)).toMatchObject({ at: "usenaive.ai", text: "USENAIVE.AI", style: "label" });
+    expect(end.hit).toBe("acme.example");
+    expect(end.callouts.at(-1)).toMatchObject({ at: "acme.example", text: "ACME.EXAMPLE", style: "label" });
   });
 
   it("flags what a person would catch: invented numbers, no product, ad copy, repeats, length", () => {
@@ -98,7 +98,7 @@ describe("the code-ad story", () => {
         expect.stringMatching(/"5" is not in the product brief/),
         expect.stringMatching(/"\$2,025" is not in the product brief/),
         expect.stringMatching(/ad phrase "game changer"/),
-        expect.stringMatching(/never names Naïve/),
+        expect.stringMatching(/never names Acme/),
         expect.stringMatching(/no deliver beat/),
         expect.stringMatching(/same gag/),
         expect.stringMatching(/no term callout/),
@@ -134,15 +134,15 @@ describe("the format in the pipeline", () => {
 
   it("sends a code_ad brief to the code-ad writer and critic", async () => {
     const calls: string[] = [];
-    const naive = {
+    const claude = {
       async message(input: { tools?: Array<{ name: string }> }) {
         const tool = input.tools?.[0]?.name ?? "";
         calls.push(tool);
         if (tool === "code_ad") return { content: [{ type: "tool_use", name: "code_ad", input: raw }] };
         return { content: [{ type: "tool_use", name: "code_ad_review", input: { score: 9, notes: ["tight"], revised: {} } }] };
       },
-    } as unknown as NaiveClient;
-    const script = await writeScript(naive, { product, brief, reference, targetSeconds: 24 });
+    } as unknown as ClaudeClient;
+    const script = await writeScript(claude, { product, brief, reference, targetSeconds: 24 });
     expect(calls).toEqual(["code_ad", "code_ad_review"]);
     expect(script.code_ad?.beats).toHaveLength(4);
     expect(script.review).toMatchObject({ score: 9, rounds: 1 });
@@ -154,7 +154,7 @@ describe("narration timing", () => {
     expect(syllables("congratulations")).toBe(5);
     expect(syllables("make")).toBe(1);
     expect(syllables("625")).toBeCloseTo(5.8);
-    expect(norm("Naïve,")).toBe("naive");
+    expect(norm("Café,")).toBe("cafe");
     expect(display("“money.”")).toBe("Money");
     expect(untag("[shouting] It buys  ducks")).toBe("It buys ducks");
   });
@@ -178,15 +178,15 @@ describe("narration timing", () => {
   });
 });
 
-const brand: CodeAdBrand = { name: "Naïve", url: "usenaive.ai", logo: null, logoOnLight: null, font: null, fontFamily: null, colors: { screenBg: "#212121", screenFg: "#ececec", accent: "#d29922", crate: "#0a0a0a", robot: "#1f2228", eye: "#d29922", sign: "#d29922", wall: "#3a414d" } };
+const brand: CodeAdBrand = { name: "Acme", url: "acme.example", logo: null, logoOnLight: null, font: null, fontFamily: null, colors: { screenBg: "#212121", screenFg: "#ececec", accent: "#d29922", crate: "#0a0a0a", robot: "#1f2228", eye: "#d29922", sign: "#d29922", wall: "#3a414d" } };
 const voiced: Voiced = {
   provider: "scratch",
   duration: 9,
   beats: [
     { id: "hook", t0: 0.06, t1: 2.5, words: ["You", "give", "an", "AI", "agent", "your", "card", "and", "one", "instruction:", "make", "money."].map((w, i) => ({ w, t0: 0.06 + i * 0.2, t1: 0.06 + i * 0.2 + 0.18 })) },
     { id: "fail", t0: 2.6, t1: 4.6, words: ["It", "buys", "rubber", "ducks.", "Your", "card", "is", "a", "FOUNTAIN."].map((w, i) => ({ w, t0: 2.6 + i * 0.22, t1: 2.6 + i * 0.22 + 0.2 })) },
-    { id: "fix", t0: 4.7, t1: 6.6, words: ["So", "you", "use", "Naïve.", "Pick", "a", "template,", "deploy", "it."].map((w, i) => ({ w, t0: 4.7 + i * 0.21, t1: 4.7 + i * 0.21 + 0.19 })) },
-    { id: "end", t0: 6.7, t1: 7.6, words: ["Go", "to", "usenaive.ai."].map((w, i) => ({ w, t0: 6.7 + i * 0.3, t1: 6.7 + i * 0.3 + 0.28 })) },
+    { id: "fix", t0: 4.7, t1: 6.6, words: ["So", "you", "use", "Coöp.", "Pick", "a", "template,", "deploy", "it."].map((w, i) => ({ w, t0: 4.7 + i * 0.21, t1: 4.7 + i * 0.21 + 0.19 })) },
+    { id: "end", t0: 6.7, t1: 7.6, words: ["Go", "to", "acme.example."].map((w, i) => ({ w, t0: 6.7 + i * 0.3, t1: 6.7 + i * 0.3 + 0.28 })) },
   ],
 };
 
@@ -199,7 +199,7 @@ describe("the page's story.json", () => {
     expect(page.beats.hook).toMatchObject({ t0: 0, t1: 2.6, s0: 0.06, s1: 2.5 });
     expect(page.beats.end.t1).toBe(9);
     expect(page.words[0]).toMatchObject({ w: "You", t0: 0.06 });
-    expect(page.words.find((w) => w.w === "Naïve")).toBeTruthy();
+    expect(page.words.find((w) => w.w === "Coöp")).toBeTruthy();
     // callouts sit in the lower third (the wall screen has the top)
     expect(page.callouts.find((c) => c.text === "RUBBER DUCKS")).toMatchObject({ style: "stamp", t0: 2.6 + 3 * 0.22 - 0.04, y: 0.63 });
     expect(page.callouts.every((c) => (c.y ?? c.pos?.[1] ?? 0) > 0.55)).toBe(true);
@@ -209,7 +209,7 @@ describe("the page's story.json", () => {
     const fix = page.codead.beats.find((b) => b.id === "fix")!;
     expect(fix).toMatchObject({ gag: "deliver", hit: 4.7 + 3 * 0.21, labels: ["AGENT"], screen: { kind: "logo" } });
     expect(page.codead.beats[0].screen).toMatchObject({ kind: "terminal" });
-    expect(page.codead.brand.name).toBe("Naïve");
+    expect(page.codead.brand.name).toBe("Acme");
     expect(sheetTimes(page, 6)).toHaveLength(6);
   });
 
@@ -277,7 +277,7 @@ describe("the brand on screen", () => {
         assets: [{ id: "a1", kind: "logo", path: logo, source: "upload", caption: "logo", bytes: 10 }],
         repo: { origin: "", scanned_at: "", name: "", description: "", readme: "", colors: [{ name: "background", hex: "#212121", source: "" }, { name: "foreground", hex: "#ececec", source: "" }, { name: "amber", hex: "#d29922", source: "" }], fonts: [], commands: [], screens: [], components: [], ui_strings: [] },
       };
-      const out = await brandFor({ name: "Naïve", site: "usenaive.ai", kit, product, dir });
+      const out = await brandFor({ name: "Acme", site: "acme.example", kit, product, dir });
       expect(out.colors).toMatchObject({ screenBg: "#212121", screenFg: "#ececec", accent: "#d29922" });
       expect(out.logo).toBe("/ad/logo-dark.svg");
       expect(existsSync(join(dir, "logo-dark.svg"))).toBe(true);
@@ -322,11 +322,11 @@ describe("the code ad in production", () => {
 
   it("says plainly that a serverless host cannot render it, and fails a concept with no story", async () => {
     const brandId = await createBrand("codead-job.example");
-    const campaignId = await startCampaign(brandId, { concepts: 2, shotsPerConcept: 1, secondsPerShot: 4, videoModel: "google/veo-3.1", learnStyle: false });
+    const campaignId = await startCampaign(brandId, { concepts: 2, shotsPerConcept: 1, secondsPerShot: 4, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: false });
     const story = normalizeStory(raw, ctx);
     const script = storyScript(story);
     const concept = conceptFrom(brief, script, planProduction(script, brief, product), reference, product) as Concept;
-    const ctxP = { campaignId, brandId, naive: null, monid: null, naiveOut: () => false, markNaiveOut: async () => undefined, strategy: {}, product } as unknown as ProductionContext;
+    const ctxP = { campaignId, brandId, claude: null, fal: null, monid: null, strategy: {}, product } as unknown as ProductionContext;
 
     const was = process.env.VERCEL;
     process.env.VERCEL = "1";

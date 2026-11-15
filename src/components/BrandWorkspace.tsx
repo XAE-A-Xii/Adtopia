@@ -117,11 +117,6 @@ export function BrandWorkspace({ initial }: { initial: BrandView }) {
           {campaign.error && campaign.status !== "running" && (
             <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{campaign.error}</div>
           )}
-          {campaign.naiveOut && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-              Naive ran out of credits during this campaign, so new renders use Kling 3.0 on Monid. Top up Naive to switch back.
-            </div>
-          )}
 
           <div className="grid gap-4 sm:grid-cols-4">
             {campaign.options.concepts === 0 ? (
@@ -130,9 +125,9 @@ export function BrandWorkspace({ initial }: { initial: BrandView }) {
               <Stat label="Videos ready" value={`${ready.length} / ${creatives.length || campaign.options.concepts}`} hint={`${campaign.options.shotsPerConcept} shots × ${campaign.options.secondsPerShot}s each`} />
             )}
             {campaign.options.concepts === 0 ? (
-              <Stat label="Naive spend" value={`≈$${(campaign.statics?.spend.modelEstimate ?? 0).toFixed(2)}`} hint="static ads: model calls, estimated from tokens" />
+              <Stat label="AI spend" value={`≈$${(campaign.statics?.spend.modelEstimate ?? 0).toFixed(2)}`} hint="static ads: model calls, estimated from tokens" />
             ) : (
-              <Stat label="Naive spend" value={`$${campaign.spend.naive.toFixed(2)}`} hint={campaign.estimateUsd ? `video estimate ~$${campaign.estimateUsd.toFixed(2)}` : campaign.options.videoModel} />
+              <Stat label="AI spend" value={`$${campaign.spend.ai.toFixed(2)}`} hint={campaign.estimateUsd ? `video estimate ~$${campaign.estimateUsd.toFixed(2)}` : campaign.options.videoModel} />
             )}
             <Stat label="Monid spend" value={`$${campaign.spend.monid.toFixed(2)}`} hint={`${campaign.runs.filter((r) => r.status === "done").length} research sources`} />
             <Stat label="Posts" value={campaign.posts.length} hint={`${campaign.posts.filter((p) => p.status === "posted").length} live`} />

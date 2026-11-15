@@ -144,14 +144,14 @@ describe("script normalizing and linting", () => {
 describe("the critic", () => {
   it("records an unavailable critic honestly instead of inventing a score", async () => {
     let calls = 0;
-    const naive = {
+    const claude = {
       message: async () => {
         calls++;
         if (calls === 1) return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "script", input: { beats: goodBeats.map((b) => ({ ...b })) } }] };
         return { stop_reason: "max_tokens", content: [{ type: "text", text: "{ cut off" }] };
       },
     } as unknown as Parameters<typeof writeScript>[0];
-    const script = await writeScript(naive, ctx);
+    const script = await writeScript(claude, ctx);
     expect(calls).toBe(3); // writer, critic, the critic's plain-JSON retry
     expect(script.review).toMatchObject({ score: 0, rounds: 1 });
     expect(script.review?.notes).toContain("critic unavailable: no review came back");
@@ -584,7 +584,7 @@ describe("pacing a long voice-over", () => {
 
 describe("the first-frame gate", () => {
   const fake = (text: string, seen: unknown[] = []) =>
-    ({ message: async (body: unknown) => (seen.push(body), { content: [{ type: "text", text }] }) }) as unknown as import("@/lib/naive").NaiveClient;
+    ({ message: async (body: unknown) => (seen.push(body), { content: [{ type: "text", text }] }) }) as unknown as import("@/lib/claude").ClaudeClient;
 
   it("fails a frame with a phone interface, and passes a clean one", async () => {
     const { reviewFrame } = await import("@/lib/qc");
@@ -629,17 +629,17 @@ describe("provider trouble while making a filmed screen's plate", () => {
     const t0 = Date.parse("2026-11-08T02:00:00Z");
 
     const busy = newPlateRecord();
-    expect(onPlateError(busy, new ApiError("naive", 503, "unavailable", "busy"), t0)).toBe(false);
+    expect(onPlateError(busy, new ApiError("fal", 503, "unavailable", "busy"), t0)).toBe(false);
     expect([busy.status, busy.errors, busy.retry_at]).toEqual(["pending", 1, new Date(t0 + 15_000).toISOString()]);
-    onPlateError(busy, new ApiError("naive", 429, "rate_limited", "slow down"), t0);
+    onPlateError(busy, new ApiError("fal", 429, "rate_limited", "slow down"), t0);
     expect(busy.retry_at).toBe(new Date(t0 + 30_000).toISOString());
-    for (let i = 0; i < 6; i++) onPlateError(busy, new ApiError("naive", 503, "unavailable", "busy"), t0);
+    for (let i = 0; i < 6; i++) onPlateError(busy, new ApiError("fal", 503, "unavailable", "busy"), t0);
     expect(busy.status).toBe("pending");
-    onPlateError(busy, new ApiError("naive", 503, "unavailable", "busy"), t0); // the ninth: enough waiting
+    onPlateError(busy, new ApiError("fal", 503, "unavailable", "busy"), t0); // the ninth: enough waiting
     expect(busy.status).toBe("fallback");
 
     const stuck = newPlateRecord();
-    const inFlight = new ApiError("naive", 409, "conflict", "request still in flight");
+    const inFlight = new ApiError("fal", 409, "conflict", "request still in flight");
     onPlateError(stuck, inFlight, t0);
     onPlateError(stuck, inFlight, t0 + 9 * 60_000);
     expect(stuck.tries).toBe(0); // same key, still waiting
@@ -647,10 +647,10 @@ describe("provider trouble while making a filmed screen's plate", () => {
     expect([stuck.tries, stuck.inflight_since, stuck.notes]).toEqual([1, null, ["image 1: never came back"]]);
 
     const broke = newPlateRecord();
-    expect(onPlateError(broke, new ApiError("naive", 402, "insufficient_credits", "no credits"), t0)).toBe(true);
-    expect([broke.status, broke.reason]).toEqual(["fallback", "Naive is out of credits"]);
+    expect(onPlateError(broke, new ApiError("fal", 402, "insufficient_credits", "no credits"), t0)).toBe(true);
+    expect([broke.status, broke.reason]).toEqual(["fallback", "The image provider is out of credits"]);
     const bad = newPlateRecord();
-    onPlateError(bad, new ApiError("naive", 400, "validation_failed", "aspect_ratio not supported"), t0);
+    onPlateError(bad, new ApiError("fal", 400, "validation_failed", "aspect_ratio not supported"), t0);
     expect(bad.status).toBe("fallback");
     expect(bad.reason).toMatch(/aspect_ratio not supported/);
   });
@@ -669,8 +669,8 @@ describe("the presenter's look in prompts", () => {
 describe("busy provider errors in screen failures", () => {
   it("are recognised from their text", async () => {
     const { busyError } = await import("@/lib/production");
-    expect(busyError("naive: the service is at capacity")).toBe(true);
-    expect(busyError("naive: rate limited")).toBe(true);
+    expect(busyError("anthropic: the service is at capacity")).toBe(true);
+    expect(busyError("anthropic: rate limited")).toBe(true);
     expect(busyError("screen b3: the check failed twice")).toBe(false);
   });
 });
@@ -680,15 +680,15 @@ describe("the product analyst when the model's tool call is malformed", () => {
     const { analyzeProduct } = await import("@/lib/creative/product");
     const { ApiError } = await import("@/lib/http");
     const calls: Array<{ tools?: unknown }> = [];
-    const naive = {
+    const claude = {
       message: async (body: { tools?: unknown }) => {
         calls.push(body);
-        if (body.tools) throw new ApiError("naive", 502, "bad_tool_call", "the model returned a malformed tool call");
+        if (body.tools) throw new ApiError("anthropic", 502, "bad_tool_call", "the model returned a malformed tool call");
         return { content: [{ type: "text", text: '{"name":"Mobilerun","one_liner":"Cloud phones your AI agent can drive.","kind":"software","audience":"devs","problem":"","aha":"","features":[],"claims":[],"proof":[],"objections":[],"offer":"","voice":"plain","look":"","images":[]}' }] };
       },
     };
     const pack = { domain: "mobilerun.ai", brand: { name: "Mobilerun", description: "", slogan: "", industry: "", images: [] }, seo: { keywords: [] }, reddit: [], site_excerpt: "Cloud phones for agents." };
-    const brief = await analyzeProduct(naive as never, pack as never, "/tmp/nomen-product-test");
+    const brief = await analyzeProduct(claude as never, pack as never, "/tmp/nomen-product-test");
     expect(calls).toHaveLength(2);
     expect(brief.one_liner).toBe("Cloud phones your AI agent can drive.");
   });

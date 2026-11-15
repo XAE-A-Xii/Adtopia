@@ -7,8 +7,7 @@ next-env.d.ts
 # Local database (brands, campaigns, any API keys saved in Settings)
 data/
 
-# Secrets: never commit API keys (Naive sk_live_..., Monid monid_live_..., Mobilerun dr_sk_...).
-# The Naive CLI keeps its own login in ~/.config/vetta/config.json, outside this repo.
+# Secrets: never commit API keys (Monid monid_live_..., Mobilerun dr_sk_..., Anthropic sk-ant-...).
 .env
 .env.*
 !.env.example

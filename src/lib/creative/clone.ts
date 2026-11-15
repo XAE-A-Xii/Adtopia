@@ -26,8 +26,8 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 
+import type { ClaudeClient } from "../claude";
 import { ApiError } from "../http";
-import type { NaiveClient } from "../naive";
 import { extractJson } from "../research";
 import { editFfmpeg } from "./edit";
 import type { Gender } from "./persona";
@@ -48,8 +48,8 @@ const fmt = (x: number) => String(Math.round(x * 10000) / 10000);
 
 /** What the rest of a remake costs, in USD (the presenter's own price is on the presenter). */
 export const PRICES = {
-  /** One Naive image (persona portrait, twin frame, plate). */
-  image: 0.04,
+  /** One image (persona portrait, twin frame, plate). */
+  image: 0.15,
   /** The emotional read (or the conversion), its timings and the phrases: one remake's audio. */
   audio: 0.15,
   /** One screen-builder graphic (a Sonnet page and its check). */
@@ -647,7 +647,7 @@ export function trackedScreenArgs(input: {
 }
 
 /** Asks the vision model for the display's corners in sampled frames of a filmed-monitor segment. */
-export async function readScreenCorners(naive: Pick<NaiveClient, "message">, frames: Array<{ t: number; jpeg: Buffer }>, model: string): Promise<unknown> {
+export async function readScreenCorners(claude: Pick<ClaudeClient, "message">, frames: Array<{ t: number; jpeg: Buffer }>, model: string): Promise<unknown> {
   const content = [
     ...frames.flatMap(({ t, jpeg }) => [
       { type: "text", text: `t=${t.toFixed(2)} s` },
@@ -662,10 +662,10 @@ export async function readScreenCorners(naive: Pick<NaiveClient, "message">, fra
       ].join("\n"),
     },
   ];
-  const reply = await naive.message({ model, max_tokens: 3000, messages: [{ role: "user", content }], tools: [QUAD_TOOL] });
+  const reply = await claude.message({ model, max_tokens: 3000, messages: [{ role: "user", content }], tools: [QUAD_TOOL] });
   const call = reply.content.find((block) => block.type === "tool_use" && block.name === QUAD_TOOL.name);
   const raw = call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"));
-  if (!raw) throw new ApiError("naive", 502, "corners_unreadable", "the screen-corner check returned nothing");
+  if (!raw) throw new ApiError("anthropic", 502, "corners_unreadable", "the screen-corner check returned nothing");
   return raw;
 }
 

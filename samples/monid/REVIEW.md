@@ -14,7 +14,7 @@ None of these is good enough to post for a client yet. Every fix since run 1 is 
 
 Run 1 (before the identity fix): every shot was rendered without a first frame because of an Idempotency-Key bug, so shot 2 is a DIFFERENT PERSON from shot 1. Laptop screens show gibberish code. Unusable.
 
-### Stop signing up for APIs  (QC 7/10, $6.44 on Naive)
+### Stop signing up for APIs  (QC 7/10, $6.44 on Veo)
 
 ![frames](run1-stop-signing-up-for-apis-frames.jpg)
 
@@ -24,9 +24,9 @@ Video: [run1-stop-signing-up-for-apis.mp4](run1-stop-signing-up-for-apis.mp4) ·
 
 **Setting:** A small home office desk in the evening, warm desk lamp plus the cool glow of a laptop, a plant and a mug in the background
 
-**Shot 1** (1 render(s), provider naive, QC n/a/10)
+**Shot 1** (1 render(s), provider veo, QC n/a/10)
 
-- Note: quality check skipped: naive: the model returned a malformed tool call
+- Note: quality check skipped: provider: the model returned a malformed tool call
 
 <details><summary>Final video prompt</summary>
 
@@ -34,7 +34,7 @@ Vertical 9:16 handheld smartphone video, UGC style. Selfie at arm's length with 
 
 </details>
 
-**Shot 2** (1 render(s), provider naive, QC 7/10)
+**Shot 2** (1 render(s), provider veo, QC 7/10)
 
 - QC: The hand in frame 2 is a smeared, ambiguous blob at the bottom of the frame. It reads as motion blur but looks slightly AI-like.
 - QC: Frame 1 has the hand hovering over the laptop keyboard with slightly elongated fingers, and the gesture reads as a staged presenter pose rather than a casual nod.
@@ -49,7 +49,7 @@ Vertical 9:16 handheld smartphone video, UGC style. Selfie at arm's length with 
 
 </details>
 
-### Stop paying for tools you barely use  (QC 5/10, $9.60 on Naive)
+### Stop paying for tools you barely use  (QC 5/10, $9.60 on Veo)
 
 ![frames](run1-stop-paying-for-tools-you-barely-use-frames.jpg)
 
@@ -59,7 +59,7 @@ Video: [run1-stop-paying-for-tools-you-barely-use.mp4](run1-stop-paying-for-tool
 
 **Setting:** A bright kitchen counter in the morning, soft window daylight, a laptop open on the counter and a coffee cup beside it
 
-**Shot 1** (2 render(s), provider naive, QC 5/10)
+**Shot 1** (2 render(s), provider veo, QC 5/10)
 
 - QC: Frame 1 expression is a pained, squinting grimace with bared teeth. It reads as distress or disgust, not a deadpan, slightly smug eyebrow raise, and the teeth and mouth look slightly distorted.
 - QC: The action doesn't match the brief. The man turns to full profile and looks down at the laptop, then gestures with an open hand, then sips or holds a mug. The slow head shake and the quick glance at the laptop and back are missing, and the mug handling isn't in the brief.
@@ -68,7 +68,7 @@ Video: [run1-stop-paying-for-tools-you-barely-use.mp4](run1-stop-paying-for-tool
 - QC: The laptop screen is angled toward the camera and mostly in focus, and it looks like a generic dark UI with a blue bar. It has no clear Monid terminal, ranked-list or balance-readout cues. It is at least not legible.
 - QC: The look is cinematic and over-processed, with a heavy shallow-depth-of-field blur and a soft, glowing window. It looks more like a polished AI render than a casual phone video.
 
-- Note: first frame skipped: naive: a request with this Idempotency-Key is still in flight; retry once it has completed
+- Note: first frame skipped: provider: a request with this Idempotency-Key is still in flight; retry once it has completed
 
 <details><summary>Final video prompt</summary>
 
@@ -76,9 +76,9 @@ Vertical 9:16 handheld smartphone selfie video, UGC style, slight natural shake,
 
 </details>
 
-**Shot 2** (1 render(s), provider naive, QC n/a/10)
+**Shot 2** (1 render(s), provider veo, QC n/a/10)
 
-- Note: quality check skipped: naive: the model returned a malformed tool call
+- Note: quality check skipped: provider: the model returned a malformed tool call
 
 <details><summary>Final video prompt</summary>
 
@@ -90,7 +90,7 @@ Vertical 9:16 handheld smartphone video, UGC style. Selfie at arm's length with 
 
 Run 2: identity holds (same person in both shots, confirmed by the continuity check), but monitors and laptop screens face the camera with fake text, and the creators point, thumbs-up and turn their heads fast, which renders distorted. QC 4/10 after re-renders.
 
-### Twelve sign-ups  (QC 4/10, $12.88 on Naive)
+### Twelve sign-ups  (QC 4/10, $12.88 on Veo)
 
 ![frames](run2-twelve-sign-ups-frames.jpg)
 
@@ -102,7 +102,7 @@ Video: [run2-twelve-sign-ups.mp4](run2-twelve-sign-ups.mp4) · format: Problem/s
 
 **Continuity check:** same person: Both shots show the same woman with a messy dark bun, round glasses and a charcoal hoodie, in the same cluttered desk setup with a warm lamp, a blue monitor glow, a mug and a pen cup; only her expression and pose differ.
 
-**Shot 1** (2 render(s), provider naive, QC 4/10)
+**Shot 1** (2 render(s), provider veo, QC 4/10)
 
 - QC: A monitor faces the camera in frames 1, 2 and 4, and its screen shows a white document-like page with sticky notes. The brief says no readable screens and the laptop angled away.
 - QC: The expression doesn't match the brief. She has a wide, toothy, eager grin in frames 1 and 3, with wide eyes in frame 3. The brief asks for a deadpan, tired, wry look with a small smile. Frame 4 shows her eyes closed or squinting.
@@ -117,7 +117,7 @@ Vertical 9:16 handheld smartphone selfie video, UGC style, shot at arm's length 
 
 </details>
 
-**Shot 2** (2 render(s), provider naive, QC 4/10)
+**Shot 2** (2 render(s), provider veo, QC 4/10)
 
 - QC: The monitor on the right faces the camera with a bright white screen, visible document-like lines and sticky notes. The brief says no readable screens, only a soft blue-and-white glow, so this is a brand-rule violation.
 - QC: The gesture doesn't match the brief. In frame 1 she points a thumb and finger at the lens instead of tapping once in the air toward the laptop. In frame 2 the hand is a motion-blurred smear.
@@ -132,7 +132,7 @@ Vertical 9:16 handheld smartphone selfie video, UGC style, natural slight shake,
 
 </details>
 
-### The tool list your agent didn't have  (QC 4/10, $9.72 on Naive)
+### The tool list your agent didn't have  (QC 4/10, $9.72 on Veo)
 
 ![frames](run2-the-tool-list-your-agent-didn-t-have-frames.jpg)
 
@@ -144,7 +144,7 @@ Video: [run2-the-tool-list-your-agent-didn-t-have.mp4](run2-the-tool-list-your-a
 
 **Continuity check:** same person: Both shots show the same dark-haired man with light stubble in a plain black t-shirt, in the same neutral-walled room with soft window light and a laptop angled away on the desk; only the pose and the laptop screen glow differ slightly.
 
-**Shot 1** (1 render(s), provider naive, QC 7/10)
+**Shot 1** (1 render(s), provider veo, QC 7/10)
 
 - QC: No critical defects: hands, teeth, and face look natural, and identity is consistent across the four frames.
 - QC: Frames 2 and 4 catch him mid-blink or with eyes closed. Frame 4 reads as sleepy rather than a patient teacher look, so the edit should avoid holding on it.
@@ -159,7 +159,7 @@ Vertical 9:16 handheld smartphone video, UGC style. Chest-up selfie at arm's len
 
 </details>
 
-**Shot 2** (2 render(s), provider naive, QC 4/10)
+**Shot 2** (2 render(s), provider veo, QC 4/10)
 
 - QC: Frame 1: big thumbs-up toward the lens. The brief said no big gestures toward the camera, and the hand is oversized and distorted, close to the lens with a bulky thumb.
 - QC: The laptop is not angled away. It faces the camera in every frame, and its bright white-grey screen is visible. The brief called for a back or edge view with only a soft glow. The blue outline looks like a neon rim, not a spill of light.
@@ -178,7 +178,7 @@ Vertical 9:16 handheld smartphone video, UGC style. Chest-up selfie at arm's len
 
 Run 3 (all fixes up to then): same person throughout, no readable screens, small natural actions. 'Three Sign-Ups Later' uses an arm's-length selfie, so a huge wide-angle forearm fills every frame. 'We Killed the Subscriptions' (propped-up phone) is the best of the six and is close to usable; QC docked it for a bigger grin than scripted and off-center framing.
 
-### Three Sign-Ups Later  (QC 4/10, $12.96 on Naive)
+### Three Sign-Ups Later  (QC 4/10, $12.96 on Veo)
 
 ![frames](run3-three-sign-ups-later-frames.jpg)
 
@@ -190,7 +190,7 @@ Video: [run3-three-sign-ups-later.mp4](run3-three-sign-ups-later.mp4) · format:
 
 **Continuity check:** same person: Both shots show the same man with dark curly hair, stubble, round glasses and an electric-blue hoodie at the same lamp-lit kitchen table with a laptop and mug behind him; only his pose and expression differ, since he is sipping from a mug in shot 2.
 
-**Shot 1** (3 render(s), provider naive, QC 4/10)
+**Shot 1** (3 render(s), provider veo, QC 4/10)
 
 - QC: A giant foreground forearm fills the lower-left of every frame. The prompt explicitly banned this, and it gives a wide-angle selfie distortion.
 - QC: The laptop is not fully closed. It looks like an open laptop with a pale screen or lid angled toward the camera, and it changes shape and position between frames. The brief required a closed, flat laptop.
@@ -205,9 +205,9 @@ Vertical 9:16 handheld smartphone selfie video, UGC style. The phone is held at 
 
 </details>
 
-**Shot 2** (1 render(s), provider naive, QC n/a/10)
+**Shot 2** (1 render(s), provider veo, QC n/a/10)
 
-- Note: quality check skipped: naive: the quality check returned no verdict
+- Note: quality check skipped: provider: the quality check returned no verdict
 
 <details><summary>Final video prompt</summary>
 
@@ -215,7 +215,7 @@ Vertical 9:16 handheld smartphone video, UGC style, selfie at arm's length with 
 
 </details>
 
-### We Killed the Subscriptions  (QC 5/10, $19.44 on Naive)
+### We Killed the Subscriptions  (QC 5/10, $19.44 on Veo)
 
 ![frames](run3-we-killed-the-subscriptions-frames.jpg)
 
@@ -227,7 +227,7 @@ Video: [run3-we-killed-the-subscriptions.mp4](run3-we-killed-the-subscriptions.m
 
 **Continuity check:** same person: Both shots show the same woman with a dark shoulder-length bob, small gold hoop earrings, an off-white tee under an open black overshirt, and the same bright window corner with a plant and closed laptop on a wooden table, with only small differences in angle and framing.
 
-**Shot 1** (3 render(s), provider naive, QC 5/10)
+**Shot 1** (3 render(s), provider veo, QC 5/10)
 
 - QC: Frame 3 has a wide-eyed, exaggerated, startled expression with a big open-mouth grin. It contradicts the brief's calm, deadpan, wry delivery and looks uncanny and cheap.
 - QC: Frame 2 shows a broad toothy smile instead of a closed-mouth half-smile, which is off-brief for the flat, matter-of-fact tone.
@@ -242,7 +242,7 @@ Vertical 9:16 UGC-style smartphone video. The phone is propped on a stable surfa
 
 </details>
 
-**Shot 2** (3 render(s), provider naive, QC 5/10)
+**Shot 2** (3 render(s), provider veo, QC 5/10)
 
 - QC: Framing deviates from the brief: the prompt specified her centered and square to the lens, mid-chest to just above the head. She is off-center right with shoulders angled, and the frame runs from the head down to the lap and knee.
 - QC: Her knee or leg is visible in the bottom-left corner, and her forearms or hands are partly visible at the bottom edge. The prompt said no hands, arms or knees in frame.
@@ -261,7 +261,7 @@ Vertical 9:16 smartphone video, UGC style, phone propped on a table at eye level
 
 1. **Selfie framing.** Arm's-length selfies give a giant distorted forearm. The strategist now asks for a propped-up phone (not yet re-tested).
 2. **Expression and action control.** Veo exaggerates grins, closes eyes mid-shot and adds head turns. Try shorter, calmer action lines, or `seconds: 6`, or a second take per shot and let QC pick the best.
-3. **Upscaling.** Naive renders Veo at 720p; Adtopia upscales with ffmpeg. A real upscaler (`black-forest-labs/flux-video-upscale` is in Naive's catalogue) is untested.
-4. **Captions.** Real UGC has burned-in captions; Adtopia adds none yet (video models garble text, so this must be done after rendering, e.g. Naive clips `caption_preset` or ffmpeg drawtext from the script).
+3. **Upscaling.** Veo renders at 720p; Adtopia upscales with ffmpeg. A real upscaler (`black-forest-labs/flux-video-upscale` is on fal) is untested.
+4. **Captions.** Real UGC has burned-in captions; Adtopia adds none yet (video models garble text, so this must be done after rendering, e.g. post-render presets or ffmpeg drawtext from the script).
 5. **Physical products.** The product-photo first frame (real packaging in shot) has not been tested end to end: monid.ai has no physical product. Run a consumer brand next.
 6. **Cost.** QC re-renders made run 3 cost $16.28 per video; the QC rubric was loosened afterwards to fail only realism defects.

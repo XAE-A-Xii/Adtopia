@@ -6,7 +6,7 @@ import type { CodeAdBrand, CodeAdStory, Voiced } from "./types";
 /** ElevenLabs audio tags ("[shouting]") steer the delivery; they are never shown or timed. */
 const TAG = /\[[^\]]*\]/g;
 export const untag = (s: string) => (s ?? "").replace(TAG, " ").replace(/\s{2,}/g, " ").trim();
-/** A word as the anchors match it: lower case letters and digits only, accents dropped ("Naïve" → "naive"). */
+/** A word as the anchors match it: lower case letters and digits only, accents dropped ("café" → "cafe"). */
 export const norm = (token: string) => token.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 /** A spoken token as the caption shows it: no edge punctuation (keeps $ and %), first letter capitalized. */
 export function display(token: string) {

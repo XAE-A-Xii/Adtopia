@@ -1,5 +1,5 @@
 import { body, handle } from "@/lib/api";
-import { NaiveClient } from "@/lib/naive";
+import { FAL } from "@/lib/fal";
 import { DEFAULTS, deleteSetting, getSetting, SECRET_KEYS, secretStatus, type SettingKey, setSetting } from "@/lib/settings";
 
 export const runtime = "nodejs";
@@ -28,22 +28,12 @@ const EDITABLE: SettingKey[] = [
   "remake_voice_match",
   "remake_max_usd",
   "remake_screens",
-  "persona_character",
   "production_mode",
   "creator_fee_usd",
 ];
 
-let models: { at: number; ids: string[] } | null = null;
-
-async function videoModels() {
-  if (models && Date.now() - models.at < 10 * 60 * 1000) return models.ids;
-  try {
-    const ids = (await new NaiveClient().mediaModels("video")).sort();
-    models = { at: Date.now(), ids };
-    return ids;
-  } catch {
-    return [getSetting("video_model")];
-  }
+function videoModels() {
+  return [...new Set([FAL.i2v, FAL.t2v, getSetting("video_model")].filter(Boolean))].sort();
 }
 
 export async function GET() {
@@ -51,7 +41,7 @@ export async function GET() {
     Response.json({
       values: Object.fromEntries(EDITABLE.map((key) => [key, getSetting(key)])),
       secrets: Object.fromEntries(SECRET_KEYS.map((key) => [key, secretStatus(key)])),
-      videoModels: await videoModels(),
+      videoModels: videoModels(),
     }),
   );
 }

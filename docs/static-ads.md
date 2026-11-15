@@ -156,22 +156,21 @@ Known gaps, stated in the pack's README where they apply:
 ## Costs
 
 Measured on 2026-11-08 with a static-ads-only campaign for monid.ai (4 concepts, 14 sizes each),
-from Monid's run list and Naive's credit ledger:
+from Monid's run list and Anthropic / fal token and image costs:
 
 | Item | Cost |
 | --- | --- |
 | Campaign research on Monid (17 runs) | $0.051 |
 | Static research on Monid (23 runs) | $0.032 |
-| Planning, ad study, copy and four image checks on Naive (9 model calls, Claude Haiku 5.5 and Opus 5.5) | $0.479 |
-| Generated pictures | none in this run; when a concept needs one, the cost Naive reports is added to the pack |
+| Planning, ad study, copy and four image checks on Claude (9 model calls) | $0.479 |
+| Generated pictures | none in this run; when a concept needs one, the fal image cost is added to the pack |
 | **Total** | **about $0.56**, about four minutes end to end |
 
-The tab shows each pack's Monid cost exactly and estimates the model cost from token counts at
-Anthropic's list prices (Naive bills its own rate; its ledger is the record).
+The tab shows each pack's Monid cost and estimates the model cost from token counts at
+Anthropic's list prices.
 
-Model calls stream through Naive's proxy: a long call made as a plain request was cut off upstream
-after about 30 seconds and still billed for what it had generated. The steps that call models
-retry at most twice for that reason.
+Model calls stream with Claude SSE: the steps that call models
+retry at most twice on transient errors.
 
 ## Code
 

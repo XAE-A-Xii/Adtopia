@@ -79,8 +79,7 @@ function view(campaign: Record<string, unknown>): BrandView {
       stage: "research",
       stageIndex: 0,
       error: null,
-      naiveOut: false,
-      options: { concepts: 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "google/veo-3.1", learnStyle: true },
+      options: { concepts: 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: true },
       estimateUsd: null,
       plan: null,
       research: null,
@@ -89,7 +88,7 @@ function view(campaign: Record<string, unknown>): BrandView {
       runs: [],
       creatives: [],
       posts: [],
-      spend: { naive: 0, monid: 0, style: 0, strategy: 0 },
+      spend: { ai: 0, monid: 0, style: 0, strategy: 0 },
       createdAt: "2026-11-07T10:00:00Z",
       ...campaign,
     },
@@ -127,10 +126,10 @@ describe("the march into the camp", () => {
     const { camp, run: tick } = world(true);
     const said: string[] = [];
     camp.events.onSay = (line) => said.push(line.text);
-    camp.brandName = "Naïve";
+    camp.brandName = "Monid";
     camp.apply(derive(view({ runs: [run("brand", "pending", "A")] })));
     tick(3);
-    expect(said[0]).toBe("Team Naïve, down to the HQ! Let's roll out!");
+    expect(said[0]).toBe("Team Monid, down to the HQ! Let's roll out!");
   });
 
   it("places everyone at once when the camp is opened directly", async () => {

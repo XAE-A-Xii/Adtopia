@@ -222,7 +222,7 @@ function DmThread({ length }: { length: number }) {
           <div style={{ alignSelf: "center", fontSize: 15, color: "#999", fontFamily: "Geist Mono", letterSpacing: 1, textTransform: "uppercase" }}>{sent ? "Today" : "Draft"}</div>
           <div style={{ alignSelf: "flex-end", display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
             <span style={{ fontSize: 16, color: "#777" }}>{OUTREACH.brand}</span>
-            <Img src={staticFile("naive-logo.svg")} style={{ width: 28, height: 28, borderRadius: 7 }} />
+            <Img src={staticFile("adtopia-logo.png")} style={{ width: 28, height: 28, borderRadius: 7 }} />
           </div>
           <div
             style={{

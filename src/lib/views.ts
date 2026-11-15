@@ -22,16 +22,14 @@ import type { Concept as StaticConcept } from "./statics/writer";
 // What the UI reads. Money leaves the server as dollars; provider ids stay on the server. Each view
 // is one read of the store (a snapshot), so the camp's polling costs one round trip on Convex.
 
-export const VEO_USD_PER_SECOND = 0.4; // measured on Naive: an 8 s google/veo-3.1 render cost $3.20
-export const KLING_USD_PER_SECOND = 0.168; // Kling 3.0 on Monid at 1080p with audio: $1.68 for 10 s
+export const KLING_USD_PER_SECOND = 0.168; // Kling 3.0 at 1080p with audio: $1.68 for 10 s
 
 export const usd = (micro: number) => Math.round(micro) / 1_000_000;
 
-export function estimateUsd(options: CampaignOptions, engine = getSetting("presenter_engine")) {
+export function estimateUsd(options: CampaignOptions) {
   const seconds = options.concepts * options.shotsPerConcept * options.secondsPerShot;
   // Kling renders each shot about a second longer than its line (the edit trims it).
-  if (engine !== "naive") return Math.round((seconds + options.concepts * options.shotsPerConcept) * KLING_USD_PER_SECOND * 100) / 100;
-  return options.videoModel === "google/veo-3.1" ? Math.round(seconds * VEO_USD_PER_SECOND * 100) / 100 : null;
+  return Math.round((seconds + options.concepts * options.shotsPerConcept) * KLING_USD_PER_SECOND * 100) / 100;
 }
 
 const STAGES = ["research", "style", "strategy", "production", "review", "live"] as const;
@@ -109,7 +107,6 @@ function campaignView(campaign: CampaignRow, runs: RunRow[], creativeRows: Creat
     stage: campaign.stage,
     stageIndex: STAGES.indexOf(campaign.stage),
     error: campaign.error,
-    naiveOut: Boolean(campaign.naive_out),
     options,
     estimateUsd: estimateUsd(options),
     plan: parse<ResearchPlan | null>(campaign.plan_json, null),
@@ -138,13 +135,13 @@ function campaignView(campaign: CampaignRow, runs: RunRow[], creativeRows: Creat
         analytics: parse<Record<string, unknown> | null>(post.analytics_json, null),
       };
     }),
-    spend: { naive: usd(campaign.naive_spend_micro), monid: usd(campaign.monid_spend_micro), style: usd(campaign.style_spend_micro), strategy: usd(campaign.strategy_spend_micro) },
+    spend: { ai: usd(campaign.naive_spend_micro), monid: usd(campaign.monid_spend_micro), style: usd(campaign.style_spend_micro), strategy: usd(campaign.strategy_spend_micro) },
     statics: staticsView(campaign.id, runs),
     createdAt: campaign.created_at,
   };
 }
 
-/** Anthropic list prices per million tokens, for an estimate of what model calls cost (Naive bills its own rate). */
+/** Anthropic list prices per million tokens, for an estimate of what model calls cost. */
 const LIST_PRICE: Record<string, [number, number]> = { "anthropic/claude-opus-5.5": [4, 20], "anthropic/claude-sonnet-5.5": [2, 10], "anthropic/claude-haiku-5.5": [0.1, 0.5] };
 
 /** The campaign's latest static ad pack. Packs live in SQLite only, so there is none on Convex. */

@@ -702,7 +702,7 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
     if (screening && !finishedVideos.some((c) => c.id === screening)) setScreening(null);
   }, [screening, finishedVideos]);
 
-  const spend = campaign ? campaign.spend.naive + campaign.spend.monid : 0;
+  const spend = campaign ? campaign.spend.ai + campaign.spend.monid : 0;
   // Finished videos waiting for you: the theatre calls for attention until they are approved and sent.
   const review = useMemo(() => {
     if (plan.stations.theatre.state !== "yours" || !campaign) return null;
@@ -980,7 +980,7 @@ function TopBar({
       )}
 
       {campaign && (
-        <span className={`${styles.pixel} pointer-events-auto hidden shrink-0 text-[13px] text-[var(--ink-soft)] sm:inline ${demo ? "ml-auto" : ""}`} title={`Naive ${money(campaign.spend.naive)} · Monid ${money(campaign.spend.monid)}${campaign.estimateUsd ? ` · video budget about ${money(campaign.estimateUsd)}` : ""}`}>
+        <span className={`${styles.pixel} pointer-events-auto hidden shrink-0 text-[13px] text-[var(--ink-soft)] sm:inline ${demo ? "ml-auto" : ""}`} title={`AI ${money(campaign.spend.ai)} · Monid ${money(campaign.spend.monid)}${campaign.estimateUsd ? ` · video budget about ${money(campaign.estimateUsd)}` : ""}`}>
           {money(spend)} spent
         </span>
       )}

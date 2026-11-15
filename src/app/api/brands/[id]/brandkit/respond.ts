@@ -1,12 +1,12 @@
 // Shared plumbing for the /api/brands/[id]/brandkit routes (not a route itself).
+import { claudeClient, hasClaude } from "@/lib/claude";
 import { BrandKitError, startCaptioning } from "@/lib/creative/brandkit";
-import { NaiveClient } from "@/lib/naive";
-import { loadSettings, secretStatus } from "@/lib/settings";
+import { loadSettings } from "@/lib/settings";
 
 /** Runs a route body and answers JSON: the result, or `{ error }` with a status the panel can show. */
 export async function respond(body: () => Promise<unknown>) {
   try {
-    // Settings (the Naive key for captions) come from the store; on Convex they load per request.
+    // Settings (the Anthropic key for captions) come from the store; on Convex they load per request.
     await loadSettings();
     return Response.json(await body(), { headers: { "cache-control": "no-store" } });
   } catch (error) {
@@ -16,10 +16,10 @@ export async function respond(body: () => Promise<unknown>) {
   }
 }
 
-/** Describes new images in the background when a Naive key is set; never fails the request. */
+/** Describes new images in the background when an Anthropic key is set; never fails the request. */
 export function captionInBackground(brandId: string) {
   try {
-    if (secretStatus("naive_api_key").set) startCaptioning(brandId, () => new NaiveClient());
+    if (hasClaude()) startCaptioning(brandId, () => claudeClient());
   } catch (error) {
     console.error("[brandkit] caption pass not started", error);
   }

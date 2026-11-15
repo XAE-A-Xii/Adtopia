@@ -267,7 +267,7 @@ describe("brainrot in a campaign", () => {
       const id = await insertCreative(campaignId, 0, brainrotConcept(brief, normalizeBrainrot(raw(), ctx)));
       const [row] = await store().find<CreativeRow>("creatives", { id }, { limit: 1 });
       expect(JSON.parse(row.shots_json)).toEqual([]);
-      await advanceCreative({ campaignId, brandId, naive: null, monid: null, naiveOut: () => false, markNaiveOut: async () => undefined, strategy: {} as Strategy }, row);
+      await advanceCreative({ campaignId, brandId, claude: null, fal: null, monid: null, strategy: {} as Strategy }, row);
       const [after] = await store().find<CreativeRow>("creatives", { id }, { limit: 1 });
       expect(after.status).toBe("failed");
       expect(after.error).toMatch(/needs Claude .* fal .* ElevenLabs or Monid/);

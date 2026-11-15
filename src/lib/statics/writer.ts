@@ -1,4 +1,4 @@
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { extractJson, type ResearchPack } from "../research";
 import { getBool, getSetting } from "../settings";
 import type { Strategy } from "../strategy";
@@ -9,7 +9,7 @@ import type { Study } from "./study";
 import { appearsIn, checkSearchAssets, cleanXPost, type SearchAssets, slopIn, stripEmoji, unsupportedNumbers } from "./validate";
 
 // The copywriter: concepts with their on-image copy and the copy each platform asks for, then the
-// Google text assets. Two calls through Naive's model proxy, in parallel, each forced into a schema.
+// Google text assets. Two calls to Claude, in parallel, each forced into a schema.
 // Everything it returns is checked; a concept that fails is sent back once with the problems.
 
 export type Concept = {
@@ -178,22 +178,22 @@ function context(input: WriterInput) {
     .join("\n\n");
 }
 
-export async function writeConcepts(naive: NaiveClient, input: WriterInput, fix?: { concepts: Concept[]; problems: string[][] }) {
+export async function writeConcepts(claude: Pick<ClaudeClient, "messageStream">, input: WriterInput, fix?: { concepts: Concept[]; problems: string[][] }) {
   const model = getSetting("static_model");
   const ask = fix
     ? `These concepts failed the checks. Return ${fix.concepts.length} corrected concepts in the same order, fixing every problem listed and keeping what works.\n${JSON.stringify(fix.concepts.map((c, i) => ({ concept: { archetype: c.archetype, headline: c.copy.headline, angle: c.angle }, problems: fix.problems[i] })))}`
     : `Write ${input.concepts} concepts. Use the art direction's archetypes, best first, and make each concept a different layout.${getBool("static_ai_images") ? "" : " Generated pictures are switched off: use screenshot, site_photo or none."}`;
-  const reply = await naive.messageStream({ model, max_tokens: 16000, system: RULES, messages: [{ role: "user", content: `${context(input)}\n\n${ask}\n\nCall the static_concepts tool exactly once.` }], tools: [CONCEPT_TOOL] });
+  const reply = await claude.messageStream({ model, max_tokens: 16000, system: RULES, messages: [{ role: "user", content: `${context(input)}\n\n${ask}\n\nCall the static_concepts tool exactly once.` }], tools: [CONCEPT_TOOL] });
   const call = reply.content.find((block) => block.type === "tool_use" && block.name === CONCEPT_TOOL.name);
   const raw = (call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"))) as { concepts?: unknown[] } | null;
   const ids = input.research.ads.slice(0, 24).map((ad) => ad.id);
   return { concepts: (raw?.concepts ?? []).map((entry) => toConcept(entry, ids)), tokens: usage(reply.usage) };
 }
 
-export async function writeSearchAssets(naive: NaiveClient, input: WriterInput) {
+export async function writeSearchAssets(claude: Pick<ClaudeClient, "messageStream">, input: WriterInput) {
   const model = getSetting("static_model");
   const keywords = [...(input.research.plan.search_keywords ?? []), ...input.pack.seo.keywords.slice(0, 8).map((k) => k.keyword)];
-  const reply = await naive.messageStream(
+  const reply = await claude.messageStream(
     {
       model,
       max_tokens: 10000,

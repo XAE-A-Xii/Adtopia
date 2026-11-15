@@ -1,7 +1,7 @@
 /** A failed call to one of Adtopia's providers, with enough detail to decide what to do next. */
 export class ApiError extends Error {
   constructor(
-    readonly service: "naive" | "monid" | "mobilerun" | "elevenlabs" | "fal" | "anthropic" | "postiz",
+    readonly service: "monid" | "mobilerun" | "elevenlabs" | "fal" | "anthropic" | "postiz",
     readonly status: number,
     readonly code: string,
     message: string,
@@ -28,7 +28,7 @@ export class ApiError extends Error {
     return this.status === 409 && !this.inFlight && /idempotency/i.test(`${this.code} ${this.message}`);
   }
 
-  /** The account is out of money (Naive `insufficient_credits`, Monid 402). */
+  /** The account is out of money (Monid 402 or Anthropic insufficient_credits). */
   get outOfCredits() {
     return this.status === 402 || this.code === "insufficient_credits";
   }

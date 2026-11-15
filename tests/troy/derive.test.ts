@@ -15,8 +15,7 @@ function view(campaign: Partial<Campaign> | null): BrandView {
     stage: "research",
     stageIndex: 0,
     error: null,
-    naiveOut: false,
-    options: { concepts: 4, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "google/veo-3.1", learnStyle: true },
+    options: { concepts: 4, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: true },
     estimateUsd: 25.6,
     plan: null,
     research: null,
@@ -25,7 +24,7 @@ function view(campaign: Partial<Campaign> | null): BrandView {
     runs: [],
     creatives: [],
     posts: [],
-    spend: { naive: 0, monid: 0, style: 0, strategy: 0 },
+    spend: { ai: 0, monid: 0, style: 0, strategy: 0 },
     createdAt: "2026-11-07T10:00:00Z",
   };
   return {
@@ -38,7 +37,7 @@ function view(campaign: Partial<Campaign> | null): BrandView {
 
 const run = (key: string, status: string, phase = "C") => ({ key, phase, provider: "anyapi", endpoint: "/x", status, error: null, cost_micro: 0, cost: 0 });
 
-const shot = (n: number, status: string) => ({ n, status, provider: status === "rendering" ? "naive" : null, renders: 0, frameUrl: null, qc: null, error: null });
+const shot = (n: number, status: string) => ({ n, status, provider: status === "rendering" ? "fal" : null, renders: 0, frameUrl: null, qc: null, error: null });
 
 function creative(idx: number, status: string, shots: string[], extra: Record<string, unknown> = {}) {
   return {
@@ -159,7 +158,7 @@ describe("the camp through the pipeline", () => {
     expect(plan.stations.workshop).toMatchObject({ state: "working", status: "1 of 4 ready · 1 shot rendering" });
     expect(plan.agents.some((a) => a.id === "painter")).toBe(true);
     expect(plan.agents.find((a) => a.id === "inspector")?.task).toMatch(/Checking every frame/);
-    expect(plan.agents.find((a) => a.id === "editor:0")?.task).toBe("“Concept 0”: shot 2 of 2 rendering on Veo");
+    expect(plan.agents.find((a) => a.id === "editor:0")?.task).toBe("“Concept 0”: shot 2 of 2 rendering on Kling");
     expect(plan.props.reels).toBe(1);
   });
 
@@ -240,8 +239,8 @@ describe("the camp through the pipeline", () => {
   });
 
   it("shows where a campaign stopped, with the core's message", () => {
-    const plan = derive(view({ stage: "strategy", stageIndex: 2, status: "failed", error: "Naive has no agent named nomen-strategist." }));
-    expect(plan.stations.tent).toMatchObject({ state: "failed", status: "Naive has no agent named nomen-strategist." });
+    const plan = derive(view({ stage: "strategy", stageIndex: 2, status: "failed", error: "ANTHROPIC_API_KEY is missing." }));
+    expect(plan.stations.tent).toMatchObject({ state: "failed", status: "ANTHROPIC_API_KEY is missing." });
     expect(plan.stations.scouts.state).toBe("done");
     expect(plan.stations.workshop.state).toBe("waiting");
   });
@@ -250,15 +249,15 @@ describe("the camp through the pipeline", () => {
 describe("dispatches", () => {
   it("land on the station they are about", () => {
     const cases: Array<[string, string]> = [
-      ["Campaign started: 4 videos, 2 shots each, google/veo-3.1", "scouts"],
+      ["Campaign started: 4 videos, 2 shots each, fal-ai/kling-video/v3/pro/image-to-video", "scouts"],
       ["Research done: 24 top videos, 12 live ads, 10 Reddit threads, 18 keywords (16/16 sources)", "scouts"],
       ["Studying the format of 3 top-performing videos", "oracle"],
       ["Format study ready (skill nomen-style-acme@1)", "oracle"],
       ["The strategist is writing the brand brief and 4 concepts", "tent"],
       ['Campaign "The Afternoon Swap": 4 concepts, now producing', "tent"],
-      ['The creative director chose 3 videos, each on what the research found: "I told Naïve" (faceless clone: one silent desk shot pulled 407K views)', "tent"],
+      ['The creative director chose 3 videos, each on what the research found: "I told the team" (faceless clone: one silent desk shot pulled 407K views)', "tent"],
       ['QC sent "Blind taste test" shot 1 back (6/10): the label is garbled', "workshop"],
-      ["Shot 2 is rendering on Monid (Kling 3.0) because Naive is unavailable", "workshop"],
+      ["Shot 2 is rendering on Monid (Kling 3.0) because fal is unavailable", "workshop"],
       ['"The 3pm slump swap" is ready (QC 8/10)', "workshop"],
       ["3 of 4 videos are ready for review", "theatre"],
       ["Queued 3 posts one per day", "agora"],

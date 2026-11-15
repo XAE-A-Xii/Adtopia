@@ -71,11 +71,11 @@ describe("the remake in production", () => {
     const concept = { title: "Clone", format: "remake", angle: "", platforms: ["tiktok"], hook: "", creator: "", setting: "", shots: [], reference_images: [], caption: "", hashtags: [], cta: "", inspired_by: [], why: "", internal: true, brief: { format: "remake" } } as unknown as Concept;
     const id = await insertCreative(campaignId, 0, concept);
     const [row] = await listCreatives(campaignId);
-    const ctx = { campaignId, brandId, naive: {}, monid: null, naiveOut: () => false, markNaiveOut: async () => undefined, strategy: {} } as unknown as ProductionContext;
+    const ctx = { campaignId, brandId, claude: {}, fal: {}, monid: null, strategy: {} } as unknown as ProductionContext;
     await advanceRemake(ctx, row, concept);
     const [failed] = await listCreatives(campaignId);
     expect(failed).toMatchObject({ id, status: "failed" });
-    expect(failed.error).toMatch(/needs Naive .* and Monid/);
+    expect(failed.error).toMatch(/needs Anthropic .* fal .* and Monid/);
     const view = (await brandView(brandId))!;
     expect(view.campaign!.creatives[0]).toMatchObject({ internal: true, cleared: null });
   });
@@ -85,17 +85,17 @@ describe("the remake in production", () => {
       "crv_x",
       {
         takes: [
-          { n: 1, layer: "s1", role: "host", inset: false, start: 0, end: 6, status: "rendered", frame_key: "crv_x/shot1-frame.png", naive_micro: 40_000, monid_micro: 1_176_000, error: null },
-          { n: 2, layer: "s2-inset", role: "host", inset: true, start: 6, end: 9, status: "rendering", frame_key: null, naive_micro: 0, monid_micro: 0, error: null },
+          { n: 1, layer: "s1", role: "host", inset: false, start: 0, end: 6, status: "rendered", frame_key: "crv_x/shot1-frame.png", fal_micro: 40_000, monid_micro: 1_176_000, error: null },
+          { n: 2, layer: "s2-inset", role: "host", inset: true, start: 6, end: 9, status: "rendering", frame_key: null, fal_micro: 0, monid_micro: 0, error: null },
         ],
-        spend: { naive_micro: 40_000, monid_micro: 1_200_000 },
+        spend: { fal_micro: 40_000, monid_micro: 1_200_000 },
         estimate: null,
       },
-      { naive_micro: 5_000, monid_micro: 24_000 },
+      { fal_micro: 5_000, monid_micro: 24_000 },
       "kling-native",
       true,
     );
-    expect(shots.map((s) => [s.n, s.status, s.provider, s.frame_key, s.naive_cost, s.monid_cost])).toEqual([
+    expect(shots.map((s) => [s.n, s.status, s.provider, s.frame_key, s.fal_cost, s.monid_cost])).toEqual([
       [1, "passed", "monid", "crv_x/shot1-frame.png", 45_000, 1_200_000],
       [2, "rendering", "monid", null, 0, 0],
     ]);

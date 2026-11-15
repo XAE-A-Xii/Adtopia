@@ -150,7 +150,7 @@ describe.each(BACKENDS)("the pipeline on the %s store", (_name, make) => {
     const concept = { title: "Swap", format: "UGC", angle: "a", platforms: ["tiktok"], hook: "h", creator: "", setting: "", shots: [{ frame_prompt: "f", video_prompt: "v", seconds: 8 }], reference_images: [], caption: "c", hashtags: [], cta: "", inspired_by: [], why: "" };
     const first = await insertCreative(campaignId, 0, concept as never);
     const second = await insertCreative(campaignId, 1, concept as never);
-    const shots = (n: number) => JSON.stringify([{ n: 1, status: "passed", naive_cost: n, monid_cost: 1000 }]);
+    const shots = (n: number) => JSON.stringify([{ n: 1, status: "passed", fal_cost: n, monid_cost: 1000 }]);
     await store().update("creatives", { id: first }, { status: "ready", shots_json: shots(3_200_000) });
     await store().update("creatives", { id: second }, { status: "ready", shots_json: shots(3_200_000) });
     const retake = await regenerateCreative(second, "brighter");
@@ -167,8 +167,7 @@ describe.each(BACKENDS)("the pipeline on the %s store", (_name, make) => {
     await recomputeSpend(campaignId);
     const campaign = (await getCampaign(campaignId))!;
     // The retake starts with fresh shots: only the two finished videos have spent anything.
-    expect(campaign.monid_spend_micro).toBe(30_000 + 2 * 1000);
-    expect(campaign.naive_spend_micro).toBe(2 * 3_200_000);
+    expect(campaign.monid_spend_micro).toBe(30_000 + 2 * 1000 + 2 * 3_200_000);
     const view = (await brandView(brandId))!;
     expect(view.campaign!.creatives.map((c) => c.id)).toEqual([first, retake]);
     expect(view.campaign!.creatives[0]).toMatchObject({ approved: true, videoUrl: null });

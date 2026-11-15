@@ -161,7 +161,7 @@ breakdown's `role` is `convert` for ads, for candidates whose evidence says conv
 the model reads as built to sell that actually ask for the click; otherwise `reach`. It also keeps
 `origin` and the candidate's `conversion` score and signals.
 
-### The director plans a funnel mix (`strategy.ts`, `naive/agents/director.md`)
+### The director plans a funnel mix (`strategy.ts`, `DIRECTOR_PROMPT`)
 
 - Every brief has `role` (reach or convert) and `metric` (views, shares or saves; link_clicks,
   sign_ups or purchases). Both are required by the schema.
@@ -171,8 +171,7 @@ the model reads as built to sell that actually ask for the click; otherwise `rea
   read "unknown (paid ad)". Convert briefs remake converters and keep their selling beats; reach
   briefs remake reach proof with a soft ask. References should rebuild cleanly and run 45 s or
   less when the evidence is close.
-- `director.md` changes reach Naive only after `npm run naive:plan` and an approved apply. The
-  per-campaign message and the schema carry the same rules now.
+- The per-campaign message and the schema carry the conversion and funnel rules.
 
 ### The script room keeps the selling beats (`script.ts`)
 
@@ -262,11 +261,9 @@ on camera +2.5"), shown to the screen, the director and the camp.
   on TikTok (`tiktok_face_*`) and the first on Reels (`reels_face_0`); a face query that repeats a
   conversion query is skipped. Fallback: "<category> storytime", "<category> testimonial".
 - **Scout**: sees each video's `clones` guess and must spend at least one follow-up on face UGC.
-- **Director** (`strategyMessage`, `naive/agents/director.md`): sees `cloneability` and
+- **Director** (`strategyMessage`, `DIRECTOR_PROMPT` in `strategy.ts`): sees `cloneability` and
   `hardest_to_clone` per reference; face-to-camera UGC is the core format; prefer references at
-  6 or more; a brief that remakes one below 6 says why in `why`. The director.md change reaches
-  Naive only after `npm run naive:plan` and an approved apply; the per-campaign message carries
-  the same rules now.
+  6 or more; a brief that remakes one below 6 says why in `why`.
 - **Camp**: the Oracle shows "clones N/10" under "converts N/10" (red when below the gate), the
   hardest part, and every signal under "more".
 

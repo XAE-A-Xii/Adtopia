@@ -2,8 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ApiError } from "./http";
 import { getSetting } from "./settings";
 
-// Claude on the Anthropic API with the brand's own key: the same Messages calls Adtopia otherwise
-// sends through Naive's proxy. Model names arrive in Naive's form ("anthropic/claude-sonnet-5.5").
+// Claude on the Anthropic API with the brand's own key. Model names may arrive with a provider prefix ("anthropic/claude-sonnet-5.5").
 
 export const hasClaude = () => Boolean(getSetting("anthropic_api_key"));
 
@@ -73,10 +72,17 @@ async function guard<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-export const claudeMessage = (input: ClaudeInput, timeoutMs: number) => guard(async () => reply(await anthropic().beta.messages.create(params(input), { timeout: timeoutMs })));
+export type ClaudeClient = {
+  message: (input: ClaudeInput, timeoutMs?: number) => Promise<ClaudeReply>;
+  messageStream: (input: ClaudeInput, timeoutMs?: number) => Promise<ClaudeReply>;
+};
 
-/** Streamed, for long answers; usage as Naive's stream reports it (cache tokens folded into input). */
-export const claudeStream = (input: ClaudeInput, timeoutMs: number) =>
+export const claudeClient = (): ClaudeClient => ({ message: claudeMessage, messageStream: claudeStream });
+
+export const claudeMessage = (input: ClaudeInput, timeoutMs = 240_000) => guard(async () => reply(await anthropic().beta.messages.create(params(input), { timeout: timeoutMs })));
+
+/** Streamed, for long answers; cache tokens folded into input tokens. */
+export const claudeStream = (input: ClaudeInput, timeoutMs = 600_000) =>
   guard(async () => {
     const out = reply(await anthropic().beta.messages.stream(params(input), { timeout: timeoutMs }).finalMessage());
     const u = out.usage ?? {};

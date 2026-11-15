@@ -13,11 +13,11 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 
+import type { ClaudeClient } from "../claude";
 import { logEvent, save, store } from "../db";
 import { ApiError } from "../http";
 import { download, ffmpegPath, probe, scratchDir } from "../media";
 import { hasElevenLabs } from "../elevenlabs";
-import type { NaiveClient } from "../naive";
 import type { CreativeRow, ProductionContext } from "../production";
 import { QC_MODEL, type Verdict } from "../qc";
 import { extractJson } from "../research";
@@ -180,7 +180,7 @@ const VERDICT_TOOL = {
 };
 
 /** The QC pass every video gets, for a code ad: a vision model reads a frame sheet against the story. */
-export async function reviewCodeAd(naive: Pick<NaiveClient, "message">, input: { sheet: Buffer; times: number[]; story: CodeAdStory; brand: string }): Promise<Verdict> {
+export async function reviewCodeAd(claude: Pick<ClaudeClient, "message">, input: { sheet: Buffer; times: number[]; story: CodeAdStory; brand: string }): Promise<Verdict> {
   const rubric = [
     `This is a frame sheet (left to right, top to bottom, at ${input.times.map((t) => `${t.toFixed(1)} s`).join(", ")}) from a 3D cartoon ad for ${input.brand}, made in code: a narrator, a big-headed cartoon software developer in a 3D office with a wall screen, one spoken word at a time in the middle of the frame, coloured callouts.`,
     `The story, beat by beat: ${JSON.stringify(input.story.beats.map((b) => ({ say: b.say, gag: b.gag, screen: b.screen, callouts: b.callouts.map((c) => c.text) })))}`,
@@ -188,7 +188,7 @@ export async function reviewCodeAd(naive: Pick<NaiveClient, "message">, input: {
     "By design: the callouts sit in the lower third, over the desk; banknotes, boxes or confetti may cover the developer for a moment during their gag. Do not fail it for its cartoon style, the robots or the jokes: they are the format. Call the qc_verdict tool once.",
   ].join("\n");
   const image = { type: "image", source: { type: "base64", media_type: "image/jpeg", data: input.sheet.toString("base64") } };
-  const ask = (text: string, tools?: object[]) => naive.message({ model: QC_MODEL, max_tokens: 1500, messages: [{ role: "user", content: [image, { type: "text", text }] }], tools });
+  const ask = (text: string, tools?: object[]) => claude.message({ model: QC_MODEL, max_tokens: 1500, messages: [{ role: "user", content: [image, { type: "text", text }] }], tools });
   let raw: Partial<Verdict> | null = null;
   try {
     const reply = await ask(rubric, [VERDICT_TOOL]);
@@ -203,7 +203,7 @@ export async function reviewCodeAd(naive: Pick<NaiveClient, "message">, input: {
   }
   // a score written as "7", "7/10" or 7.5 counts; anything else is no verdict
   const found = raw ? Number.parseFloat(String((raw as { score?: unknown }).score ?? "")) : Number.NaN;
-  if (!raw || !Number.isFinite(found)) throw new ApiError("naive", 502, "qc_unreadable", "the code-ad check returned no verdict");
+  if (!raw || !Number.isFinite(found)) throw new ApiError("anthropic", 502, "qc_unreadable", "the code-ad check returned no verdict");
   const score = Math.max(1, Math.min(10, Math.round(found)));
   return { score, pass: Boolean(raw.pass) && score >= 7, issues: Array.isArray(raw.issues) ? raw.issues.filter((i): i is string => typeof i === "string").slice(0, 8) : [], fix_prompt: typeof raw.fix_prompt === "string" ? raw.fix_prompt : "" };
 }
@@ -217,14 +217,14 @@ export type MakeCodeAdInput = {
   brandName: string;
   site: string;
   narrator: Narrator;
-  /** Reads the ad when the narrator cannot (ElevenLabs refused or out of credits): Naive's own text-to-speech. */
+  /** Reads the ad when the primary narrator cannot (ElevenLabs refused or out of credits). */
   fallbackNarrator?: Narrator | null;
   files: Files;
   /** Scratch space for this run (removed by the caller). */
   dir: string;
   chrome: string;
   targetSeconds: number;
-  naive?: Pick<NaiveClient, "message"> | null;
+  claude?: Pick<ClaudeClient, "message"> | null;
   fps?: number;
   blur?: number;
   logoPath?: string | null;
@@ -243,7 +243,7 @@ export async function prepareAd(input: MakeCodeAdInput): Promise<{ story: StoryJ
   const voice = await read(input.narrator).catch((error: unknown) => {
     // a busy provider is waited out (the next tick tries again); a refusal or an empty wallet hands over to the fallback
     if (!input.fallbackNarrator || (error instanceof ApiError && error.retryable)) throw error;
-    input.log?.(`the narrator could not read it (${error instanceof Error ? error.message : String(error)}); ${input.fallbackNarrator.kind === "naive" ? "Naive's text-to-speech" : "the scratch voice"} reads it instead`);
+    input.log?.(`the narrator could not read it (${error instanceof Error ? error.message : String(error)}); the scratch voice reads it instead`);
     return read(input.fallbackNarrator);
   });
   const { story, notes } = layoutStory({ ...input.story, hero: heroFor(input.story, prefix) }, voice.voiced, brand, images, { fps: input.fps ?? 60, motionBlur: input.blur ?? 2 });
@@ -275,9 +275,9 @@ export async function makeCodeAd(input: MakeCodeAdInput): Promise<MadeCodeAd> {
   const stills = await renderStills(dir, input.chrome, times, join(dir, "stills"), 0.5);
   const sheet = await contactSheet(stills, join(dir, "frames.jpg"), 7);
   let qc: Verdict | null = null;
-  if (input.naive) {
+  if (input.claude) {
     try {
-      qc = await reviewCodeAd(input.naive, { sheet: await readFile(sheet), times, story: input.story, brand: input.brandName });
+      qc = await reviewCodeAd(input.claude, { sheet: await readFile(sheet), times, story: input.story, brand: input.brandName });
     } catch (error) {
       if (error instanceof ApiError && error.outOfCredits) throw error;
       notes.push(`the frame check did not run: ${error instanceof Error ? error.message : String(error)}`);
@@ -350,17 +350,15 @@ async function runCodeAd(ctx: ProductionContext, creative: CreativeRow, concept:
   const site = story.url || brand?.domain || "";
   const dir = join(scratchDir(), `codead-${creative.id}`);
   // ElevenLabs' Adam: with the brand's own ElevenLabs key directly, else through Monid (NOMEN_CODEAD_NARRATOR=v3: the
-  // dramatic eleven_v3 read); Naive's text-to-speech when neither can pay for it; NOMEN_CODEAD_VOICE=naive|scratch picks one outright
-  const naiveVoice: Narrator | null = ctx.naive?.hasKey && !ctx.naiveOut() ? { kind: "naive", naive: ctx.naive } : null;
+  // dramatic eleven_v3 read); scratch voice when neither is available; NOMEN_CODEAD_VOICE=scratch picks it outright
   const adam = process.env.NOMEN_CODEAD_NARRATOR === "v3" ? { model: ADAM_V3.model, settings: ADAM_V3.settings } : {};
   const want = process.env.NOMEN_CODEAD_VOICE;
   const narrator: Narrator =
     want === "scratch" ? { kind: "scratch" }
-    : want === "naive" && naiveVoice ? naiveVoice
     : hasElevenLabs() ? { kind: "eleven", ...adam }
     : ctx.monid ? { kind: "eleven", monid: ctx.monid, ...adam }
-    : (naiveVoice ?? { kind: "scratch" });
-  log(`making it: ${story.beats.length} beats, ${narrator.kind === "eleven" ? "ElevenLabs narrator" : narrator.kind === "naive" ? "Naive's text-to-speech" : "scratch narrator"}, rendering locally`);
+    : { kind: "scratch" };
+  log(`making it: ${story.beats.length} beats, ${narrator.kind === "eleven" ? "ElevenLabs narrator" : "scratch narrator"}, rendering locally`);
   try {
     const made = await makeCodeAd({
       prefix: creative.id,
@@ -370,13 +368,13 @@ async function runCodeAd(ctx: ProductionContext, creative: CreativeRow, concept:
       brandName: ctx.product.name || brand?.name || "",
       site,
       narrator,
-      fallbackNarrator: narrator.kind === "eleven" ? naiveVoice : null,
+      fallbackNarrator: narrator.kind === "eleven" ? { kind: "scratch" } : null,
       files: store().files,
       dir,
       chrome: findChrome()!,
       // the format's promise: fast, 15-25 s; the narrator is sped up (at most 1.3x) toward it
       targetSeconds: Math.min(24, Math.max(15, concept.script?.total_seconds ?? 22)),
-      naive: ctx.naive && !ctx.naiveOut() ? ctx.naive : null,
+      claude: ctx.claude,
       log,
     });
     const fields: Record<string, unknown> = {
@@ -387,16 +385,6 @@ async function runCodeAd(ctx: ProductionContext, creative: CreativeRow, concept:
       cost_micro: made.spendMicro,
       error: made.notes.length || made.qc?.issues.length ? `notes: ${[...(made.qc?.issues ?? []), ...made.notes].join("; ").slice(0, 600)}` : null,
     };
-    // Uploaded for posting like every other cut (production.ts cutFinal); posting retries the upload when Naive is busy.
-    if (ctx.naive?.hasKey) {
-      try {
-        const fileId = await ctx.naive.uploadFile(`${creative.id}.mp4`, "video/mp4", await readFile(made.path));
-        const link = await ctx.naive.fileUrl(fileId);
-        Object.assign(fields, { final_file_id: fileId, final_url: link.url, final_url_expires_at: link.expires_at });
-      } catch (error) {
-        log(`ready; its upload to Naive failed (${error instanceof Error ? error.message : String(error)}) and is retried when it is posted`);
-      }
-    }
     await save("creatives", creative.id, fields);
     log(`ready, ${made.duration.toFixed(1)} s${made.qc ? `, QC ${made.qc.score}/10` : ""}, $${(made.spendMicro / 1e6).toFixed(2)} for the narrator`);
   } finally {

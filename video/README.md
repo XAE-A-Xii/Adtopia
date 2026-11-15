@@ -1,6 +1,6 @@
 # The demo video
 
-The edited walk-through of the Naïve demo: the app filmed frame by frame, with captions and the
+The edited walk-through of the demo: the app filmed frame by frame, with captions and the
 demo videos' own sound, about 1:42 at 1920 x 1080. It has no voice-over; that goes on top after.
 
 ## Make it
@@ -24,7 +24,7 @@ demo videos' own sound, about 1:42 at 1920 x 1080. It has no voice-over; that go
 2. Copy the demo videos whose sound the edit uses:
 
    ```bash
-   mkdir -p video/public/sound && cp public/demo/usenaive-ai/{1,2,3,4}.mp4 video/public/sound/
+   mkdir -p video/public/sound && cp public/demo/monid-ai/{1,2,3,4}.mp4 video/public/sound/
    ```
 
 3. Render (in `video/`, after `npm install`):

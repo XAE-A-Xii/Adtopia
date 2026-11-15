@@ -122,7 +122,7 @@ describe("autoplay", () => {
   it("fits every recording in a demo video's length, entrance included", async () => {
     const { readFileSync } = await import("node:fs");
     const { AUTOPLAY_BUDGET, ENTRANCE_SECONDS, tourSeconds } = await import("@/components/troy/camp/tour");
-    for (const id of ["usenaive-ai", "monid-ai"]) {
+    for (const id of ["fal-ai", "monid-ai"]) {
       const script = JSON.parse(readFileSync(`public/demo/${id}/script.json`, "utf8")) as DemoScript;
       const total = ENTRANCE_SECONDS + tourSeconds(tourSteps(script));
       expect(total, id).toBeLessThanOrEqual(AUTOPLAY_BUDGET - 3);

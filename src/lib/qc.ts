@@ -1,5 +1,5 @@
+import type { ClaudeClient } from "./claude";
 import { ApiError } from "./http";
-import type { NaiveClient } from "./naive";
 import { extractJson } from "./research";
 import type { Concept, Shot, Strategy } from "./strategy";
 
@@ -31,7 +31,7 @@ const VERDICT_TOOL = {
 };
 
 export async function reviewShot(
-  naive: NaiveClient,
+  claude: Pick<ClaudeClient, "message">,
   input: { frames: Buffer[]; brand: Strategy["brand"]; concept: Concept; shot: Shot; shotNumber: number; prompt: string },
 ): Promise<Verdict> {
   const rubric = [
@@ -46,7 +46,7 @@ export async function reviewShot(
   ].join("\n");
   const images = input.frames.map((frame) => ({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: frame.toString("base64") } }));
   const ask = (text: string, tools?: object[]) =>
-    naive.message({ model: QC_MODEL, max_tokens: 1500, messages: [{ role: "user", content: [...images, { type: "text", text }] }], tools });
+    claude.message({ model: QC_MODEL, max_tokens: 1500, messages: [{ role: "user", content: [...images, { type: "text", text }] }], tools });
 
   let raw: Partial<Verdict> | null = null;
   try {
@@ -61,7 +61,7 @@ export async function reviewShot(
       `${rubric.replace("Call the qc_verdict tool once.", "")}\n\nThe prompt that produced it:\n${input.prompt}\n\nAnswer with only a JSON object: {"score": 1-10, "pass": true|false, "issues": ["..."], "fix_prompt": "the full rewritten prompt if it fails, else empty"}`,
     );
     raw = extractJson(reply.content.map((block) => block.text ?? "").join("\n")) as Partial<Verdict> | null;
-    if (!raw) throw new ApiError("naive", 502, "qc_unreadable", "the quality check returned no verdict");
+    if (!raw) throw new ApiError("anthropic", 502, "qc_unreadable", "the quality check returned no verdict");
   }
   return toVerdict(raw);
 }
@@ -72,7 +72,7 @@ export async function reviewShot(
  * costs dollars and then into every later shot that takes it as its identity; a new still costs cents.
  */
 export async function reviewFrame(
-  naive: Pick<NaiveClient, "message">,
+  claude: Pick<ClaudeClient, "message">,
   input: {
     image: Buffer;
     creator: string;
@@ -91,7 +91,7 @@ export async function reviewFrame(
     type: "image",
     source: { type: "base64", media_type: "image/jpeg", data: image.toString("base64") },
   }));
-  const reply = await naive.message({
+  const reply = await claude.message({
     model: QC_MODEL,
     max_tokens: 600,
     messages: [
@@ -125,7 +125,7 @@ export async function reviewFrame(
     ],
   });
   const raw = extractJson(reply.content.map((block) => block.text ?? "").join("\n")) as { pass?: unknown; issues?: unknown } | null;
-  if (!raw) throw new ApiError("naive", 502, "qc_unreadable", "the frame check returned no verdict");
+  if (!raw) throw new ApiError("anthropic", 502, "qc_unreadable", "the frame check returned no verdict");
   const issues = Array.isArray(raw.issues) ? raw.issues.filter((issue): issue is string => typeof issue === "string").slice(0, 4) : [];
   return { pass: raw.pass === true || (raw.pass !== false && issues.length === 0), issues };
 }
@@ -134,8 +134,8 @@ export async function reviewFrame(
  * The cut check: one frame per shot, in order. A different person or place between shots is the
  * clearest tell of AI video, so any shot that does not match shot 1 is reported for a re-render.
  */
-export async function reviewContinuity(naive: NaiveClient, input: { frames: Buffer[]; concept: Concept }): Promise<{ consistent: boolean; mismatched: number[]; note: string }> {
-  const reply = await naive.message({
+export async function reviewContinuity(claude: Pick<ClaudeClient, "message">, input: { frames: Buffer[]; concept: Concept }): Promise<{ consistent: boolean; mismatched: number[]; note: string }> {
+  const reply = await claude.message({
     model: QC_MODEL,
     max_tokens: 600,
     messages: [
@@ -158,7 +158,7 @@ export async function reviewContinuity(naive: NaiveClient, input: { frames: Buff
     ],
   });
   const raw = extractJson(reply.content.map((block) => block.text ?? "").join("\n")) as { consistent?: unknown; mismatched_shots?: unknown; note?: unknown } | null;
-  if (!raw) throw new ApiError("naive", 502, "qc_unreadable", "the continuity check returned no verdict");
+  if (!raw) throw new ApiError("anthropic", 502, "qc_unreadable", "the continuity check returned no verdict");
   const mismatched = Array.isArray(raw.mismatched_shots) ? raw.mismatched_shots.map(Number).filter((n) => Number.isInteger(n) && n > 1 && n <= input.frames.length) : [];
   return { consistent: raw.consistent === true && mismatched.length === 0, mismatched, note: typeof raw.note === "string" ? raw.note : "" };
 }
@@ -172,7 +172,7 @@ export type CloneVerdict = { score: number; pass: boolean; framing: boolean; sam
  * never show. Pairs are numbered from 1; `mismatched` lists the pairs that differ.
  */
 export async function reviewClone(
-  naive: Pick<NaiveClient, "message">,
+  claude: Pick<ClaudeClient, "message">,
   input: { pairs: Array<{ t: number; reference: Buffer; ours: Buffer; what: string }>; host: Buffer; cohost?: Buffer | null },
 ): Promise<CloneVerdict> {
   const jpeg = (image: Buffer) => ({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: image.toString("base64") } });
@@ -191,9 +191,9 @@ export async function reviewClone(
       ].join("\n"),
     },
   ];
-  const reply = await naive.message({ model: QC_MODEL, max_tokens: 1200, messages: [{ role: "user", content }] });
+  const reply = await claude.message({ model: QC_MODEL, max_tokens: 1200, messages: [{ role: "user", content }] });
   const raw = extractJson(reply.content.map((block) => block.text ?? "").join("\n")) as Record<string, unknown> | null;
-  if (!raw) throw new ApiError("naive", 502, "qc_unreadable", "the remake check returned no verdict");
+  if (!raw) throw new ApiError("anthropic", 502, "qc_unreadable", "the remake check returned no verdict");
   const score = Math.max(1, Math.min(10, Math.round(Number(raw.score) || 0)));
   const framing = raw.framing !== false;
   const same_people = raw.same_people !== false;
