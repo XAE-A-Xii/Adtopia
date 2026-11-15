@@ -33,7 +33,7 @@ demo videos' own sound, about 1:42 at 1920 x 1080. It has no voice-over; that go
    npm run render
    ```
 
-   The output is `out/nomen-demo.mp4`. `npm run studio` opens Remotion's editor to preview it.
+   The output is `out/adtopia-demo.mp4`. `npm run studio` opens Remotion's editor to preview it.
 
 ## What is where
 
