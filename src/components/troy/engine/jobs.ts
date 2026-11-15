@@ -2,7 +2,7 @@ import { HORSE_ISLAND, island, sandbar, sea, town } from "./grounds";
 import { ballista, catapult, romanFort } from "./models/battle";
 import { doorPose, horseBody, horseLeaves, horsePlank } from "./models/horse";
 import { adBillboards, answerShrine, brandGate, crystalSpire, instagramGallery, lookalikeHuts, rankBeacon, redditForum, tiktokPhone, youtubeScreen } from "./models/lands";
-import { antennaMast, approvalScreen, commandTable, hoverCar, streetLamp, archive, barrel, cyberPlant, dataBin, driveStack, editStation, heater, holoTable, loungeRow, monitorStand, neonSign, planningCorner, platformSign, shootRig, storefront, uplink } from "./models/cyber";
+import { antennaMast, approvalScreen, barrel, billboard, broadcastMast, commandTable, cyberPlant, dashboard, dataBin, driveStack, editStation, filmSet, formatTable, heater, holoTable, hoverCar, loungeRow, mapScreen, neonSign, planningCorner, platformSign, renderFarm, shootRig, storefront, streetLamp, uplink } from "./models/cyber";
 import { chargingRail, entranceBody, entranceGround, entranceLight, entranceShutter, motorbike, roomModel } from "./models/hq";
 import { amphora, banner, campfire, easel, editDesk, hitchingRail, mapTable, mount, oliveTree, pavilion, PLATFORM_FLAGS, podium, reels, screenFrame, scrollBasket, shrine, signpost, tier, tvOnTripod, watchtower } from "./models/props";
 import { amphitheatre, aqueduct, cypress, fountain, gatehouse, honourColumn, horreum, house, pharos, pine, rocks, ruin, standard, temple, tower, wall } from "./models/rome";
@@ -185,9 +185,8 @@ export function propModel(id: PropId, v = 0): Model {
       neonSign(m);
       break;
     case "shrine":
-      // v = frame (0..3) + 4 while the monitor plays what it is studying.
-      archive(m, v % 4);
-      m.with(translate(0, 0, 2.8), () => monitorStand(m, v >= 4 ? 1 : 0, (v % 4) / 4));
+      // The viral study's format table: v = frame (0..3) + 4 while the holograms play what it studies.
+      formatTable(m, v % 4, v >= 4);
       break;
     case "pavilion":
       planningCorner(m);
@@ -228,8 +227,28 @@ export function propModel(id: PropId, v = 0): Model {
     case "campfire":
       heater(m, v);
       break;
+    case "mapscreen":
+      mapScreen(m, v);
+      break;
+    case "filmset":
+      filmSet(m, v);
+      break;
+    case "renderfarm":
+      renderFarm(m, v);
+      break;
+    case "dashboard":
+      dashboard(m, v);
+      break;
+    case "mast":
+      broadcastMast(m, v);
+      break;
+    case "billboard":
+      billboard(m);
+      break;
     case "streetlamp":
-      streetLamp(m, v);
+      // v >= 8 stands on the far kerb, its arm out over the road the other way.
+      if (v >= 8) m.with(rotZ(Math.PI), () => streetLamp(m, v % 8));
+      else streetLamp(m, v);
       break;
     case "car":
       // v < 4 drives along +x, v >= 4 the other way.
@@ -248,6 +267,10 @@ export function propModel(id: PropId, v = 0): Model {
     }
     case "rail":
       chargingRail(m);
+      break;
+    case "bikerack":
+      // The same rail turned to run along the kerb (x), on the road side, the bikes behind it (+y).
+      m.with(rotZ(-Math.PI / 2), () => chargingRail(m));
       break;
     case "catapult":
       catapult(m, v);
@@ -525,7 +548,7 @@ export function bakeJob(job: Job): Sprite {
       const casters: Prim[] = [];
       for (const s of STATIONS) {
         const holder = new Model();
-        holder.with(translate(s.x, s.y, 0), () => holder.include(placedProps(s.id)));
+        holder.with(translate(s.x, s.y, s.z), () => holder.include(placedProps(s.id)));
         casters.push(...holder.prims);
       }
       return bake(roomModel().prims, { shadowCasters: casters, edges: true, outline: true });

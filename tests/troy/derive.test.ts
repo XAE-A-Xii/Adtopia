@@ -82,9 +82,9 @@ describe("the camp before and during research", () => {
     expect(plan.agents.filter((a) => a.id.startsWith("audience:")).every((a) => a.act === "stand")).toBe(true);
   });
 
-  it("sends the lookout up the tower's ladder and the herald up the podium's step", () => {
+  it("seats the signal watcher at the map desk and sends the herald up the podium's step", () => {
     const plan = derive(view({}));
-    expect(plan.agents.find((a) => a.id === "lookout")?.via?.some((w) => w.act === "climb")).toBe(true);
+    expect(plan.agents.find((a) => a.id === "lookout")).toMatchObject({ act: "type", z: 0 });
     expect(plan.agents.find((a) => a.id === "herald")?.via?.length).toBeGreaterThan(0);
   });
 
@@ -114,7 +114,7 @@ describe("the camp before and during research", () => {
     // One source back and one still to start: the scout waits at the land rather than riding twice.
     expect(scouts["scout:metaads"]).toMatchObject({ away: true, state: "working" });
     expect(scouts["scout:reddit"]).toMatchObject({ returning: "empty", state: "failed" });
-    expect(plan.agents.find((a) => a.id === "lookout")?.act).toBe("lookout");
+    expect(plan.agents.find((a) => a.id === "lookout")?.act).toBe("type");
     expect(plan.props.basket).toBe(Math.round((3 / 8) * 7));
   });
 
@@ -136,7 +136,7 @@ describe("the camp through the pipeline", () => {
     expect(plan.stations.scouts).toMatchObject({ state: "done", status: "2 videos · 1 ad · 0 threads" });
     expect(plan.stations.oracle.state).toBe("working");
     expect(plan.tvOn).toBe(true);
-    expect(plan.agents.find((a) => a.id === "watcher")?.act).toBe("watch");
+    expect(plan.agents.find((a) => a.id === "watcher")?.act).toBe("type");
   });
 
   it("marks the oracle skipped when the strategy started without a format study", () => {

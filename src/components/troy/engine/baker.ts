@@ -70,6 +70,32 @@ export class Baker {
     return promise;
   }
 
+  /**
+   * Bakes a small job right here on the main thread (a few milliseconds) instead of waiting for a
+   * worker: for what the first screen needs, since a worker can take seconds to start up the first
+   * time (it loads the whole engine), and the page would sit blank meanwhile.
+   */
+  bakeNow(job: Job): Baked {
+    const key = jobKey(job);
+    const hit = this.cache.get(key);
+    if (hit) return hit;
+    const sprite = bakeJob(job);
+    const canvas = document.createElement("canvas");
+    canvas.width = sprite.w;
+    canvas.height = sprite.h;
+    canvas.getContext("2d")!.putImageData(new ImageData(sprite.rgba as Uint8ClampedArray<ArrayBuffer>, sprite.w, sprite.h), 0, 0);
+    const baked = { image: canvas, w: sprite.w, h: sprite.h, ax: sprite.ax, ay: sprite.ay };
+    this.cache.set(key, baked);
+    // Anything already queued for it resolves with this and leaves the queue.
+    const queued = this.queue.findIndex((p) => p.key === key);
+    if (queued >= 0) {
+      const [pending] = this.queue.splice(queued, 1);
+      this.inflight.delete(key);
+      pending.resolve(baked);
+    }
+    return baked;
+  }
+
   /** Requests many jobs and resolves when all are ready. */
   all(jobs: Job[], priority = 0) {
     return Promise.all(jobs.map((job) => this.request(job, priority)));

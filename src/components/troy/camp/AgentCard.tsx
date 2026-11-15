@@ -9,7 +9,7 @@ import { LAND, landRuns, scoutLand, STATION, type StationId } from "../scenes/la
 import styles from "../troy.module.css";
 import type { Engine } from "./Camp";
 import { money, platformName, when } from "./format";
-import { CampMap, Chip, crispIfTiny, greekName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, Steps } from "./ui";
+import { CampMap, Chip, crispIfTiny, crewName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, Steps } from "./ui";
 
 const STATE: Record<AgentPlan["state"], { word: string; tone: "crimson" | "faint" | "olive" | "teal" }> = {
   working: { word: "Working", tone: "crimson" },
@@ -67,7 +67,7 @@ export function AgentCard({
   // The plan says what the agent is for; the camp shows whether they are busy with it right now.
   const state = agent.state === "idle" && info?.where === "moving" ? { word: "On the move", tone: "teal" as const } : STATE[agent.state];
   const baker = engine.current?.baker ?? null;
-  const name = greekName(agent.id);
+  const name = crewName(agent.id);
   const moving = info?.where === "moving";
   const gone = info?.where === "home";
 

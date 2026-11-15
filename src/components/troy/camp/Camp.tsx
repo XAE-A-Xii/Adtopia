@@ -3,12 +3,12 @@
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type BrandView, campaignAction, connectLink, type CreativeView, getBrand, regenerate, setApproved } from "../api";
 import type { Baker } from "../engine/baker";
-import { easeInOutCubic, type Stage } from "../engine/stage";
+import { easeInOutCubic, easeInOutSine, type Stage } from "../engine/stage";
 import { projectX, projectY } from "../engine/tracer";
 import type { CampScene } from "../scenes/camp";
 import { activeStation, derive, stationForEvent } from "../scenes/derive";
 import { type BattlePlan, type Company } from "../scenes/battle";
-import { type Land, LAND_RADIUS, LAND_Z, type LandId, LANDS, ROOM_CENTER, ROME_LINES, romePoint, STATION, type StationId, STATIONS } from "../scenes/layout";
+import { TAG_POINT, ROOM_CENTER, ROME_LINES, romePoint, STATION, type StationId, STATIONS } from "../scenes/layout";
 import type { LandingScene } from "../scenes/landing";
 import styles from "../troy.module.css";
 import { DEMO_ID, demoCreativeId, type PublishMode } from "./demo";
@@ -23,7 +23,8 @@ import { Screening } from "./Screening";
 import { StationPanel } from "./StationPanel";
 import type { TourStep } from "./tour";
 import { TourCard } from "./TourCard";
-import { type DemoPlayer, useDemo } from "./useDemo";
+import { textPixel } from "../engine/font";
+import { type DemoPlayer, type SceneClock, useDemo } from "./useDemo";
 import { recording, useTour } from "./useTour";
 import { useReducedMotion, useWide } from "../hooks";
 
@@ -134,7 +135,18 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
   // The brand's autopilot, for the top bar's button and its drawer (none in the demo).
   const autopilot = useAutopilot(demo ? null : brandId);
   // The demo replays a campaign on a clock (./demo.ts) instead of reading the API.
-  const player = useDemo(demo, arrived, site);
+  // The replay's clock follows the scene's own time, so the agents keep pace with it.
+  const sceneClock = useMemo<SceneClock>(
+    () => ({
+      time: () => engine.current?.stage.elapsed ?? null,
+      scale: (speed) => {
+        const stage = engine.current?.stage;
+        if (stage) stage.timeScale = speed;
+      },
+    }),
+    [engine],
+  );
+  const player = useDemo(demo, arrived, site, sceneClock);
   // The presenter's tour of the replay (camp/tour.ts): each step opens what it is about.
   const [tourCamera, setTourCamera] = useState<"world" | null>(null);
   const [tourFocus, setTourFocus] = useState<string | null>(null);
@@ -154,15 +166,22 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
     },
     [takeCamera],
   );
-  // Autoplay fast-forwards a step to fit its time: the scene plays at the same pace as the clock.
+  // Autoplay fast-forwards a step to fit its time: the scene plays at the same pace as the clock
+  // (the demo clock sets the scene's speed itself on its next tick; this saves the wait).
   const paceScene = useCallback(
     (rate: number) => {
       const stage = engine.current?.stage;
-      if (stage) stage.timeScale = rate;
+      if (stage) stage.timeScale = rate * (player.baseSpeed ?? 1);
+    },
+    [engine, player.baseSpeed],
+  );
+  useEffect(
+    () => () => {
+      const stage = engine.current?.stage;
+      if (stage) stage.timeScale = 1;
     },
     [engine],
   );
-  useEffect(() => () => paceScene(1), [paceScene]);
   const tour = useTour({ enabled: demo, arrived, player, apply: applyStep, pace: paceScene });
   // Filming the demo video (?record=1): the tour drives the camera, the captions are added in the
   // edit, so the tour's card, the dispatches and the replay controls stay off screen.
@@ -298,21 +317,12 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
   const [taken, setTaken] = useState(false);
 
   // What the map shows changes with the camp, not only with the data: polled a few times a second.
-  const [busyLands, setBusyLands] = useState<Partial<Record<LandId, number>>>({});
   // How much the labels on the map say: 2 in full, 1 names only (zoomed out), 0 a marker (far out).
   const [detail, setDetail] = useState<0 | 1 | 2>(2);
   useEffect(() => {
     const e = engine.current;
     if (!e || !arrived) return;
-    let lastKey = "";
     const poll = () => {
-      // The lands are out of view unless you zoom out to them; their labels count the scouts there.
-      const busy = e.camp.landsBusy();
-      const key = JSON.stringify(busy);
-      if (key !== lastKey) {
-        lastKey = key;
-        setBusyLands(busy);
-      }
       // Where the expedition is: the camera follows it.
       setVoyage(e.camp.expedition.focus()?.kind ?? null);
       const words = e.camp.expedition.stages();
@@ -356,21 +366,27 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
         if (at) e.stage.look({ x: projectX(at.x, at.y) + follow.dx / zoom, y: projectY(at.x, at.y, 0) + follow.dy / zoom, zoom }, reduced ? 0 : Math.max(duration, 1.2) * e.stage.timeScale, easeInOutCubic);
         return;
       }
+      // On the tour the camera comes in close on the step it explains, and moves slowly and smoothly
+      // between them, so whoever watches can follow along.
+      const touring = tour.on;
       const target = sailing
         ? voyage === "rome"
           ? e.camp.romeView(ins)
           : e.camp.harborView(ins)
         : wide
           ? selected
-            ? e.camp.focus(selected, ins)
+            ? e.camp.focus(selected, ins, touring ? 2.6 : 1.6)
             : tourCamera === "world"
-              ? e.camp.world(ins)
+              ? touring
+                ? e.camp.streetView(ins)
+                : e.camp.world(ins)
               : e.camp.camera(ins)
-          : e.camp.focus(shown, ins);
+          : e.camp.focus(shown, ins, touring ? 2.2 : 1.6);
       // A fast-forwarded step (the tour's autoplay) still moves the camera at its own pace.
-      e.stage.look(target, reduced ? 0 : (sailing ? Math.max(duration, 1.4) : tourCamera === "world" ? Math.max(duration, 1.6) : duration) * e.stage.timeScale, easeInOutCubic);
+      const pace = touring ? Math.max(duration, tourCamera === "world" ? 2.8 : 2.2) : sailing ? Math.max(duration, 1.4) : tourCamera === "world" ? Math.max(duration, 1.6) : duration;
+      e.stage.look(target, reduced ? 0 : pace * e.stage.timeScale, touring ? easeInOutSine : easeInOutCubic);
     },
-    [engine, insets, selected, wide, shown, reduced, agentId, following, panel, battling, voyage, tourCamera],
+    [engine, insets, selected, wide, shown, reduced, agentId, following, panel, battling, voyage, tourCamera, tour.on],
   );
   useEffect(() => {
     if (arrived) frameCamera(1);
@@ -389,14 +405,16 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
     const agent = plan.agents.find((a) => a.id === agentId);
     const ins = { ...insets, bottom: wide ? insets.bottom : Math.round(window.innerHeight * 0.64) };
     // The tour's ride-along comes in closer than a clicked soldier, so you see the one agent.
-    const zoom = e.camp.focus(agent?.station ?? current, ins).zoom * (closeUp ? 1.35 : 1);
+    const zoom = e.camp.focus(agent?.station ?? current, ins, closeUp ? 2.6 : 1.6).zoom * (closeUp ? 1.1 : 1);
+    // On the tour the camera trails the one it follows gently, so nobody watching gets dizzy.
+    e.stage.followRate = closeUp ? 2.2 : 5;
     // CSS px from the soldier to the camera's centre, so they sit in the middle of the open map.
     const dx = ins.right / 2;
     const dy = (ins.bottom - ins.top) / 2;
     e.stage.follow = { at: () => e.camp.position(agentId), dx, dy };
     const aim = () => {
       const p = e.camp.position(agentId);
-      if (p) e.stage.look({ x: projectX(p.x, p.y) + dx / zoom, y: projectY(p.x, p.y, p.z) + dy / zoom, zoom }, reduced ? 0 : 0.8 * e.stage.timeScale, easeInOutCubic);
+      if (p) e.stage.look({ x: projectX(p.x, p.y) + dx / zoom, y: projectY(p.x, p.y, p.z) + dy / zoom, zoom }, reduced ? 0 : (closeUp ? 1.8 : 0.8) * e.stage.timeScale, closeUp ? easeInOutSine : easeInOutCubic);
       return Boolean(p);
     };
     // A soldier still inside the horse (a scout the plan just called out) is aimed at once he is out.
@@ -746,15 +764,6 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
         ))}
 
       {/* Only the shops a scout is at say their name: the street stays the artwork, not a list. */}
-      {arrived && view && LANDS.filter((land) => (busyLands[land.id] ?? 0) > 0).map((land) => <LandTag key={land.id} engine={engine} land={land} scouts={busyLands[land.id] ?? 0} detail={detail} />)}
-      {arrived && view && (
-        <HubTag
-          engine={engine}
-          done={STATIONS.filter((s) => plan.stations[s.id].state === "done" || plan.stations[s.id].state === "skipped").length}
-          autopilot={demo ? null : autopilot.view}
-          onClick={demo ? null : () => (drawer === "autopilot" ? setDrawer(null) : actions.openAutopilot?.())}
-        />
-      )}
 
       {/* The HQ draws no battle at sea, so its companies and the rival's banner have no tags. */}
       {arrived && view && battling && plan.battle.phase !== "none" && (
@@ -1077,33 +1086,16 @@ export function Pip({ state }: { state: string }) {
 
 const STATE_WORD: Record<string, string> = { waiting: "Waiting", working: "Working", done: "Done", failed: "Stopped", skipped: "Skipped", yours: "Your turn" };
 
-/**
- * The command table's tag: the campaign's progress through the six stations, and the autopilot at a
- * glance (on or paused, and what is left of this week's budget). Clicking it opens the autopilot.
- */
-function HubTag({ engine, done, autopilot, onClick }: { engine: RefObject<Engine | null>; done: number; autopilot: { settings: { enabled: boolean; weeklyBudgetUsd: number }; status: { spendThisWeekUsd: number } } | null; onClick: (() => void) | null }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  useLayoutEffect(() => {
-    const e = engine.current;
-    if (!e || !ref.current) return;
-    return e.stage.anchor(ref.current, () => ({ x: ROOM_CENTER.x + 16, y: ROOM_CENTER.y + 16, z: 0 }));
-  }, [engine]);
-  const on = autopilot?.settings.enabled ?? false;
-  const left = autopilot ? Math.max(0, autopilot.settings.weeklyBudgetUsd - autopilot.status.spendThisWeekUsd) : null;
-  const budget = left !== null ? " · $" + left.toFixed(0) + " left" : "";
+/** A digit drawn pixel by pixel from the HQ's 5 x 7 sign font, so small numbers stay legible (a font's 2 can read as an 8). */
+function PixelDigit({ n, scale = 1 }: { n: number; scale?: number }) {
+  const cells: Array<[number, number]> = [];
+  for (let v = 0; v < 7; v++) for (let u = 0; u < 5; u++) if (textPixel(String(n), u + 0.5, v + 0.5)) cells.push([u, v]);
   return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={onClick ?? undefined}
-      disabled={!onClick}
-      title={onClick ? "The command table: open the autopilot" : "The command table"}
-      className={styles.box + " " + styles.pixel + " pointer-events-auto absolute left-0 top-0 flex items-center gap-2 whitespace-nowrap px-2 py-1 text-[11px] -translate-x-1/2"}
-    >
-      <span className="text-[var(--teal)]">Command</span>
-      <span className="text-[var(--ink-soft)]">{done}/6</span>
-      {autopilot && <span style={{ color: on ? "var(--olive)" : "var(--ink-faint)" }}>{on ? "Autopilot on" + budget : "Autopilot paused"}</span>}
-    </button>
+    <svg width={5 * scale} height={7 * scale} viewBox="0 0 5 7" shapeRendering="crispEdges">
+      {cells.map(([u, v]) => (
+        <rect key={`${u}.${v}`} x={u} y={v} width="1" height="1" fill="var(--paper)" />
+      ))}
+    </svg>
   );
 }
 
@@ -1126,7 +1118,6 @@ function StationTag({
   bubble?: Bubble;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const emoteRef = useRef<HTMLDivElement>(null);
   const station = STATION[id];
   // Small tags keep the room the picture: a tag opens to its status while hovered or focused, or
   // while its station is the one selected.
@@ -1135,15 +1126,10 @@ function StationTag({
   useLayoutEffect(() => {
     const e = engine.current;
     if (!e || !ref.current) return;
-    // Under the island's front edge.
-    return e.stage.anchor(ref.current, () => ({ x: station.x + 30, y: station.y + 30, z: 0 }));
-  }, [engine, station]);
-  useLayoutEffect(() => {
-    const e = engine.current;
-    if (!e || !emoteRef.current) return;
-    // Up and to the right of the island, clear of the tower, the shrine and the screen.
-    return e.stage.anchor(emoteRef.current, () => ({ x: station.x + 26, y: station.y - 26, z: 38 }));
-  }, [engine, station, bubble]);
+    // Pinned just over the station's main piece of furniture, its pointer down to it.
+    const at = TAG_POINT[id];
+    return e.stage.anchor(ref.current, () => at);
+  }, [engine, id]);
   const segments = 8;
   const filled = plan.progress === null ? 0 : Math.round(plan.progress * segments);
   const yours = plan.state === "yours";
@@ -1152,68 +1138,82 @@ function StationTag({
   return (
     <>
       <div ref={ref} className="pointer-events-none absolute left-0 top-0 z-[5] will-change-transform">
-        <button
-          type="button"
-          onClick={onClick}
-          onMouseEnter={() => setPeek(true)}
-          onMouseLeave={() => setPeek(false)}
-          onFocus={() => setPeek(true)}
-          onBlur={() => setPeek(false)}
-          aria-pressed={active}
-          aria-label={`${station.name}, ${station.role}: ${STATE_WORD[plan.state]}. ${plan.status}`}
-          title={compact ? `${station.role}: ${plan.status}` : undefined}
-          className={`${active || yours ? styles.box : styles.boxSoft} ${styles.enter} ${yours && !active ? styles.beckon : ""} pointer-events-auto block -translate-x-1/2 text-left transition-transform hover:-translate-y-0.5 ${compact ? "whitespace-nowrap px-1.5 py-0.5" : "w-[208px] px-3 py-2"}`}
-        >
-          <span className="flex items-center gap-2">
-            <Pip state={plan.state} />
-            <span className={`${styles.pixel} font-semibold uppercase tracking-wide ${compact ? "text-[10px]" : "text-[14px]"}`}>{station.name}</span>
-            {!compact && <span className="ml-auto text-[11px] text-[var(--ink-soft)]">{station.role}</span>}
-            {compact && yours && <span className={`${styles.pixel} bg-[var(--teal)] px-1.5 text-[11px] text-[var(--paper)]`}>Your turn</span>}
-          </span>
-          {yours && !compact && (
-            <span className={`${styles.pixel} mt-1.5 flex items-center justify-between bg-[var(--teal)] px-2 py-1 text-[12px] text-[var(--paper)]`}>
-              Your turn: {id === "theatre" ? "review the videos" : "take a look"}
-              <span aria-hidden="true">→</span>
-            </span>
-          )}
-          {compact ? null : bubble ? (
-            // A fresh dispatch replaces the status line for a few seconds.
-            <span key={bubble.id} className={`${styles.fadeIn} mt-1 line-clamp-2 text-[12px] leading-snug`} style={{ color: tone }} role="status">
-              › {bubble.text}
-            </span>
-          ) : (
-            <span className="mt-1 block truncate text-[12px] leading-snug text-[var(--ink-soft)]">{plan.status}</span>
-          )}
-          {plan.progress !== null && !compact && (
-            <span className="mt-1.5 flex gap-[3px]" aria-hidden="true">
-              {Array.from({ length: segments }, (_, i) => (
-                <span
-                  key={i}
-                  className="h-[5px] flex-1"
-                  style={{
-                    background:
-                      i < filled
-                        ? plan.state === "failed"
-                          ? "var(--crimson-dark)"
-                          : plan.state === "done"
-                            ? "var(--olive)"
-                            : plan.state === "yours"
-                              ? "var(--teal)"
-                              : "var(--crimson)"
-                        : "rgba(200,196,255,0.1)",
-                  }}
-                />
-              ))}
-            </span>
-          )}
-        </button>
-      </div>
-      <div ref={emoteRef} className="pointer-events-none absolute left-0 top-0 z-[6] will-change-transform" aria-hidden="true">
-        {bubble && (
-          <span key={bubble.id} className={`${styles.emote} ${styles.pixel}`} style={{ background: tone }}>
-            {glyph}
-          </span>
-        )}
+        <div className="flex -translate-x-1/2 -translate-y-full flex-col items-center">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={onClick}
+              onMouseEnter={() => setPeek(true)}
+              onMouseLeave={() => setPeek(false)}
+              onFocus={() => setPeek(true)}
+              onBlur={() => setPeek(false)}
+              aria-pressed={active}
+              aria-label={`${station.name}, ${station.role}: ${STATE_WORD[plan.state]}. ${plan.status}`}
+              title={compact ? `${station.role}: ${plan.status}` : undefined}
+              className={`${active || yours ? styles.box : styles.boxSoft} ${styles.enter} ${yours && !active ? styles.beckon : ""} pointer-events-auto block text-left transition-transform hover:-translate-y-0.5 ${compact ? "whitespace-nowrap px-1.5 py-0.5" : "w-[208px] px-3 py-2"}`}
+            >
+              <span className="flex items-center gap-2">
+                <Pip state={plan.state} />
+                {/* The number's glyph stands as tall as the name's capitals beside it. */}
+                <span className={`grid shrink-0 place-items-center ${compact ? "size-[11px]" : "size-[15px]"}`} style={{ background: station.z > 0 ? "var(--teal)" : "var(--crimson)" }} aria-hidden="true">
+                  <PixelDigit n={station.n} scale={compact ? 1 : 1.4} />
+                </span>
+                <span className={`${styles.pixel} font-semibold uppercase tracking-wide ${compact ? "text-[10px]" : "text-[14px]"}`}>{station.name}</span>
+                {!compact && <span className="ml-auto text-[11px] text-[var(--ink-soft)]">{station.role}</span>}
+                {compact && yours && <span className={`${styles.pixel} bg-[var(--teal)] px-1.5 text-[11px] text-[var(--paper)]`}>Your turn</span>}
+              </span>
+              {yours && !compact && (
+                <span className={`${styles.pixel} mt-1.5 flex items-center justify-between bg-[var(--teal)] px-2 py-1 text-[12px] text-[var(--paper)]`}>
+                  Your turn: {id === "theatre" ? "review the videos" : "take a look"}
+                  <span aria-hidden="true">→</span>
+                </span>
+              )}
+              {compact ? null : bubble ? (
+                // A fresh dispatch replaces the status line for a few seconds.
+                <span key={bubble.id} className={`${styles.fadeIn} mt-1 line-clamp-2 text-[12px] leading-snug`} style={{ color: tone }} role="status">
+                  › {bubble.text}
+                </span>
+              ) : (
+                <span className="mt-1 block truncate text-[12px] leading-snug text-[var(--ink-soft)]">{plan.status}</span>
+              )}
+              {plan.progress !== null && !compact && (
+                <span className="mt-1.5 flex gap-[3px]" aria-hidden="true">
+                  {Array.from({ length: segments }, (_, i) => (
+                    <span
+                      key={i}
+                      className="h-[5px] flex-1"
+                      style={{
+                        background:
+                          i < filled
+                            ? plan.state === "failed"
+                              ? "var(--crimson-dark)"
+                              : plan.state === "done"
+                                ? "var(--olive)"
+                                : plan.state === "yours"
+                                  ? "var(--teal)"
+                                  : "var(--crimson)"
+                            : "rgba(200,196,255,0.1)",
+                      }}
+                    />
+                  ))}
+                </span>
+              )}
+            </button>
+            {/* A dispatch's mark pops up over the tag's right end. */}
+            {bubble && (
+              <span className="pointer-events-none absolute right-0 top-0 z-[6]" aria-hidden="true">
+                <span key={bubble.id} className={`${styles.emote} ${styles.pixel} block`} style={{ background: tone }}>
+                  {glyph}
+                </span>
+              </span>
+            )}
+          </div>
+          {/* A pixel pointer down to the station. */}
+          <svg width="12" height="7" viewBox="0 0 9 5" shapeRendering="crispEdges" aria-hidden="true" className="-mt-px">
+            <path d="M0 0h9v1h-1v1h-1v1h-1v1h-1v1h-1v-1h-1v-1h-1v-1h-1v-1h-1z" fill="var(--ink)" />
+            <path d="M1 0h7v1h-1v1h-1v1h-1v1h-1v-1h-1v-1h-1v-1h-1z" fill={station.z > 0 ? "var(--teal)" : "var(--crimson)"} />
+          </svg>
+        </div>
       </div>
     </>
   );
@@ -1261,45 +1261,6 @@ function ReviewBeacon({ engine, ready, approved, onOpen }: { engine: RefObject<E
   );
 }
 
-/**
- * A land's name on the map, under its shore: the site or API the scouts ride to, what they fetch
- * there, and how many scouts are out on that errand now. Zoomed far out it is just a marker in the
- * land's colour (and the count), so neighbouring labels don't pile up.
- */
-function LandTag({ engine, land, scouts, detail }: { engine: RefObject<Engine | null>; land: Land; scouts: number; detail: 0 | 1 | 2 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const e = engine.current;
-    if (!e || !ref.current) return;
-    return e.stage.anchor(ref.current, () => ({ x: land.x, y: land.y + LAND_RADIUS * 0.72, z: LAND_Z + 34 }));
-  }, [engine, land]);
-  const count = scouts > 0 && (
-    <span className={`${styles.pixel} bg-[var(--crimson)] px-1 text-[10px] leading-[14px] text-[var(--paper)]`} aria-label={`${scouts} ${scouts === 1 ? "scout" : "scouts"} on this errand`}>
-      {scouts}
-    </span>
-  );
-  return (
-    <div ref={ref} className="pointer-events-none absolute left-0 top-0 z-[4] will-change-transform">
-      {detail === 0 ? (
-        <div className={`${styles.fadeIn} flex -translate-x-1/2 items-center gap-1`} aria-label={land.name}>
-          <span aria-hidden="true" className="inline-block size-2.5" style={{ background: land.color, boxShadow: "0 0 0 2px var(--paper)" }} />
-          {count}
-        </div>
-      ) : (
-        <div className={`${scouts ? styles.box : styles.boxSoft} ${styles.fadeIn} -translate-x-1/2 whitespace-nowrap ${detail === 1 ? "px-1.5 py-0.5" : "px-2 py-1"}`}>
-          <span className="flex items-center gap-1.5">
-            <span aria-hidden="true" className="inline-block size-2 shrink-0" style={{ background: land.color }} />
-            <span className={`${styles.pixel} font-semibold ${detail === 1 ? "text-[11px]" : "text-[12px]"}`}>{land.name}</span>
-            {count}
-          </span>
-          {detail === 2 && <span className="block text-[11px] leading-tight text-[var(--ink-soft)]">{land.what}</span>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A soldier's line, in a pixel speech bubble over his head that follows him as he moves. */
 function SpeechBubble({ engine, id, text, seconds }: { engine: RefObject<Engine | null>; id: string; text: string; seconds: number }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -1560,7 +1521,9 @@ function StationStrip({ plan, shown, bubbles, onPick }: { plan: ReturnType<typeo
             >
               <span className="flex items-center gap-2">
                 <Pip state={p.state} />
-                <span className={`${styles.pixel} text-[14px] font-semibold uppercase tracking-wide`}>{station.name}</span>
+                <span className={`${styles.pixel} text-[14px] font-semibold uppercase tracking-wide`}>
+                  {station.n} · {station.name}
+                </span>
                 <span className="ml-auto text-[11px] text-[var(--ink-soft)]">{station.role}</span>
               </span>
               <span className="mt-1 line-clamp-2 block min-h-[32px] text-[12px] leading-snug text-[var(--ink-soft)]">{bubble ? `› ${bubble.text}` : p.status}</span>

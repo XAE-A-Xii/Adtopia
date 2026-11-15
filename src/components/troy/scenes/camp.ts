@@ -1,7 +1,8 @@
 import { type Act, ACT_FRAMES, ACT_RATE, dirFor, type Job, RIDER_FRAMES } from "../engine/jobs";
 import { exitPath } from "../engine/models/horse";
-import { HUB_STATES } from "../engine/models/cyber";
+import { textPixel, textWidth } from "../engine/font";
 import { wallLamps } from "../engine/models/hq";
+import { storefrontSize } from "../engine/models/cyber";
 import { type GlowSource, GlowLayer, NEON } from "../engine/glow";
 import { SCREEN } from "../engine/models/props";
 import type { CameraTarget, Entity, Stage } from "../engine/stage";
@@ -10,8 +11,9 @@ import type { Point } from "../engine/walker";
 import type { AgentPlan, CampPlan } from "./derive";
 import type { LandingScene } from "./landing";
 import { type Enlisted, Expedition } from "./expedition";
-import { CAMP_CENTER, ENTRANCE, LAND_Z, LOFT, ROOM, STREET_LANE, ROOM_CENTER, ROOM_HALF, STAIRS, STAIRS_TOP, HARBOR_VIEW, hub, ISLAND_RADIUS, JUNCTION, LAND, type LandId, LANDS, LANDS_VIEW, MAP_BOUNDS, type Node, ROME, ROME_VIEW, roadToLand, sandbars, scoutLand, STATION, type StationId, STATIONS, travel, WORLD_VIEW, worldTrails } from "./layout";
-import { COURIER_STALL, DESK_SLOTS, LAND_SPOTS, PROPS, SPOTS, STABLE_AISLE, STABLE_GATE, STALLS, type Waypoint } from "./stations";
+import { SETBACK, VICTORY } from "./battle";
+import { BAY, CAMP_CENTER, flowLine, CAR_LANES, DECK, ENTRANCE, FAR_KERB, HQ_SIGN, INNER, KERB, STUDIO, VIDEO_WALL, LAND_Z, LOFT, ROOM, STABLE, stableGate, STREET_LANE, upStairs, ROOM_CENTER, ROOM_HALF, STAIRS, STAIRS_TOP, HARBOR_VIEW, hub, ISLAND_RADIUS, JUNCTION, LAND, type LandId, LANDS, LANDS_VIEW, MAP_BOUNDS, type Node, ROME, ROME_VIEW, roadToLand, sandbars, scoutLand, STATION, type StationId, STATIONS, travel, WORLD_VIEW, worldTrails } from "./layout";
+import { COURIER_STALL, DESK_SLOTS, LAND_SPOTS, ORACLE_SEATS, PROPS, SPOTS, STABLE_AISLE, STABLE_GATE, STALLS, type Waypoint } from "./stations";
 
 // The camp: station islands, their furniture and the agents, below the horse. This file owns the
 // world; Camp.tsx owns the HTML around it and feeds it plans derived from the live campaign.
@@ -107,7 +109,7 @@ type Trip = "camp" | "out" | "there" | "back" | "done" | "empty";
 type Stall = { steed: Entity; rider: Agent | null };
 
 /** How a station is named in a sentence ("walking over to the war tent"). */
-const PLACE: Record<Node, string> = { horse: "the street door", scouts: "the intelligence desk", oracle: "the reference archive", tent: "the strategy table", workshop: "the production studio", theatre: "the approval desk", agora: "the publishing terminal" };
+const PLACE: Record<Node, string> = { upper: "the top of the inner stairs", lower: "the foot of the inner stairs", horse: "the street door", scouts: "the intelligence desk", oracle: "the reference archive", tent: "the strategy table", workshop: "the production studio", theatre: "the approval desk", agora: "the publishing terminal" };
 
 /** What a figure standing at its post looks like it is doing, by its act. */
 const ACT_WORDS: Record<Act, string> = {
@@ -170,9 +172,42 @@ export const LINES = {
   rollOut: (brand: string | null) => `Team ${brand?.trim() || "Surreel"}, down to the HQ! Let's roll out!`,
 };
 
+/** The shops whose billboards show the posted videos: the three platforms Surreel posts to. */
+const BILLBOARD_LANDS: LandId[] = ["tiktok", "instagram", "youtube"];
+
 /** Where the street's cars drive from and to (world x); they wrap round. */
-const CAR_X0 = -80;
-const CAR_X1 = ROOM.x1 + 190;
+const CAR_X0 = -62;
+const CAR_X1 = ROOM.x1 + 152;
+
+/** The point `t` (0..1) of the way along a path of world points, by distance. */
+function alongPath(path: Point[], t: number): Point {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) total += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y, path[i].z - path[i - 1].z);
+  let left = Math.max(0, Math.min(1, t)) * total;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const d = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (left <= d || i === path.length - 1) {
+      const k = d ? Math.min(1, left / d) : 1;
+      return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k };
+    }
+    left -= d;
+  }
+  return { ...path[path.length - 1] };
+}
+
+/**
+ * The whole map's rectangle on screen (art px): from the basement's left corner to the far end of
+ * the street, from the logos on the roofs (and the HQ's aerial) down to the basement's front corner.
+ */
+function mapView() {
+  const roofs = LANDS.map((l) => (l.x - 18 + l.y - 32) / 2 - 1.2247 * (LAND_Z + storefrontSize(l.prop).tall + 32));
+  const hq = (ENTRANCE.x - ENTRANCE.half + ENTRANCE.y - ENTRANCE.depth) / 2 - 1.2247 * (ROOM.wall + ENTRANCE.tall + 32);
+  // The street's slab: its far right corner is the map's right end.
+  const streetEnd = ROOM.x1 + 160 - (ROOM.y0 - 172);
+  return { x0: ROOM.x0 - ROOM.y1 - 14, x1: streetEnd + 10, y0: Math.min(hq, ...roofs) - 6, y1: (ROOM.x1 + ROOM.y1) / 2 + 16 };
+}
 
 /** "#rrggbb" as "r, g, b". */
 function hexRgb(hex: string) {
@@ -185,15 +220,31 @@ export class CampScene {
   private readonly props: Entity[] = [];
   private readonly keyed = new Map<string, Entity>();
   private readonly streetLamps: Entity[] = [];
+  /** The pedestrians in front of each platform's billboard (shown as the views come in). */
+  private readonly crowds = new Map<LandId, Entity[]>();
+  /** The viral study's two analysts at the format table with the reference analyst: scenery that works when the station does. */
+  private readonly analysts: Array<Entity & { look: number; act: Act }> = [];
+  /** The posts' story on the street, from the plan's battle: who is out, the numbers, the result. */
+  private street: { sending: boolean; live: string[]; views: number; likes: number; ratio: number | null; illustrative: boolean } = { sending: false, live: [], views: 0, likes: 0, ratio: null, illustrative: false };
+  private billboardBuffers = new Map<string, HTMLCanvasElement>();
+  /** The video wall's picture, drawn a pixel per world unit and stretched onto the wall. */
+  private wallBuffer: HTMLCanvasElement | null = null;
+  /** Bigger stills of the finished videos for the wall (36 x 64). */
+  private readonly bigPosters = new Map<string, HTMLCanvasElement>();
+  /** Until when everyone cheers at the video wall, and why (for the wall's caption). */
+  private cheerUntil = -1;
+  private cheerWhy = "";
+  /** The stations' states last time, to notice the moments worth a celebration. */
+  private lastStates: Partial<Record<StationId, string>> = {};
+  /** What the video wall shows, from the plan. */
+  private wallMode: "idle" | "rendering" | "screening" | "live" = "idle";
+  private deskStates: number[] = [];
   /** Packets of work running between stations along the floor (see dispatch). */
-  private readonly packets: Array<{ from: StationId; to: StationId; at: number }> = [];
-  private readonly cars: Array<{ entity: Entity; dir: number; rgb: string }> = [];
+  private readonly packets: Array<{ from: StationId; to: StationId; at: number; path: Point[] }> = [];
+  private readonly cars: Array<{ entity: Entity; dir: number; rgb: string; lane: number }> = [];
   private readonly glow: GlowLayer;
   private staticGlow: GlowSource[] | null = null;
-  /** The command table: its lights follow the stations' states. */
-  private readonly hub: Entity;
-  /** The six stations' states as the table's digits (HUB_STATES), and whether posts are going out. */
-  private hubCode = 0;
+  /** Whether posts are going out. */
   private uplinkOn = false;
   private readonly desks = new Map<number, Entity & { state: number }>();
   private readonly agents = new Map<string, Agent>();
@@ -245,6 +296,8 @@ export class CampScene {
       this.revealAt.set(entity, at);
     };
     ground({ x: 0, y: 0, z: 0, ground: true, job: { k: "room" }, reveal: 0, priority: 6 }, 0);
+    // The video wall's picture, drawn on the wall over the room (a ground layer, under everyone).
+    stage.add({ x: 0, y: 0, z: 0, ground: true, paint: (ctx, sx, sy, px) => this.paintVideoWall(ctx, sx, sy, px) });
     // Bake the room while the visitor is still on the landing (after the HQ's door, which asks higher).
     void stage.baker.request({ k: "room" }, 3).catch(() => undefined);
     for (const station of STATIONS) {
@@ -252,7 +305,7 @@ export class CampScene {
         const entity = stage.add({
           x: station.x + placement.x,
           y: station.y + placement.y,
-          z: 0,
+          z: station.z,
           sort: placement.sort ?? 0,
           job: { k: "prop", id: placement.prop, v: placement.v ?? 0 },
           reveal: 0,
@@ -262,46 +315,99 @@ export class CampScene {
         if (placement.key) this.keyed.set(`${station.id}:${placement.key}`, entity);
       }
     }
-    // The command table in the middle of the room, and the light trails out of the uplink.
-    this.hub = stage.add({ x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 0, job: { k: "prop", id: "hub", v: 0 }, reveal: 0, priority: 4 });
-    this.props.push(this.hub);
+    // The analysts at the format table.
+    ORACLE_SEATS.forEach((seat, i) => {
+      const oracle = STATION.oracle;
+      const person: Entity & { look: number; act: Act } = Object.assign(
+        stage.add({ x: oracle.x + seat.x, y: oracle.y + seat.y, z: oracle.z, shadowZ: oracle.z, shadow: 4, hidden: true, priority: 3, job: null as Job | null }),
+        { look: (i * 3 + 1) % 6, act: "sit" as Act, dir: seat.dir },
+      );
+      this.analysts.push(person);
+    });
+    // The light trails out of the uplink.
     stage.add({ x: STATION.agora.x, y: STATION.agora.y, z: 0, sort: 60, paint: (ctx, sx, sy, px, time) => this.paintUplink(ctx, sx, sy, px, time) });
     // The street's lamps along the kerb, and hover cars passing both ways.
     for (let x = -50, i = 0; x < ROOM.x1 + 170; x += 52, i++) {
-      if (Math.abs(x - STAIRS_TOP.x) < 16 || Math.abs(x - ENTRANCE.x) < 26) continue;
-      const lamp = stage.add({ x, y: ROOM.y0 - 29, z: LAND_Z, job: { k: "prop", id: "streetlamp", v: i }, reveal: 0, priority: 3.8 });
+      if (Math.abs(x - STAIRS_TOP.x) < 16 || Math.abs(x - ENTRANCE.x) < 26 || (x > BAY.x - 6 && x < BAY.x + 56)) continue;
+      const lamp = stage.add({ x, y: KERB + 3, z: LAND_Z, job: { k: "prop", id: "streetlamp", v: i % 8 }, reveal: 0, priority: 3.8 });
       this.props.push(lamp);
       this.streetLamps.push(lamp);
     }
-    const lanes = [
-      { y: ROOM.y0 - 52, dir: 1 },
-      { y: ROOM.y0 - 68, dir: -1 },
-    ];
-    for (let i = 0; i < 5; i++) {
-      const lane = lanes[i % 2];
+    // On the shops' side, in the alleys between the buildings, their arms out over the road (v + 8).
+    for (let k = 0; k < LANDS.length; k++) {
+      if (k % 2) continue;
+      const x = LANDS[k].x + 21;
+      const lamp = stage.add({ x, y: FAR_KERB - 3, z: LAND_Z, job: { k: "prop", id: "streetlamp", v: 8 + (k % 8) }, reveal: 0, priority: 3.8 });
+      this.props.push(lamp);
+      this.streetLamps.push(lamp);
+    }
+    for (let i = 0; i < 4; i++) {
+      const laneIndex = i % 2;
+      const lane = CAR_LANES[laneIndex];
       const span = CAR_X1 - CAR_X0;
+      // One speed per lane, so cars never catch up with each other; half the street apart.
+      const speed = laneIndex ? 26 : 32;
+      let lift = 0;
       const car: Entity = stage.add({
-        x: CAR_X0 + ((i * 0.37 + 0.1) % 1) * span,
+        x: CAR_X0 + ((Math.floor(i / 2) * 0.5 + laneIndex * 0.27) % 1) * span,
         y: lane.y,
         z: LAND_Z + 2.4,
         sort: 2,
+        // Off the road until the HQ is showing.
+        alpha: 0,
+        hidden: true,
         job: { k: "prop", id: "car", v: (i % 4) + (lane.dir < 0 ? 4 : 0) },
         priority: 3.6,
         tick: (dt) => {
-          car.x += lane.dir * (22 + (i % 3) * 7) * dt;
-          if (car.x > CAR_X1) car.x = CAR_X0;
-          if (car.x < CAR_X0) car.x = CAR_X1;
-          car.z = LAND_Z + 2.4 + Math.sin(this.time * 2 + i) * 0.4;
-          // On the landing only the slice of street in front of the HQ's door is there to drive on.
-          car.hidden = this.showing ? this.revealT < 1.2 : Math.abs(car.x) > 40;
+          // The road is quiet on the landing, until the HQ is showing, and while anyone walks
+          // between the HQ's door and the stairs: the cars fade away and wait off the street's
+          // ends, then drive back in one after another.
+          const quiet = !this.showing || this.revealT < 1.2 || this.quietRoad;
+          const alpha = Math.max(0, Math.min(1, (car.alpha ?? 1) + (quiet ? -2 : 2) * dt));
+          car.alpha = alpha;
+          if (quiet && alpha === 0) {
+            const queue = Math.floor(i / 2) * 70;
+            car.x = lane.dir > 0 ? CAR_X0 - queue : CAR_X1 + queue;
+            lift = 0;
+            car.hidden = true;
+            return;
+          }
+          // Cars keep their lanes and their speed: a hover car rises over a scout riding across the
+          // road to a shop, and settles back.
+          const target = this.crossing(car, lane.dir) ? 27 : 0;
+          lift += Math.sign(target - lift) * Math.min(Math.abs(target - lift), (target > lift ? 70 : 24) * dt);
+          car.x += lane.dir * speed * dt;
+          if (lane.dir > 0 && car.x > CAR_X1) car.x = CAR_X0;
+          if (lane.dir < 0 && car.x < CAR_X0) car.x = CAR_X1;
+          car.z = LAND_Z + 2.4 + lift + Math.sin(this.time * 2 + i) * 0.4;
+          // Waiting their turn off the street's end, they are not there yet.
+          car.hidden = car.x < CAR_X0 - 0.5 || car.x > CAR_X1 + 0.5;
         },
       });
-      this.cars.push({ entity: car, dir: lane.dir, rgb: [NEON.pink, NEON.cyan, NEON.amber, NEON.blue][i % 4] });
+      this.cars.push({ entity: car, dir: lane.dir, rgb: [NEON.pink, NEON.cyan, NEON.amber, NEON.blue][i % 4], lane: laneIndex });
+    }
+    // The platforms' billboards over their shops on the street (TikTok, Instagram, YouTube), each with
+    // a crowd that gathers as the posted videos get views.
+    for (const id of BILLBOARD_LANDS) {
+      const land = LAND[id];
+      const at = { x: land.x, y: land.y - 5.5, z: LAND_Z };
+      const frame = stage.add({ x: at.x, y: at.y, z: at.z, sort: 1, job: { k: "prop", id: "billboard", v: 0 }, reveal: 0, priority: 3.9 });
+      this.props.push(frame);
+      stage.add({ x: at.x, y: at.y, z: at.z, sort: 1.5, paint: (ctx, sx, sy, px) => this.paintBillboard(id, ctx, sx, sy, px) });
+      const crowd: Entity[] = [];
+      for (let i = 0; i < 8; i++) {
+        const spot = { x: land.x - 13 + (i % 4) * 8.5 + (i > 3 ? 4 : 0), y: land.y + 10 + (i > 3 ? 7 : 0) };
+        const person: Entity & { look: number; act: Act } = Object.assign(stage.add({ x: spot.x, y: spot.y, z: LAND_Z, shadowZ: LAND_Z, shadow: 4, hidden: true, priority: 3, job: null as Job | null }), { look: (i * 5 + id.length) % 6, act: "stand" as Act });
+        crowd.push(person);
+      }
+      this.crowds.set(id, crowd);
     }
     // The light over everything: neon halos that breathe and flicker, and drifting motes.
     this.glow = new GlowLayer(() => this.glowSources(), { x0: ROOM.x0 - 40, y0: ROOM.y0 - 110, x1: ROOM.x1 + 160, y1: ROOM.y1, z: ROOM.wall + 60 });
+    this.glow.pixels = () => this.streetPixels();
     // Steam off the coffee on every editing desk (the cup sits at the desk's back right).
     this.glow.steam = () => [...this.desks.values()].filter((d) => (d.reveal ?? 1) > 0.9).map((d) => ({ x: d.x - 1.7, y: d.y + 3.7, z: 9.5 }));
+    this.glow.setConfettiArea({ x0: ROOM.x0 + 10, y0: ROOM.y0 + 10, x1: ROOM.x1 - 10, y1: ROOM.y1 - 10, z: ROOM.wall });
     this.glow.addMotes({ x0: -45, y0: ENTRANCE.y - 10, x1: 45, y1: STREET_LANE + 20, z: ROOM.wall + 70, z0: ROOM.wall }, 26, true);
     stage.add({ x: 0, y: 0, z: 0, sort: 100_000, paint: (ctx, sx, sy, px, time) => this.glow.paint(ctx, sx, sy, px, time) });
     // Each land's landmark, and the signpost at the crossroads.
@@ -340,9 +446,11 @@ export class CampScene {
       say: (id, text, seconds) => this.say(id, text, seconds),
     });
     // Horses tied at the scouts' rail; they leave with a rider and come back with one.
-    const scouts = STATION.scouts;
+    // The charging rail behind the bikes on the pavement, then the bikes along the kerb.
+    const rack = stage.add({ x: STABLE.x, y: STABLE.y, z: BAY.z, job: { k: "prop", id: "bikerack", v: 0 }, reveal: 0, priority: 3.9 });
+    this.props.push(rack);
     for (const stall of STALLS) {
-      const steed = stage.add({ x: scouts.x + stall.horse.x, y: scouts.y + stall.horse.y, z: 0, shadow: 8, job: { k: "steed", dir: stall.horse.dir, h: stall.coat }, reveal: 0, priority: 4 });
+      const steed = stage.add({ x: stall.horse.x, y: stall.horse.y, z: BAY.z, shadowZ: BAY.z, shadow: 8, job: { k: "steed", dir: stall.horse.dir, h: stall.coat }, reveal: 0, priority: 4 });
       this.props.push(steed);
       this.stalls.push({ steed, rider: null });
     }
@@ -356,6 +464,36 @@ export class CampScene {
     stage.add({ x: 0, y: 0, z: 0, tick: (dt) => this.tick(dt) });
   }
 
+  /**
+   * Someone is walking between the HQ's door and the stairs (the team coming out, or going home),
+   * now or in the last two seconds: the road stays clear of cars meanwhile.
+   */
+  private quietRoad = false;
+  private quietUntil = -1;
+
+  private updateQuietRoad() {
+    for (const agent of this.agents.values()) {
+      const e = agent.entity;
+      if (e.hidden || Math.abs(e.z - LAND_Z) > 3 || !this.stage.has(e)) continue;
+      if (e.x > ENTRANCE.x - ENTRANCE.half && e.x < ENTRANCE.x + 30 && e.y > ENTRANCE.y && e.y < KERB) {
+        this.quietUntil = this.time + 2;
+        break;
+      }
+    }
+    this.quietRoad = this.time < this.quietUntil;
+  }
+
+  /** True when someone is in the road just ahead of (or under) a car heading `dir`: the car rises over them. */
+  private crossing(car: Entity, dir: number) {
+    for (const agent of this.agents.values()) {
+      const e = agent.entity;
+      if (e.hidden || Math.abs(e.z - LAND_Z) > 3 || Math.abs(e.y - car.y) > 11 || !this.stage.has(e)) continue;
+      const d = (e.x - car.x) * dir;
+      if (d > -18 && d < 40) return true;
+    }
+    return false;
+  }
+
   /** Starts baking the camp so it is ready when the column arrives, and forgets another brand's camp. */
   prepare(brandId: string) {
     if (this.brandId !== null && this.brandId !== brandId) this.reset();
@@ -365,6 +503,11 @@ export class CampScene {
     // are the biggest sprites there are and would hold up the workers.
     for (const entity of this.grounds) if (entity.job) void this.stage.baker.request(entity.job, 9);
     for (const entity of this.props) if (entity.job && !entity.hidden) void this.stage.baker.request(entity.job, 5);
+  }
+
+  /** Someone else (the greeter) calls the crew out: the first agent out says nothing. */
+  muteRollOut() {
+    this.calledOut = true;
   }
 
   /** The column is about to march out of the horse: everyone in the first plan walks in. */
@@ -408,16 +551,25 @@ export class CampScene {
   }
 
   /** The camera that frames the whole camp, leaving room for the panels around it. */
+  /**
+   * The camera on the whole map, centred on screen: the basement from its left corner to its front,
+   * the street from end to end, and the buildings along it up to the logos on their roofs.
+   */
   camera(insets: { top: number; bottom: number; right: number } = this.insets): CameraTarget {
+    return this.fitView(mapView(), insets);
+  }
+
+  /** The zoom that fits the basement alone (the stations' close-ups come in from it). */
+  private roomCamera(insets: { top: number; bottom: number; right: number } = this.insets): CameraTarget {
     const { width, height } = this.stage.size;
     // The basement from wall to wall, and the street above the right wall.
     const spanX = 2 * (ROOM_HALF * 2 + 16);
-    const spanY = ROOM_HALF * 2 + ROOM.wall * 1.22 + 130;
+    const spanY = ROOM_HALF * 2 + ROOM.wall * 1.22 + 70;
     const usableW = width - insets.right - 24;
     const usableH = height - insets.top - insets.bottom;
     const fit = Math.min(usableW / spanX, usableH / spanY, 3.5);
     const zoom = this.stage.fitZoom(fit);
-    const midY = CAMP_CENTER.sy - 70;
+    const midY = CAMP_CENTER.sy - 108;
     return { x: CAMP_CENTER.sx + insets.right / 2 / zoom, y: midY + (insets.bottom - insets.top) / 2 / zoom, zoom };
   }
 
@@ -426,6 +578,18 @@ export class CampScene {
   /** The camera that shows the camp and every land around it (while the scouts are out). */
   world(insets: { top: number; bottom: number; right: number } = this.insets): CameraTarget {
     return this.fitView(WORLD_VIEW, insets);
+  }
+
+  /**
+   * The tour's view of the street while the scouts are out: the shops from the first to the last,
+   * their roofs and logos, the road and the bike bay at the top of the stairs, close enough to
+   * follow the riders.
+   */
+  streetView(insets: { top: number; bottom: number; right: number } = this.insets): CameraTarget {
+    const first = LANDS[0];
+    const last = LANDS[LANDS.length - 1];
+    const bay = { sx: BAY.x - BAY.y, sy: (BAY.x + BAY.y) / 2 - 1.2247 * BAY.z };
+    return this.fitView({ x0: Math.min(first.sx, bay.sx) - 50, x1: last.sx + 40, y0: Math.min(first.sy, last.sy) - 195, y1: Math.max(last.sy, bay.sy) + 45 }, insets);
   }
 
   /** The camera on the home harbour, the agora above it, while the army boards (on a phone, close on the middle ships). */
@@ -496,20 +660,24 @@ export class CampScene {
   }
 
   /** A camera centred on one station (for the station panel). */
-  focus(id: StationId, insets = this.insets): CameraTarget {
-    const base = this.camera(insets);
+  /**
+   * The camera on one station. `close`: how much closer than the whole HQ (the tour comes in closer,
+   * so the step it explains fills the screen).
+   */
+  focus(id: StationId, insets = this.insets, close = 1.6): CameraTarget {
+    const base = this.roomCamera(insets);
     const station = STATION[id];
     // Close enough to see who is doing what, in whole device pixels.
-    const zoom = Math.min(this.stage.fitZoom(Math.max(2, base.zoom * 1.6)), 4);
+    const zoom = Math.min(this.stage.fitZoom(Math.max(2, base.zoom * close)), close > 1.6 ? 6 : 4);
     const sx = projectX(station.x, station.y);
-    const sy = projectY(station.x, station.y, 4);
+    const sy = projectY(station.x, station.y, station.z + 4);
     return { x: sx + insets.right / 2 / zoom, y: sy + (insets.bottom - insets.top) / 2 / zoom, zoom };
   }
 
   /** Where a station sits on screen (CSS px), for labels. */
   stationPoint(id: StationId) {
     const s = STATION[id];
-    return { x: s.x, y: s.y, z: 0 };
+    return { x: s.x, y: s.y, z: s.z };
   }
 
   /** How many agents are still waiting to come out of the horse. */
@@ -585,7 +753,25 @@ export class CampScene {
       } else this.settle(agent);
     }
     this.updateBasket();
-    this.hubCode = STATIONS.reduce((code, s, i) => code + HUB_STATES.indexOf(plan.stations[s.id].state) * 6 ** i, 0);
+    // What the video wall shows, and the moments the whole HQ stops to cheer at it: the cut is
+    // ready for review, and the approved videos go out.
+    const st = plan.stations;
+    this.wallMode = st.agora.state === "working" || st.agora.state === "done" ? "live" : st.theatre.state === "yours" || st.theatre.state === "done" ? "screening" : st.workshop.state === "working" || st.workshop.state === "done" ? "rendering" : "idle";
+    this.deskStates = plan.desks.map((d) => d.state);
+    const companies = plan.battle.companies;
+    this.street = {
+      sending: companies.some((c) => c.state === "sent"),
+      live: companies.filter((c) => c.state === "engaged").map((c) => c.creativeId),
+      views: plan.battle.score?.views ?? 0,
+      likes: plan.battle.score?.likes ?? 0,
+      ratio: plan.battle.score?.ratio ?? null,
+      illustrative: plan.battle.illustrative,
+    };
+    if (!instantly) {
+      if (st.theatre.state === "yours" && this.lastStates.theatre && this.lastStates.theatre !== "yours") this.celebrate(5, "PREMIERE");
+      if (st.agora.state === "working" && this.lastStates.agora && this.lastStates.agora !== "working") this.celebrate(6, "APPROVED");
+    }
+    for (const s of STATIONS) this.lastStates[s.id] = st[s.id].state;
     this.uplinkOn = plan.stations.agora.state === "working";
     const army: Enlisted[] = plan.agents.filter((a) => a.army).map((a) => ({ id: a.id, ...a.army! }));
     this.expedition.apply(plan.battle, army, instantly);
@@ -597,8 +783,8 @@ export class CampScene {
    */
   dispatch(from: StationId, to: StationId, key = `${from}>${to}`) {
     if (from === to) return;
-    // A packet of data runs along the floor's cables from one station, via the command table, to the next.
-    this.packets.push({ from, to, at: this.time });
+    // A packet of light runs along the walkways from one station to the next, down the stairs if need be.
+    this.packets.push({ from, to, at: this.time, path: flowLine(from, to) });
     if (this.packets.length > 6) this.packets.shift();
     const last = this.dispatches[this.dispatches.length - 1];
     if (last && last.from === from && last.to === to) return;
@@ -665,7 +851,7 @@ export class CampScene {
       } else agent.onFoot = true;
       const spot = LAND_SPOTS.gather[slot];
       const p = this.landPoint(land, spot);
-      Object.assign(agent.entity, { x: p.x, y: p.y, z: 0, dir: spot.dir, act: LAND_ACT[land], reveal: 0, alpha: 1, shadow: 5 });
+      Object.assign(agent.entity, { x: p.x, y: p.y, z: p.z, shadowZ: p.z, dir: spot.dir, act: LAND_ACT[land], reveal: 0, alpha: 1, shadow: 5 });
       agent.where = "afield";
       agent.node = "scouts";
       agent.trip = "there";
@@ -676,8 +862,9 @@ export class CampScene {
     }
     const post = this.postPoint(plan);
     // Appears with its island, grain by grain (see tick).
-    Object.assign(agent.entity, { x: post.x, y: post.y, z: post.z, dir: plan.dir, act: plan.act, reveal: 0, alpha: 1 });
-    agent.entity.shadow = post.z < 1 ? 5 : 0;
+    const floor = STATION[plan.station].z;
+    Object.assign(agent.entity, { x: post.x, y: post.y, z: post.z, shadowZ: floor, dir: plan.dir, act: plan.act, reveal: 0, alpha: 1 });
+    agent.entity.shadow = post.z - floor < 1 ? 5 : 0;
     agent.up = plan.via ? this.viaSteps(plan) : null;
     agent.node = plan.station;
     agent.where = "posted";
@@ -771,14 +958,16 @@ export class CampScene {
   /** Walks to the post: down from where it was, along the roads if it is on another island, up to it. */
   private toPost(agent: Agent) {
     const plan = agent.plan;
+    // Out on the pavement: down the stairs first (this moves its node to the stairs).
+    const off: Step[] = this.atStable(agent) && !agent.up?.length ? this.descend(agent) : [];
     const far = agent.node !== plan.station;
     // Already in by the same way (a soldier moving up on the battlefield): straight to the new post.
-    if (!far && agent.up && plan.via && this.sameWay(agent.up, this.viaSteps(plan))) {
+    if (!off.length && !far && agent.up && plan.via && this.sameWay(agent.up, this.viaSteps(plan))) {
       agent.doing = "Moving up";
       this.run(agent, [{ ...this.postPoint(plan), dir: plan.dir }], plan.act === "fight" || plan.act === "cheer" ? SPEED.run : SPEED.walk, () => undefined);
       return;
     }
-    const steps: Step[] = [...this.descend(agent)];
+    const steps: Step[] = [...off, ...this.descend(agent)];
     if (far) steps.push(...travel(agent.node, plan.station));
     steps.push(...this.approach(plan));
     agent.node = plan.station;
@@ -811,13 +1000,12 @@ export class CampScene {
     const land = this.landOf(agent);
     const name = LAND[land].name;
     const stall = agent.stall ?? this.freeStall(agent);
-    agent.node = "scouts";
     agent.trip = "out";
     if (stall < 0) {
       agent.onFoot = true;
       agent.doing = `Every bike is out: running to ${name} for ${this.source(agent)}`;
-      const out = this.descend(agent);
-      if (!this.atStable(agent)) out.push(this.gate());
+      const out: Step[] = this.atStable(agent) ? [this.gate()] : [...this.descend(agent), ...(agent.node !== "horse" ? travel(agent.node, "horse") : []), ...upStairs()];
+      agent.node = "horse";
       this.run(agent, [...out, ...roadToLand(land)], SPEED.run, () => this.reachLand(agent));
       return;
     }
@@ -861,7 +1049,7 @@ export class CampScene {
   private tieUp(agent: Agent, land: LandId, slot: number, reveal: number) {
     const horse = LAND_SPOTS.horses[slot];
     const p = this.landPoint(land, horse);
-    this.landSteeds.set(agent, this.stage.add({ x: p.x, y: p.y, z: p.z, shadow: 8, job: { k: "steed", dir: horse.dir, h: agent.entity.coat } as Job, reveal, priority: 3 }));
+    this.landSteeds.set(agent, this.stage.add({ x: p.x, y: p.y, z: p.z, shadowZ: p.z, shadow: 8, job: { k: "steed", dir: horse.dir, h: agent.entity.coat } as Job, reveal, priority: 3 }));
   }
 
   /** Gathering at the landmark, for as long as the run lasts (and a moment at least, so it reads). */
@@ -908,12 +1096,16 @@ export class CampScene {
         agent.trip = "empty";
       } else agent.trip = "camp";
     };
+    // Down the stairs from the pavement and along the deck to the intake bin.
+    const indoors: Step[] = [...this.downStairs(), ...travel("horse", "scouts"), basket];
     if (agent.onFoot || agent.stall === null) {
       agent.onFoot = false;
       agent.doing = carrying ? `Running back from ${name} with a data package` : `Running back from ${name}`;
-      if (carrying) return this.run(agent, [...home, this.gate(), basket], SPEED.run, deliver, "carry");
+      agent.node = "scouts";
+      if (carrying) return this.run(agent, [...home, this.gate(), ...indoors], SPEED.run, deliver, "carry");
       backEmpty();
-      return this.run(agent, [...home, this.gate()], SPEED.run, () => undefined);
+      agent.node = "horse";
+      return this.run(agent, [...home, this.gate(), ...this.downStairs()], SPEED.run, () => undefined);
     }
     const steed = this.landSteeds.get(agent);
     const horse = LAND_SPOTS.horses[slot ?? 0];
@@ -935,69 +1127,62 @@ export class CampScene {
               backEmpty();
               return this.settle(agent);
             }
-            // Into the basket with it.
+            // Down the stairs and into the intake bin with it.
             agent.entity.act = "carry";
-            agent.doing = "Carrying the data package to the intake bin";
-            this.run(agent, [...this.outOfStable(agent), basket], SPEED.run, deliver, "carry");
+            agent.doing = "Carrying the data package down to the intake bin";
+            agent.node = "scouts";
+            this.run(agent, [...this.outOfStable(agent), ...indoors], SPEED.run, deliver, "carry");
           });
         });
       });
     });
   }
 
-  /** The courier saddles up, rides to where the work is, then on to the station that needs it. */
+  /** The courier walks to where the work is, takes it, and carries it on to the station that needs it. */
   private courierRun(agent: Agent) {
-    const stall = agent.stall ?? this.freeStall(agent);
-    // The courier's horse is his alone, so it is always in when he is.
-    if (stall < 0) return;
-    this.stalls[stall].rider = agent;
-    agent.stall = stall;
-    agent.node = "scouts";
-    agent.doing = "Going to the bike bay for a scooter";
-    this.run(agent, this.toStall(agent, stall), SPEED.walk, () => {
-      agent.doing = "Saddling up";
-      this.mount(agent, stall, () => this.courierLeg(agent));
-    });
+    this.courierLeg(agent);
   }
 
   private courierLeg(agent: Agent) {
     const job = this.dispatches.shift();
-    const stall = agent.stall!;
-    // Leave the stable through its gate, or cross the island the last job ended on.
-    const lead: Step[] = this.atStable(agent) ? [...this.outOfStable(agent), hub("scouts")] : [hub(agent.node)];
     if (!job) {
-      // Nothing more to carry: back to the stable, unsaddle, back to the post.
-      const home: Step[] = agent.node === "scouts" ? [] : [...travel(agent.node, "scouts"), hub("scouts")];
-      const steps: Step[] = [...lead, ...home, ...this.intoStable(stall, "horse")];
-      agent.node = "scouts";
+      // Nothing more to carry: back to the post.
       agent.errand = null;
-      agent.doing = "Riding back to the bike bay";
-      this.ride(agent, steps, SPEED.courier, 1, () => this.dismount(agent, false, () => this.settle(agent)));
+      agent.entity.act = "march";
+      this.toPost(agent);
       return;
     }
+    const lead: Step[] = [...this.descend(agent)];
     const pickup: Step[] = [...lead, ...travel(agent.node, job.from)];
     agent.node = job.from;
     agent.errand = { from: job.from, to: job.to };
-    agent.doing = `Riding to ${PLACE[job.from]} to collect the finished work`;
+    agent.doing = `Walking to ${PLACE[job.from]} to collect the finished work`;
     // Who talks at each end: the station's head and the courier.
     const talk = (phase: "pickup" | "handover", station: StationId) => {
       const head = HEAD[station];
       const speakers = phase === "pickup" ? [head, "courier"] : ["courier", head];
       this.events.onExchange?.({ key: job.key, from: job.from, to: job.to, phase, speakers: speakers.filter((id): id is string => Boolean(id && this.agents.has(id))) });
     };
-    this.ride(agent, pickup, SPEED.courier, 1, () => {
+    this.run(agent, pickup, SPEED.run, () => {
       agent.doing = `Collecting the work at ${PLACE[job.from]}`;
       talk("pickup", job.from);
       this.pause(agent, BEAT.pickup, () => {
         agent.node = job.to;
         agent.doing = `Carrying the work to ${PLACE[job.to]}`;
-        this.ride(agent, [hub(job.from), ...travel(job.from, job.to)], SPEED.courier, 1, () => {
-          this.events.onArrive?.(job.to);
-          talk("handover", job.to);
-          agent.deliveries++;
-          agent.doing = `Handing the work over at ${PLACE[job.to]}`;
-          this.pause(agent, BEAT.handover, () => this.courierLeg(agent));
-        });
+        this.run(
+          agent,
+          [hub(job.from), ...travel(job.from, job.to)],
+          SPEED.run,
+          () => {
+            this.events.onArrive?.(job.to);
+            talk("handover", job.to);
+            agent.deliveries++;
+            agent.doing = `Handing the work over at ${PLACE[job.to]}`;
+            agent.entity.act = "stand";
+            this.pause(agent, BEAT.handover, () => this.courierLeg(agent));
+          },
+          "carry",
+        );
       });
     });
   }
@@ -1008,7 +1193,7 @@ export class CampScene {
     const steed = this.stalls[stall].steed;
     this.stage.remove(steed);
     const e = agent.entity;
-    Object.assign(e, { x: steed.x, y: steed.y, z: 0, dir: at.horse.dir, shadow: 9 });
+    Object.assign(e, { x: steed.x, y: steed.y, z: steed.z, shadowZ: steed.z, dir: at.horse.dir, shadow: 9 });
     e.coat = at.coat;
     e.job = { k: "rider", look: e.look, dir: e.dir, f: -1, c: agent.plan.id === "courier" ? 1 : 0, h: e.coat };
     agent.busy = true;
@@ -1030,8 +1215,7 @@ export class CampScene {
       this.stalls[stall].rider = null;
       agent.stall = null;
       this.stage.add(steed);
-      const spot = this.rel("scouts", at.mount.x, at.mount.y, 0);
-      Object.assign(e, { x: spot.x, y: spot.y, z: 0, dir: at.mount.dir, shadow: 5, act: carrying ? "carry" : "stand" });
+      Object.assign(e, { x: at.mount.x, y: at.mount.y, z: BAY.z, shadowZ: BAY.z, dir: at.mount.dir, shadow: 5, act: carrying ? "carry" : "stand" });
       e.job = { k: "soldier", look: e.look, act: e.act, dir: e.dir, f: 0 };
       agent.busy = false;
       then();
@@ -1090,7 +1274,9 @@ export class CampScene {
       }
       // Back up the plank: fade into the dark of the doorway.
       if (door === "home" && e.z > 40 && leg >= steps.length - 1) e.alpha = Math.max(0, (e.alpha ?? 1) - dt * 5);
-      e.shadow = e.z < 1 ? 5 : 0;
+      // A shadow underfoot on the floor, the stairs or the street; none while climbing a ladder.
+      e.shadowZ = e.z;
+      e.shadow = legAct === "climb" ? 0 : 5;
       e.act = legAct;
       const frames = ACT_FRAMES[legAct];
       e.job = { k: "soldier", look: e.look, act: legAct, dir: e.dir, f: frames > 1 ? Math.floor((travelled / stride) * frames) % frames : 0 };
@@ -1142,6 +1328,8 @@ export class CampScene {
           remaining = 0;
         }
       }
+      // The shadow rides along on whatever is underfoot: the floor, the stairs, the street.
+      e.shadowZ = e.z;
       e.job = { k: "rider", look: e.look, dir: e.dir, f: Math.floor((travelled / 7) % RIDER_FRAMES), c: carry, h: e.coat };
       if (leg >= steps.length) {
         e.tick = undefined;
@@ -1265,44 +1453,47 @@ export class CampScene {
   // --- Places ----------------------------------------------------------------------------------
 
   /** On foot to the stall's mounting spot, around the end of the rail. */
+  /** On foot to the stall's bike: up the street stairs to the pavement, along to the bike. */
   private toStall(agent: Agent, stall: number): Step[] {
-    // Already in the stable (just back from a ride, say): along the aisle to the horse.
-    if (this.atStable(agent)) return this.intoStable(stall, "mount").slice(2);
+    // Already out on the pavement (just back from a ride, say): along the aisle to the bike.
+    if (this.atStable(agent)) return this.intoStable(stall, "mount").slice(1);
     const steps: Step[] = [...this.descend(agent)];
-    if (agent.node !== "scouts") steps.push(...travel(agent.node, "scouts"), hub("scouts"));
-    steps.push(...this.intoStable(stall, "mount"));
+    if (agent.node !== "horse") steps.push(...travel(agent.node, "horse"));
+    steps.push(...upStairs(), ...this.intoStable(stall, "mount").slice(1));
+    agent.node = "horse";
     return steps;
   }
 
+  /** On the pavement at the top of the stairs. */
   private gate(): Point {
-    return this.rel("scouts", STABLE_GATE.x, STABLE_GATE.y, 0);
+    return stableGate();
   }
 
-  /** From a stall (on foot or on horseback) back into the aisle behind the horses, and out of the gate. */
+  /** From the bikes back along the aisle to the top of the stairs. */
   private outOfStable(agent: Agent): Step[] {
-    const y = agent.entity.y - STATION.scouts.y;
-    return [this.rel("scouts", STABLE_AISLE.x, y, 0), this.rel("scouts", STABLE_AISLE.x, STABLE_AISLE.south, 0), this.gate()];
+    return [{ x: agent.entity.x, y: STABLE_AISLE.y, z: BAY.z }, this.gate()];
   }
 
-  /** In at the gate and up the aisle to a stall: its horse (riding in), or behind it (walking up to mount). */
+  /** From the top of the stairs along the aisle to a stall: its bike (riding in) or behind it (to get on). */
   private intoStable(stall: number, to: "horse" | "mount"): Step[] {
     const spot = STALLS[stall][to];
-    return [
-      this.gate(),
-      this.rel("scouts", STABLE_AISLE.x, STABLE_AISLE.south, 0),
-      this.rel("scouts", STABLE_AISLE.x, spot.y, 0),
-      { ...this.rel("scouts", spot.x, spot.y, 0), dir: spot.dir },
-    ];
+    return [this.gate(), { x: spot.x, y: STABLE_AISLE.y, z: BAY.z }, { x: spot.x, y: spot.y, z: BAY.z, dir: spot.dir }];
   }
 
+  /** Down the street stairs from the top to the deck. */
+  private downStairs(): Step[] {
+    return upStairs().reverse();
+  }
+
+  /** Out on the pavement by the bikes (not on a land's lot, not indoors). */
   private atStable(agent: Agent) {
-    const s = STATION.scouts;
-    return agent.node === "scouts" && agent.entity.x - s.x < STABLE_GATE.x + 2;
+    const e = agent.entity;
+    return Math.abs(e.z - BAY.z) < 1 && e.y > BAY.y - 10 && e.y < ROOM.y0 - 4 && e.x > STABLE_GATE.x - 6 && e.x < BAY.x + 60;
   }
 
   private rel(station: StationId, x: number, y: number, z: number): Point {
     const s = STATION[station];
-    return { x: s.x + x, y: s.y + y, z };
+    return { x: s.x + x, y: s.y + y, z: s.z + z };
   }
 
   private postPoint(plan: AgentPlan): Point {
@@ -1326,7 +1517,11 @@ export class CampScene {
   private descend(agent: Agent): Step[] {
     const up = agent.up;
     agent.up = null;
-    if (!up?.length) return this.atStable(agent) ? this.outOfStable(agent) : [];
+    if (!up?.length) {
+      if (!this.atStable(agent)) return [];
+      agent.node = "horse";
+      return [...this.outOfStable(agent), ...this.downStairs()];
+    }
     const steps: Step[] = [];
     for (let i = up.length - 1; i >= 0; i--) {
       const leg = up[i + 1];
@@ -1389,11 +1584,14 @@ export class CampScene {
    * platform (TikTok, Instagram, YouTube) in its colour.
    */
   private paintUplink(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number, time: number) {
-    if (!this.uplinkOn) return;
-    const from = { x: -6, y: -6, z: 18 };
-    const colours = ["#52d9ed", "#f05ccd", "#ff5a6e"];
+    if (!this.uplinkOn && !this.street.sending) return;
+    // From the broadcast mast's dishes up through the ceiling to the three platforms' billboards.
+    const from = { x: 30, y: -28, z: 36 };
+    const colours = ["#f05ccd", "#f78ade", "#ff5a6e"];
+    const agora = STATION.agora;
     for (let k = 0; k < 3; k++) {
-      const to = { x: -40 + k * 30, y: -150 - k * 20, z: ROOM.wall + 40 };
+      const land = LAND[BILLBOARD_LANDS[k]];
+      const to = { x: land.x - agora.x, y: land.y - 5.5 - agora.y, z: LAND_Z + 32 };
       for (let j = 0; j < 4; j++) {
         const t = (time * 0.6 + j / 4 + k * 0.13) % 1;
         const x = from.x + (to.x - from.x) * t;
@@ -1417,20 +1615,29 @@ export class CampScene {
     this.cars.forEach((car, i) => {
       if (car.entity.hidden) return;
       const e = car.entity;
-      moving.push({ a: { x: e.x + car.dir * 8, y: e.y, z: e.z + 3.4 }, rgb: NEON.white, r: 14, strength: 0.5, pulse: 0, phase: i, always: true });
-      moving.push({ a: { x: e.x, y: e.y, z: e.z + 1.6 }, rgb: car.rgb, r: 16, strength: 0.45, pulse: 0.1, phase: i + 0.5, always: true });
+      moving.push({ a: { x: e.x + car.dir * 14, y: e.y, z: e.z + 5.8 }, rgb: NEON.white, r: 18, strength: 0.5, pulse: 0, phase: i, always: true });
+      moving.push({ a: { x: e.x, y: e.y, z: e.z + 2.7 }, rgb: car.rgb, r: 22, strength: 0.45, pulse: 0.1, phase: i + 0.5, always: true });
     });
-    // Packets: a bright core with a halo, out along the cable to the table and on to the next station.
-    const centre = { x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 1 };
+    // Packets: a bright core with a halo, along the walkways from one station to the next.
     for (const p of this.packets) {
-      const t = (this.time - p.at) / 2.6;
+      const t = (this.time - p.at) / 3.2;
       if (t < 0 || t > 1) continue;
-      const a = { x: STATION[p.from].x, y: STATION[p.from].y, z: 1 };
-      const b = { x: STATION[p.to].x, y: STATION[p.to].y, z: 1 };
-      const [u, v, k] = t < 0.5 ? [a, centre, t * 2] : [centre, b, t * 2 - 1];
-      const at = { x: u.x + (v.x - u.x) * k, y: u.y + (v.y - u.y) * k, z: 2 };
+      const at = alongPath(p.path, t);
+      at.z += 2;
       moving.push({ a: at, rgb: NEON.white, r: 6, strength: 0.9, pulse: 0, phase: 0 });
       moving.push({ a: at, rgb: t < 0.5 ? NEON.cyan : NEON.pink, r: 20, strength: 0.6, pulse: 0, phase: 0 });
+    }
+    // Numbers coming home: packets from each billboard down to the analytics board.
+    if (this.street.live.length && this.street.views > 0) {
+      const board = { x: STATION.agora.x - 26, y: STATION.agora.y - 26, z: 22 };
+      BILLBOARD_LANDS.forEach((id, k) => {
+        const land = LAND[id];
+        const top = { x: land.x, y: land.y - 5.5, z: LAND_Z + 32 };
+        for (let j = 0; j < 3; j++) {
+          const t = (this.time * 0.35 + j / 3 + k * 0.17) % 1;
+          moving.push({ a: { x: top.x + (board.x - top.x) * t, y: top.y + (board.y - top.y) * t, z: top.z + (board.z - top.z) * t + Math.sin(t * Math.PI) * 30 }, rgb: NEON.cyan, r: 7, strength: 0.7, pulse: 0, phase: k + j });
+        }
+      });
     }
     if (this.uplinkOn) moving.push({ a: { x: STATION.agora.x - 6, y: STATION.agora.y - 6, z: 16 }, rgb: NEON.cyan, r: 26, strength: 0.55, pulse: 0.6, phase: 3 });
     return [...this.staticGlow, ...moving];
@@ -1445,60 +1652,306 @@ export class CampScene {
     add({ a: { x: x0 + 130, y: y0 + 0.6, z: wall - 6 }, b: { x: x1 - 10, y: y0 + 0.6, z: wall - 6 }, rgb: NEON.pink, r: 18, strength: 0.38, flicker: 0.015 });
     add({ a: { x: x1, y: y0, z: -1 }, b: { x: x1, y: y1, z: -1 }, rgb: NEON.cyan, r: 10, strength: 0.3 });
     add({ a: { x: x0, y: y1, z: -1 }, b: { x: x1, y: y1, z: -1 }, rgb: NEON.pink, r: 10, strength: 0.3 });
-    // The stairs' rail and the lights under its treads.
-    add({ a: { x: STAIRS.top.x, y: STAIRS.top.y + STAIRS.width / 2, z: wall + 5 }, b: { x: STAIRS.foot.x, y: STAIRS.top.y + STAIRS.width / 2, z: 5 }, rgb: NEON.cyan, r: 12, strength: 0.35 });
-    add({ a: { x: STAIRS.top.x, y: STAIRS.top.y, z: wall - 2 }, b: { x: STAIRS.foot.x, y: STAIRS.top.y, z: 4 }, rgb: NEON.blue, r: 10, strength: 0.3 });
-    // The SURREEL sign on the left wall, the wall lamps and the posters.
-    add({ a: { x: x0 + 1, y: y0 + (y1 - y0) * 0.62, z: 70 }, rgb: NEON.pink, r: 38, strength: 0.5, pulse: 0.35, flicker: 0.02 });
+    // The street stairs (street to deck) and the inner stairs (deck to ground floor): rails and treads.
+    add({ a: { x: STAIRS.top.x, y: STAIRS.top.y + STAIRS.width / 2, z: wall + 5 }, b: { x: STAIRS.foot.x, y: STAIRS.top.y + STAIRS.width / 2, z: DECK.z + 5 }, rgb: NEON.cyan, r: 12, strength: 0.35 });
+    add({ a: { x: STAIRS.top.x, y: STAIRS.top.y, z: wall - 2 }, b: { x: STAIRS.foot.x, y: STAIRS.top.y, z: DECK.z + 2 }, rgb: NEON.blue, r: 10, strength: 0.3 });
+    const turn = INNER.turn;
+    add({ a: { x: INNER.x + INNER.width / 2, y: INNER.top, z: DECK.z + 5 }, b: { x: INNER.x + INNER.width / 2, y: turn.y - turn.half, z: turn.z + 5 }, rgb: NEON.cyan, r: 12, strength: 0.35 });
+    add({ a: { x: turn.x + turn.half, y: y1, z: turn.z + 5 }, b: { x: INNER.footX, y: y1, z: 5 }, rgb: NEON.cyan, r: 12, strength: 0.35 });
+    add({ a: { x: turn.x + turn.half, y: turn.y, z: turn.z - 2 }, b: { x: INNER.footX, y: turn.y, z: 2 }, rgb: NEON.blue, r: 10, strength: 0.3 });
+    // The deck's edges and rails.
+    add({ a: { x: x0 + DECK.depth, y: y0 + DECK.depth, z: DECK.z + 7 }, b: { x: x0 + DECK.depth, y: DECK.leftY1, z: DECK.z + 7 }, rgb: NEON.pink, r: 9, strength: 0.28 });
+    add({ a: { x: x0 + DECK.depth, y: y0 + DECK.depth, z: DECK.z + 7 }, b: { x: DECK.rightX1, y: y0 + DECK.depth, z: DECK.z + 7 }, rgb: NEON.pink, r: 9, strength: 0.28 });
+    add({ a: { x: x0 + DECK.depth, y: y0 + DECK.depth, z: DECK.z - 1 }, b: { x: x0 + DECK.depth, y: DECK.leftY1, z: DECK.z - 1 }, rgb: NEON.cyan, r: 8, strength: 0.3 });
+    add({ a: { x: x0 + DECK.depth, y: y0 + DECK.depth, z: DECK.z - 1 }, b: { x: DECK.rightX1, y: y0 + DECK.depth, z: DECK.z - 1 }, rgb: NEON.cyan, r: 8, strength: 0.3 });
+    // The SURREEL sign, the walls' screens and signs, the lamps, the coffee nook.
+    add({ a: { x: HQ_SIGN.x + 1, y: HQ_SIGN.y, z: HQ_SIGN.z }, rgb: NEON.pink, r: 40, strength: 0.5, pulse: 0.35, flicker: 0.02 });
+    add({ a: { x: HQ_SIGN.x + 1, y: HQ_SIGN.y, z: HQ_SIGN.z - 13 }, rgb: NEON.cyan, r: 16, strength: 0.4 });
     for (const lamp of wallLamps()) add({ a: lamp, rgb: NEON.amber, r: 30, strength: 0.55, pulse: 0.15 });
-    add({ a: { x: x0 + 1, y: y0 + (y1 - y0) * 0.86, z: 62 }, rgb: NEON.blue, r: 14, strength: 0.3 });
-    // The loft: its rail, the racks and the analytics wall over it.
-    add({ a: { x: x0 + LOFT.depth, y: y0, z: LOFT.z + 7 }, b: { x: x0 + LOFT.depth, y: LOFT.y1, z: LOFT.z + 7 }, rgb: NEON.pink, r: 10, strength: 0.3 });
-    add({ a: { x: x0 + 1.5, y: y0 + 32, z: LOFT.z + 26 }, rgb: NEON.blue, r: 40, strength: 0.4, pulse: 0.35 });
-    add({ a: { x: x0 + 9, y: y0 + 14, z: LOFT.z + 9 }, rgb: NEON.cyan, r: 14, strength: 0.35, pulse: 0.6 });
-    add({ a: { x: x0 + 1, y: y0 + (y1 - y0) * 0.78, z: 32 }, rgb: NEON.cyan, r: 14, strength: 0.3 });
-    add({ a: { x: x0 + (x1 - x0) * 0.74, y: y0 + 1, z: 62 }, rgb: NEON.pink, r: 14, strength: 0.3 });
-    add({ a: { x: x0 + (x1 - x0) * 0.62, y: y0 + 1.5, z: 30 }, rgb: NEON.cyan, r: 16, strength: 0.35, pulse: 0.5 });
-    // The stations: the command table, the archive's sign and monitors, the desks, the approval
-    // screen's warm bar, the uplink, the strategy corner's notes.
-    add({ a: { x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 14 }, rgb: NEON.cyan, r: 30, strength: 0.5, pulse: 0.4 });
-    add({ a: { x: ROOM_CENTER.x, y: ROOM_CENTER.y, z: 19 }, rgb: NEON.pink, r: 14, strength: 0.5 });
-    const st = (id: StationId, dx: number, dy: number, z: number) => ({ x: STATION[id].x + dx, y: STATION[id].y + dy, z });
-    add({ a: st("oracle", -12, -3, 19.6), rgb: NEON.pink, r: 16, strength: 0.4, flicker: 0.02 });
-    add({ a: st("oracle", -21, -12, 10), rgb: NEON.cyan, r: 22, strength: 0.4, pulse: 0.5 });
-    add({ a: st("workshop", -14, -10, 12), rgb: NEON.cyan, r: 30, strength: 0.4, pulse: 0.3 });
-    add({ a: st("workshop", 18, -28, 10), rgb: NEON.jade, r: 14, strength: 0.3 });
+    add({ a: { x: x0 + 2, y: y0 + 30, z: DECK.z + 50 }, b: { x: x0 + 2, y: STATION.oracle.y + 30, z: DECK.z + 50 }, rgb: NEON.pink, r: 22, strength: 0.32, pulse: 0.4 });
+    add({ a: { x: x0 + 2, y: y0 + 30, z: DECK.z + 22 }, b: { x: x0 + 2, y: STATION.oracle.y + 30, z: DECK.z + 22 }, rgb: NEON.cyan, r: 20, strength: 0.28, pulse: 0.5 });
+    add({ a: { x: x0 + 2, y: STATION.oracle.y + 70, z: DECK.z + 34 }, rgb: NEON.cyan, r: 22, strength: 0.3 });
+    add({ a: { x: x0 + 8, y: STATION.tent.y, z: ROOM.wall - 4 }, b: { x: x0 + 8, y: DECK.leftY1 - 8, z: ROOM.wall - 4 }, rgb: NEON.pink, r: 10, strength: 0.3 });
+    add({ a: { x: x0 + 8, y: STATION.tent.y - 2, z: DECK.z + 46 }, rgb: NEON.amber, r: 14, strength: 0.5, pulse: 0.2 });
+    add({ a: { x: x0 + INNER.width + 9, y: DECK.leftY1 + 5, z: 16 }, rgb: NEON.pink, r: 18, strength: 0.4, pulse: 0.3 });
+    add({ a: { x: x0 + 60, y: DECK.leftY1 + 1, z: 30 }, rgb: NEON.amber, r: 22, strength: 0.45, flicker: 0.01 });
+    add({ a: { x: x0 + 40, y: DECK.leftY1 + 1, z: 40 }, b: { x: x0 + 80, y: DECK.leftY1 + 1, z: 40 }, rgb: NEON.amber, r: 10, strength: 0.4, pulse: 0.3 });
+    add({ a: { x: x0 + 1, y: y1 - 14, z: INNER.turn.z + 34 }, rgb: NEON.cyan, r: 14, strength: 0.3 });
+    add({ a: { x: DECK.rightX1 + 1, y: y0 + DECK.depth - 18, z: 30 }, rgb: NEON.pink, r: 16, strength: 0.35 });
+    // The studio: its lights pouring down on the green, and ON AIR beside it.
+    add({ a: { x: STUDIO.x + 14, y: STUDIO.y + 14, z: 30 }, rgb: NEON.white, r: 34, strength: 0.32, pulse: 0.1 });
+    add({ a: { x: STUDIO.x + STUDIO.size + 9, y: STUDIO.y + 1, z: 47 }, rgb: NEON.pink, r: 14, strength: 0.55, flicker: 0.03 });
+    // The video wall's rim.
+    add({ a: { x: VIDEO_WALL.x0, y: y0 + 2, z: VIDEO_WALL.z0 }, b: { x: VIDEO_WALL.x1, y: y0 + 2, z: VIDEO_WALL.z0 }, rgb: NEON.blue, r: 10, strength: 0.3 });
+    add({ a: { x: VIDEO_WALL.x0, y: y0 + 2, z: VIDEO_WALL.z1 }, b: { x: VIDEO_WALL.x1, y: y0 + 2, z: VIDEO_WALL.z1 }, rgb: NEON.blue, r: 10, strength: 0.3 });
+    // The stations: the archive's sign and monitors, the editing bay, the servers, the review desk,
+    // the writers' desk and the strategy table, the wall map, the mast's light, the uplink.
+    const st = (id: StationId, dx: number, dy: number, z: number) => ({ x: STATION[id].x + dx, y: STATION[id].y + dy, z: STATION[id].z + z });
+    add({ a: st("oracle", -6, -2, 15), rgb: NEON.cyan, r: 26, strength: 0.45, pulse: 0.5 });
+    add({ a: st("oracle", -6, -2, 8), rgb: NEON.pink, r: 12, strength: 0.3 });
+    add({ a: st("workshop", -41, 20, 12), rgb: NEON.cyan, r: 30, strength: 0.4, pulse: 0.3 });
+    add({ a: st("workshop", 24, -57, 20), rgb: NEON.jade, r: 20, strength: 0.32, pulse: 0.4 });
+    add({ a: st("workshop", -8, -48, 10), rgb: NEON.amber, r: 12, strength: 0.35 });
     add({ a: st("theatre", -15, -15, 24), rgb: NEON.amber, r: 30, strength: 0.45 });
-    add({ a: st("tent", -24, -12, 12), rgb: NEON.pink, r: 22, strength: 0.35, pulse: 0.3 });
-    add({ a: st("tent", 12, 8, 8), rgb: NEON.cyan, r: 16, strength: 0.45, pulse: 0.5 });
-    add({ a: st("scouts", -16, -14, 36), rgb: NEON.pink, r: 8, strength: 0.7, pulse: 0.9 });
+    add({ a: st("tent", -27, -6, 11), rgb: NEON.amber, r: 18, strength: 0.45, pulse: 0.2 });
+    add({ a: st("tent", -30, -12, 9), rgb: NEON.cyan, r: 10, strength: 0.4 });
+    add({ a: st("scouts", -2, -44, 38), rgb: NEON.blue, r: 40, strength: 0.4, pulse: 0.3 });
+    add({ a: st("scouts", -6, -42, 11), rgb: NEON.cyan, r: 20, strength: 0.4, pulse: 0.4 });
     add({ a: st("agora", -6, -6, 16), rgb: NEON.cyan, r: 12, strength: 0.4, pulse: 0.6 });
     // The street: the HQ's sign and door, the shops' signs and awnings, the lamps.
     const front = ENTRANCE.y + ENTRANCE.depth;
-    add({ a: { x: 0, y: front + 1.2, z: wall + 38 }, rgb: NEON.pink, r: 40, strength: 0.6, pulse: 0.3, flicker: 0.03, always: true });
-    add({ a: { x: 0, y: front + 1.2, z: wall + 27 }, rgb: NEON.cyan, r: 18, strength: 0.5, flicker: 0.01, always: true });
+    add({ a: { x: 0, y: front + 1.2, z: wall + 42 }, rgb: NEON.pink, r: 40, strength: 0.6, pulse: 0.3, flicker: 0.03, always: true });
+    add({ a: { x: 0, y: front + 1.2, z: wall + 31 }, rgb: NEON.cyan, r: 18, strength: 0.5, flicker: 0.01, always: true });
     add({ a: { x: 0, y: front + 4, z: wall + 6 }, rgb: NEON.amber, r: 22, strength: 0.45, always: true });
     for (const side of [-1, 1]) {
       add({ a: { x: side * (ENTRANCE.half - 0.8), y: front, z: wall + 2 }, b: { x: side * (ENTRANCE.half - 0.8), y: front, z: wall + ENTRANCE.tall }, rgb: NEON.pink, r: 10, strength: 0.35, always: true });
-      add({ a: { x: side * (ENTRANCE.door + 3), y: front + 0.7, z: wall + 12 }, rgb: NEON.amber, r: 12, strength: 0.45, always: true });
+      add({ a: { x: side * (ENTRANCE.door + 3), y: front + 0.7, z: wall + 14 }, rgb: NEON.amber, r: 12, strength: 0.45, always: true });
     }
-    add({ a: { x: 10, y: ENTRANCE.y, z: wall + ENTRANCE.tall + 14.4 }, rgb: NEON.pink, r: 8, strength: 0.8, pulse: 0.9, always: true });
-    // The puddles on the landing's slice of street catch the sign.
-    for (const [px, py, rgb] of [
-      [18, STREET_LANE + 9, NEON.pink],
-      [-22, STREET_LANE - 6, NEON.cyan],
-      [30, STREET_LANE - 14, NEON.blue],
-    ] as const) add({ a: { x: px, y: py, z: wall + 0.2 }, rgb, r: 12, strength: 0.35, pulse: 0.5, always: true });
+    add({ a: { x: 12, y: front - 14, z: wall + ENTRANCE.tall + 30.4 }, rgb: NEON.pink, r: 8, strength: 0.8, pulse: 0.9, always: true });
     for (const land of LANDS) {
       const rgb = hexRgb(land.color);
-      add({ a: { x: land.x, y: land.y - 7, z: LAND_Z + 15.5 }, rgb, r: 26, strength: 0.5, pulse: 0.3, flicker: 0.012 });
-      add({ a: { x: land.x - 16, y: land.y - 3.6, z: LAND_Z + 10.2 }, b: { x: land.x + 16, y: land.y - 3.6, z: LAND_Z + 10.2 }, rgb, r: 9, strength: 0.3 });
+      add({ a: { x: land.x, y: land.y - 7, z: LAND_Z + 30.5 }, rgb, r: 26, strength: 0.5, pulse: 0.3, flicker: 0.012 });
+      add({ a: { x: land.x - 16, y: land.y - 4.5, z: LAND_Z + 25.4 }, b: { x: land.x + 16, y: land.y - 4.5, z: LAND_Z + 25.4 }, rgb, r: 10, strength: 0.3 });
+      // The name down the blade sign, and the logo on the roof.
+      const size = storefrontSize(land.prop);
+      add({ a: { x: land.x - 16.5, y: land.y - 4, z: LAND_Z + 36 }, b: { x: land.x - 16.5, y: land.y - 4, z: LAND_Z + 34 + size.letters * 8 }, rgb, r: 12, strength: 0.4, pulse: 0.4, flicker: 0.01 });
+      add({ a: { x: land.x, y: land.y - 11, z: LAND_Z + size.tall + 15 }, rgb, r: 30, strength: 0.55, pulse: 0.3, flicker: 0.01 });
     }
     for (const lamp of this.streetLamps) {
-      const cyan = lamp.job?.k === "prop" && lamp.job.v % 2 === 1;
-      add({ a: { x: lamp.x, y: lamp.y - 7.5, z: lamp.z + 24.6 }, rgb: cyan ? NEON.cyan : NEON.pink, r: 26, strength: 0.45, pulse: 0.15, flicker: 0.008 });
+      const v = lamp.job?.k === "prop" ? lamp.job.v : 0;
+      const arm = v >= 8 ? 12.75 : -12.75;
+      add({ a: { x: lamp.x, y: lamp.y + arm, z: lamp.z + 42 }, rgb: v % 2 === 1 ? NEON.cyan : NEON.pink, r: 26, strength: 0.45, pulse: 0.15, flicker: 0.008 });
     }
     return out;
+  }
+
+  /** How many people stand at each billboard: more as the views grow; few if the videos fall short. */
+  private crowdSize() {
+    const { live, views, ratio } = this.street;
+    if (!live.length) return 0;
+    let n = views > 0 ? Math.round(Math.log10(views + 1) * 1.6) : 2;
+    if (ratio !== null && ratio < SETBACK) n = Math.max(1, n - 4);
+    return Math.max(1, Math.min(8, n));
+  }
+
+  /** Hearts rising off the crowds as likes come in, and fireworks over the billboards when the videos win. */
+  private streetPixels() {
+    const out: Array<{ p: { x: number; y: number; z: number }; rgb: string; a: number; size?: number }> = [];
+    if (!this.showing || !this.street.live.length) return out;
+    const hearts = this.street.likes > 0 ? Math.min(3, 1 + Math.floor(Math.log10(this.street.likes + 1))) : 0;
+    for (const crowd of this.crowds.values()) {
+      crowd.forEach((person, i) => {
+        if (person.hidden) return;
+        for (let k = 0; k < hearts; k++) {
+          const t = (this.time * 0.5 + i * 0.29 + k / hearts) % 1;
+          out.push({ p: { x: person.x + Math.sin(this.time * 2 + i + k) * 1.2, y: person.y, z: person.z + 18 + t * 18 }, rgb: "255, 92, 180", a: 1 - t, size: 2 });
+        }
+      });
+    }
+    if (this.street.ratio !== null && this.street.ratio >= VICTORY) {
+      BILLBOARD_LANDS.forEach((id, k) => {
+        const land = LAND[id];
+        const t = ((this.time + k * 0.7) % 2.2) / 2.2;
+        const centre = { x: land.x, y: land.y - 5.5, z: LAND_Z + 60 + k * 4 };
+        const colours = ["245, 184, 106", "240, 92, 205", "82, 217, 237"];
+        for (let j = 0; j < 14; j++) {
+          const a = (j / 14) * Math.PI * 2;
+          out.push({ p: { x: centre.x + Math.cos(a) * t * 12, y: centre.y + Math.sin(a) * t * 4, z: centre.z + Math.sin(a) * t * 10 - t * t * 6 }, rgb: colours[k % 3], a: 1 - t, size: 2 });
+        }
+      });
+    }
+    return out;
+  }
+
+  /**
+   * A platform's billboard: its brand while idle, an upload bar while the posts go out, then the
+   * posted videos themselves; a gold frame when they beat the top videos, dimmed when they fall short.
+   */
+  private paintBillboard(id: LandId, ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number) {
+    if (!this.showing || this.revealT < 1.2 || typeof document === "undefined") return;
+    const W = 15;
+    const H = 21;
+    let buf = this.billboardBuffers.get(id);
+    if (!buf) {
+      buf = document.createElement("canvas");
+      buf.width = W;
+      buf.height = H;
+      this.billboardBuffers.set(id, buf);
+    }
+    const g = buf.getContext("2d")!;
+    g.imageSmoothingEnabled = false;
+    const t = this.time;
+    const { live, sending, ratio } = this.street;
+    if (live.length) {
+      const pick = live[Math.floor(t / 3 + BILLBOARD_LANDS.indexOf(id)) % live.length];
+      const poster = this.bigPosters.get(pick);
+      g.fillStyle = "#0b0e22";
+      g.fillRect(0, 0, W, H);
+      if (poster) g.drawImage(poster, 1.5, 1, 12, 19);
+      if (ratio !== null && ratio < SETBACK) {
+        g.fillStyle = "rgba(10, 10, 30, 0.55)";
+        g.fillRect(0, 0, W, H);
+      }
+      g.strokeStyle = ratio !== null && ratio >= VICTORY ? (Math.floor(t * 4) % 2 ? "#f5b86a" : "#ffe08a") : "#52d9ed";
+      g.lineWidth = 1;
+      g.strokeRect(0.5, 0.5, W - 1, H - 1);
+    } else if (sending) {
+      g.fillStyle = "#0b0e22";
+      g.fillRect(0, 0, W, H);
+      g.fillStyle = "#3d7bff";
+      g.fillRect(2, 14, Math.round(11 * ((t * 0.4) % 1)), 2);
+      g.fillStyle = "#52d9ed";
+      for (let i = 0; i < 3; i++) g.fillRect(6 + ((Math.floor(t * 4) + i) % 3) - 1, 6 + i * 2, 3, 1);
+    } else {
+      // Standing by for our videos: a dark screen with an empty 9:16 slot outlined in dashes, an
+      // upload arrow breathing in it, and a scan line rolling down.
+      g.fillStyle = "#0b0e22";
+      g.fillRect(0, 0, W, H);
+      g.fillStyle = "rgba(82, 217, 237, 0.55)";
+      for (let x = 3; x < 12; x += 2) {
+        g.fillRect(x, 3, 1, 1);
+        g.fillRect(x, 17, 1, 1);
+      }
+      for (let y = 3; y < 18; y += 2) {
+        g.fillRect(3, y, 1, 1);
+        g.fillRect(11, y, 1, 1);
+      }
+      g.globalAlpha = 0.45 + 0.4 * Math.abs(Math.sin(t * 1.6 + BILLBOARD_LANDS.indexOf(id)));
+      g.fillStyle = "#52d9ed";
+      g.fillRect(7, 8, 1, 5);
+      g.fillRect(6, 9, 3, 1);
+      g.fillRect(5, 10, 1, 1);
+      g.fillRect(9, 10, 1, 1);
+      g.fillRect(5, 14, 5, 1);
+      g.globalAlpha = 1;
+      g.fillStyle = "rgba(82, 217, 237, 0.12)";
+      g.fillRect(0, Math.floor((t * 6) % H), W, 1);
+    }
+    // Onto the billboard's face, which faces the road (+y): along it +x, up it z.
+    const face = { x0: -7.5, y: 0.75, z1: 42.5 };
+    const ox = sx + (face.x0 - face.y) * px;
+    const oy = sy + ((face.x0 + face.y) / 2 - 1.2247 * face.z1) * px;
+    ctx.save();
+    ctx.setTransform(px, 0.5 * px, 0, 1.2247 * px, ox, oy);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(buf, 0, 0, 15, 21);
+    ctx.restore();
+  }
+
+  /** The whole HQ cheers at the video wall for a few seconds, with confetti. */
+  celebrate(seconds: number, why: string) {
+    this.cheerUntil = this.time + seconds;
+    this.cheerWhy = why;
+    this.glow.confetti(seconds);
+  }
+
+  /**
+   * The video wall: its picture is drawn into a small buffer (a pixel per world unit) and laid onto
+   * the wall's plane, so it reads as part of the room. Idle it shows the brand; while videos render,
+   * their progress; once there is a cut, the videos themselves, large.
+   */
+  private paintVideoWall(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number) {
+    if (this.revealT < 0.8 || typeof document === "undefined") return;
+    const { x0, x1, z0, z1 } = VIDEO_WALL;
+    const W = Math.round(x1 - x0);
+    const H = Math.round(z1 - z0);
+    if (!this.wallBuffer) this.wallBuffer = document.createElement("canvas");
+    const buf = this.wallBuffer;
+    if (buf.width !== W || buf.height !== H) {
+      buf.width = W;
+      buf.height = H;
+    }
+    const g = buf.getContext("2d")!;
+    g.imageSmoothingEnabled = false;
+    g.fillStyle = "#0b0e22";
+    g.fillRect(0, 0, W, H);
+    const t = this.time;
+    const text = (str: string, x: number, y: number, scale: number, colour: string) => {
+      g.fillStyle = colour;
+      const cols = textWidth(str);
+      for (let u = 0; u < cols; u++) for (let v = 0; v < 7; v++) if (textPixel(str, u, v)) g.fillRect(Math.round(x + u * scale), Math.round(y + v * scale), Math.ceil(scale), Math.ceil(scale));
+    };
+    const centred = (str: string, y: number, scale: number, colour: string) => text(str, (W - textWidth(str) * scale) / 2, y, scale, colour);
+    const posters = this.posterList.map((p) => this.bigPosters.get(p.creativeId)).filter((c): c is HTMLCanvasElement => Boolean(c));
+    const cheering = t < this.cheerUntil;
+    if ((this.wallMode === "screening" || this.wallMode === "live") && posters.length) {
+      // The finished videos, large: the one playing in the middle, the others either side.
+      const count = Math.min(3, posters.length);
+      const start = Math.floor(t / 3.5) % posters.length;
+      const ph = H - 34;
+      const pw = Math.round((ph * 9) / 16);
+      const gap = Math.max(2, Math.round((W - pw * count) / (count + 1)));
+      for (let i = 0; i < count; i++) {
+        const poster = posters[(start + i) % posters.length];
+        const x = gap + i * (pw + gap);
+        const focus = i === Math.floor(count / 2);
+        g.globalAlpha = focus ? 1 : 0.55;
+        g.drawImage(poster, x, 18, pw, ph);
+        if (focus) {
+          g.strokeStyle = cheering ? (Math.floor(t * 6) % 2 ? "#f05ccd" : "#52d9ed") : "#52d9ed";
+          g.lineWidth = 1;
+          g.strokeRect(x - 1.5, 16.5, pw + 3, ph + 3);
+          // A play bar running along the bottom of the one playing.
+          g.fillStyle = "#f05ccd";
+          g.fillRect(x, 18 + ph + 3, Math.round(pw * ((t % 3.5) / 3.5)), 1);
+        }
+      }
+      g.globalAlpha = 1;
+      if (cheering) centred(this.cheerWhy, 5, 1.4, Math.floor(t * 6) % 2 ? "#f05ccd" : "#f5b86a");
+      else if (this.wallMode === "live") {
+        g.fillStyle = Math.floor(t * 2) % 2 ? "#ff5a6e" : "#7d1f3a";
+        g.fillRect(W / 2 - 22, 7, 4, 4);
+        centred("  LIVE NOW", 6, 1, "#ff5a6e");
+      } else centred("▶ NOW SCREENING", 6, 1, "#52d9ed");
+    } else if (this.wallMode === "rendering") {
+      centred("RENDERING", 8, 1.6, "#52d9ed");
+      // A bar per video: blue while it renders, green done, red failed.
+      const desks = this.deskStates.length ? this.deskStates : [1];
+      desks.forEach((state, i) => {
+        const y = 30 + i * 12;
+        if (y > H - 30) return;
+        g.fillStyle = "#1c2246";
+        g.fillRect(10, y, W - 20, 6);
+        const done = state === 2 ? 1 : state === 3 ? 1 : ((t * 0.12 + i * 0.27) % 1) * 0.92;
+        g.fillStyle = state === 2 ? "#4dc3a0" : state === 3 ? "#ff5a6e" : "#52d9ed";
+        g.fillRect(10, y, Math.round((W - 20) * done), 6);
+        text(String(i + 1), 2, y - 0.5, 1, "#aaa7d8");
+      });
+      // A film strip scrolling along the bottom.
+      const stripY = H - 22;
+      g.fillStyle = "#151a35";
+      g.fillRect(0, stripY, W, 18);
+      for (let x = -((t * 18) % 16); x < W; x += 16) {
+        g.fillStyle = "#3d7bff";
+        g.fillRect(Math.round(x) + 2, stripY + 3, 12, 12);
+        g.fillStyle = "#0b0e22";
+        g.fillRect(Math.round(x) + 6, stripY + 1, 1, 1);
+      }
+    } else {
+      // Idle: the brand, and an equaliser.
+      centred("SURREEL", 30, 2, "#f05ccd");
+      centred("AUTONOMOUS UGC STUDIO", 52, 0.8, "#52d9ed");
+      const bars = 20;
+      const bw = (W - 20) / bars;
+      for (let i = 0; i < bars; i++) {
+        const h = 6 + Math.abs(Math.sin(t * 2.2 + i * 0.7)) * 22;
+        g.fillStyle = i % 3 ? "#3d7bff" : "#52d9ed";
+        g.fillRect(Math.round(10 + i * bw), Math.round(H - 10 - h), Math.max(1, Math.round(bw - 1)), Math.round(h));
+      }
+    }
+    // Scanlines.
+    g.fillStyle = "rgba(0, 0, 0, 0.18)";
+    for (let y = 0; y < H; y += 2) g.fillRect(0, y, W, 1);
+    // Onto the wall's plane: along it, +x runs right and down on screen; up it, z runs straight up.
+    const y = ROOM.y0 + 1.75;
+    const ox = sx + (x0 - y) * px;
+    const oy = sy + ((x0 + y) / 2 - 1.2247 * z1) * px;
+    ctx.save();
+    ctx.setTransform(px, 0.5 * px, 0, 1.2247 * px, ox, oy);
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = Math.min(1, (this.revealT - 0.8) / 0.6);
+    ctx.drawImage(buf, 0, 0, W, H);
+    ctx.restore();
   }
 
   private readonly timers: Array<{ at: number; run: () => void }> = [];
@@ -1511,6 +1964,7 @@ export class CampScene {
   private tick(dt: number) {
     this.time += dt;
     this.revealTick(dt);
+    this.updateQuietRoad();
     this.placeMarkers();
     for (let i = this.timers.length - 1; i >= 0; i--) {
       if (this.timers[i].at > this.time) continue;
@@ -1521,10 +1975,13 @@ export class CampScene {
     for (const agent of this.agents.values()) {
       if ((agent.where !== "posted" && agent.where !== "afield") || agent.busy) continue;
       const e = agent.entity;
-      const act = e.act;
+      // While the HQ celebrates, everyone at a post turns to the video wall and cheers.
+      const cheering = this.time < this.cheerUntil && agent.where === "posted" && !agent.plan.army;
+      const act: Act = cheering ? "cheer" : e.act;
+      const dir = cheering ? dirFor((VIDEO_WALL.x0 + VIDEO_WALL.x1) / 2 - e.x, ROOM.y0 - e.y) : e.dir;
       const frames = ACT_FRAMES[act];
       const f = frames > 1 ? Math.floor((this.time + agent.phase) / ACT_RATE[act]) % frames : 0;
-      e.job = { k: "soldier", look: e.look, act, dir: e.dir, f };
+      e.job = { k: "soldier", look: e.look, act, dir, f };
       agent.frame = f;
       if ((e.reveal ?? 1) < 1 && this.revealT > 0.6) e.reveal = Math.min(1, (e.reveal ?? 0) + dt * 1.6);
     }
@@ -1542,7 +1999,6 @@ export class CampScene {
       if (banner?.job?.k === "prop") banner.job = { k: "prop", id: "banner", v: i * 4 + ((wave + i) % 4) };
     }
     // The working stations' lights on the command table pulse.
-    if (this.hub.job?.k === "prop") this.hub.job = { k: "prop", id: "hub", v: this.hubCode * 2 + (Math.floor(this.time / 0.5) % 2) };
     // The archive's racks blink and its monitors scroll; the strategy table's hologram turns; the
     // uplink's chart refreshes.
     const frame = Math.floor(this.time / 0.35) % 4;
@@ -1550,6 +2006,40 @@ export class CampScene {
     if (shrine?.job?.k === "prop") shrine.job = { k: "prop", id: "shrine", v: (this.tvOn ? 4 : 0) + (Math.floor(this.time / 0.3) % 4) };
     const table = this.keyed.get("tent:maptable");
     if (table?.job?.k === "prop") table.job = { k: "prop", id: "maptable", v: frame };
+    // The analysts work at the table while the viral study runs, and sit back otherwise.
+    const studying = this.lastStates.oracle === "working";
+    this.analysts.forEach((p, i) => {
+      p.hidden = !this.showing || this.revealT < 1.2;
+      if (p.hidden) return;
+      const act: Act = this.time < this.cheerUntil ? "cheer" : studying ? "type" : "sit";
+      const frames = ACT_FRAMES[act];
+      p.job = { k: "soldier", look: p.look, act, dir: ORACLE_SEATS[i].dir, f: frames > 1 ? Math.floor((this.time + i * 0.53) / ACT_RATE[act]) % frames : 0 };
+    });
+    // The crowds on the street: as many as the views call for; cheering when the videos beat the top
+    // videos, drifting off when they fall short.
+    const crowdSize = this.crowdSize();
+    const won = this.street.ratio !== null && this.street.ratio >= VICTORY;
+    for (const crowd of this.crowds.values()) {
+      crowd.forEach((person, i) => {
+        const p = person as Entity & { look: number; act: Act };
+        p.hidden = !this.showing || this.revealT < 1.2 || i >= crowdSize;
+        if (p.hidden) return;
+        const act: Act = won ? "cheer" : "stand";
+        const frames = ACT_FRAMES[act];
+        p.job = { k: "soldier", look: p.look, act, dir: 6, f: frames > 1 ? Math.floor((this.time + i * 0.37) / ACT_RATE[act]) % frames : 0 };
+      });
+    }
+    // The city map's pins, the film set's REC light and sign, the render servers, the analytics board.
+    for (const [key, id, rate] of [
+      ["scouts:map", "mapscreen", 0.5],
+      ["workshop:filmset", "filmset", 0.6],
+      ["workshop:farm", "renderfarm", 0.35],
+      ["agora:dashboard", "dashboard", 0.8],
+      ["agora:mast", "mast", 0.7],
+    ] as const) {
+      const prop = this.keyed.get(key);
+      if (prop?.job?.k === "prop") prop.job = { k: "prop", id, v: Math.floor(this.time / rate) % 4 };
+    }
     const uplinkProp = this.keyed.get("agora:podium");
     if (uplinkProp?.job?.k === "prop") uplinkProp.job = { k: "prop", id: "podium", v: Math.floor(this.time / 0.8) % 4 };
     this.expedition.tick(dt);
@@ -1592,6 +2082,16 @@ export class CampScene {
       const scale = Math.max(9 / w, 16 / h);
       ctx.drawImage(source, (9 - w * scale) / 2, (16 - h * scale) / 2, w * scale, h * scale);
       this.posters.set(id, canvas);
+      // And a bigger one for the video wall.
+      const big = document.createElement("canvas");
+      big.width = 36;
+      big.height = 64;
+      const bctx = big.getContext("2d")!;
+      bctx.imageSmoothingEnabled = true;
+      bctx.imageSmoothingQuality = "high";
+      const bscale = Math.max(36 / w, 64 / h);
+      bctx.drawImage(source, (36 - w * bscale) / 2, (64 - h * bscale) / 2, w * bscale, h * bscale);
+      this.bigPosters.set(id, big);
     };
     const fromVideo = () => {
       if (!videoUrl) return;
@@ -1609,7 +2109,8 @@ export class CampScene {
   }
 
   private paintScreen(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number) {
-    if (!this.posterList.length) return;
+    // The videos play on the video wall now; the review desk's own screen stays as its model draws it.
+    if (this.posterList.length >= 0) return;
     // The screen faces the camera, so it is an upright rectangle on screen.
     const width = 2 * SCREEN.half * Math.SQRT2 * 0.98;
     const top = sy - (SCREEN.top - 0.3) * 1.2247 * px + 0.25 * px;

@@ -14,23 +14,24 @@ import styles from "../troy.module.css";
 // --- Names ------------------------------------------------------------------------------------------
 
 const NAMES = [
-  "Nikias", "Kleon", "Lysandros", "Kallias", "Demetrios", "Theron", "Philon", "Xanthos", "Myron", "Glaukos", "Damon", "Kimon",
-  "Agis", "Hermon", "Lykos", "Phaidon", "Alkaios", "Doros", "Menon", "Polemon", "Straton", "Timon", "Aristos", "Kritias",
-  "Eudoros", "Kleitos", "Philippos", "Antiochos", "Nikandros", "Hippias", "Isokrates", "Laches", "Meidias", "Pasion", "Simon", "Lykon",
-  "Thrasyllos", "Xenokles", "Zenon", "Ariston", "Diodoros", "Euthymos", "Kallistratos", "Mnason", "Nikon", "Phormion", "Sostratos", "Chairon",
-  // Enough for the agora's army too.
-  "Andronikos", "Archelaos", "Aristeides", "Dion", "Hagnon", "Iason", "Kallimachos", "Kleomenes", "Lysias", "Megakles", "Nearchos", "Pausanias",
-  "Perdikkas", "Pelopidas", "Philotas", "Sokles", "Telamon", "Theodoros", "Thrasyboulos", "Timoleon", "Xenon", "Zopyros", "Agathon", "Akastos",
-  "Charmides", "Dexippos", "Eumenes", "Glaukias", "Hieron", "Krateros", "Lykourgos", "Nikostratos", "Alkimos", "Bion", "Eudemos", "Hipponikos",
+  "Glitch", "Mochi", "Cipher", "Byte", "Nyx", "Pixel", "Static", "Vector", "Rook", "Echo", "Patch", "Flux",
+  "Kilo", "Synth", "Hex", "Volt", "Jinx", "Raster", "Zero", "Lumen", "Nova", "Dash", "Proxy", "Sable",
+  "Cache", "Torque", "Mosaic", "Prism", "Rune", "Spark", "Tango", "Vapor", "Widget", "Yotta", "Zed", "Arc",
+  "Blitz", "Chroma", "Delta", "Ember", "Fable", "Gizmo", "Halo", "Ion", "Jolt", "Karma", "Lynx", "Mako",
+  // Enough for the street's crowds and every scout too.
+  "Nimbus", "Orbit", "Pulse", "Quark", "Riff", "Shard", "Trace", "Umbra", "Vibe", "Wren", "Xeno", "Yuzu",
+  "Zinc", "Axiom", "Beacon", "Comet", "Drift", "Fuse", "Grid", "Hertz", "Indigo", "Jade", "Koi", "Loop",
+  "Mint", "Nacho", "Oz", "Pico", "Quill", "Ripple", "Sonar", "Tofu", "Ultra", "Velvet", "Wisp", "Lux",
 ];
-const FIXED: Record<string, string> = { general: "Themistokles", herald: "Stentor" };
+// Neon is the greeter at the HQ's door (scenes/greeter.ts): nobody else takes the name.
+const FIXED: Record<string, string> = { general: "Kernel", herald: "Broadcast", greeter: "Neon" };
 const named = new Map<string, string>();
 
 /**
- * A Greek name for an agent: the same every time for the same agent, and no two agents share one
- * (the first free name from the agent's own place in the list).
+ * A crew handle for an agent: the same every time for the same agent, and no two agents share one
+ * (the first free handle from the agent's own place in the list).
  */
-export function greekName(id: string) {
+export function crewName(id: string) {
   const known = named.get(id) ?? FIXED[id];
   if (known) return known;
   let h = 7;
@@ -41,11 +42,14 @@ export function greekName(id: string) {
     const candidate = NAMES[(h + i) % NAMES.length];
     if (!taken.has(candidate)) name = candidate;
   }
-  // More agents than names: the second of a name is "the Younger".
-  if (!name) name = `${NAMES[h % NAMES.length]} the Younger`;
+  // More agents than handles: the second of a handle is its v2.
+  if (!name) name = `${NAMES[h % NAMES.length]}_v2`;
   named.set(id, name);
   return name;
 }
+
+/** Kept for older callers. */
+export const greekName = crewName;
 
 // --- Portraits ----------------------------------------------------------------------------------------
 

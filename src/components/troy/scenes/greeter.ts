@@ -1,13 +1,15 @@
 import type { Baker } from "../engine/baker";
 import { type Act, ACT_FRAMES, dirFor } from "../engine/jobs";
 import type { Point } from "../engine/walker";
-import type { CameraTarget, Entity, Stage } from "../engine/stage";
-import { projectX, projectY } from "../engine/tracer";
-import { ENTRANCE, ROOM } from "./layout";
+import type { Entity, Stage } from "../engine/stage";
+import { ENTRANCE, entrancePath, ROOM } from "./layout";
 
 // The greeter: before the crew comes out, one agent steps out of the HQ's street door, stops on the
 // pavement and asks the visitor for their preferences (the question is HTML anchored over its
 // head, see TroyExperience). Then it walks back in to fetch the others.
+
+/** Who greets you at the door: one of the crew, with a handle like the rest. */
+export const GREETER = { name: "Neon", role: "Door crew" };
 
 /** The greeter's look (one of the soldier looks the landing bakes). */
 const LOOK = 0;
@@ -19,35 +21,25 @@ const STRIDE = 14;
 const FACE_VIEWER = dirFor(1, 1);
 
 const FRONT = ENTRANCE.y + ENTRANCE.depth;
-/** Just inside the dark doorway, where it appears and disappears. */
-const INSIDE: Point = { x: 0, y: FRONT - 5, z: ROOM.wall };
+/** In the lit doorway, where it appears and disappears (the building is drawn behind anyone standing in it). */
+const INSIDE: Point = { x: 0, y: FRONT - 1.5, z: ROOM.wall };
 /** On the threshold. */
-const SILL: Point = { x: 0, y: FRONT + 1, z: ROOM.wall };
-/** Where it stands to ask, on the pavement in front of the door. */
-export const GREET_SPOT: Point = { x: 0, y: FRONT + 14, z: ROOM.wall };
-
+const SILL: Point = { x: 0, y: FRONT + 2, z: ROOM.wall };
 /**
- * The close-up while the greeter asks: the door and the greeter in the lower half of the screen,
- * the question's bubble (about `bubble` CSS px tall) above its head.
+ * Where it stands to ask: on the light spilling from the door, on the pavement close to the
+ * building; its speech bubble (up and to its left) may overlap the building's corner a little,
+ * but only the edge of the SURREEL HQ sign.
  */
-export function greetCamera(stage: Stage, bubble = 230): CameraTarget {
-  const { width, height } = stage.size;
-  // About 70 art px around the greeter (the door, the pavement), and room for the bubble above.
-  const zoom = stage.fitZoom(Math.min((height - bubble - 60) / 70, (width - 32) / 120, 6));
-  const sx = projectX(GREET_SPOT.x, GREET_SPOT.y);
-  const sy = projectY(GREET_SPOT.x, GREET_SPOT.y, GREET_SPOT.z);
-  // The greeter's feet sit a little below the middle, so the bubble fits above.
-  return { x: sx, y: sy - (bubble / 2 - 40) / zoom, zoom };
-}
+export const GREET_SPOT: Point = { x: ENTRANCE.x, y: FRONT + 16, z: ROOM.wall };
 
 export class Greeter {
   readonly entity: Entity;
   private out = false;
 
   constructor(private readonly stage: Stage) {
-    // `sort`: the HQ's building is one sprite at the origin; without the nudge the greeter, a few
-    // units in front of its door (y < 0), would sort behind it and vanish.
-    this.entity = { x: INSIDE.x, y: INSIDE.y, z: INSIDE.z, sort: 60, alpha: 0, shadow: 5, priority: 6, job: null, hidden: true };
+    // The HQ's building sorts by its doorway (see LandingScene), so the greeter in the doorway or on
+    // the pavement is drawn over it without any nudge.
+    this.entity = { x: INSIDE.x, y: INSIDE.y, z: INSIDE.z, alpha: 0, shadow: 5, shadowZ: ROOM.wall, priority: 6, job: null, hidden: true };
   }
 
   /** Bakes the frames it walks and stands in, so the walk never waits on a missing sprite. */
@@ -79,6 +71,23 @@ export class Greeter {
     Object.assign(e, { x: INSIDE.x, y: INSIDE.y, z: INSIDE.z, alpha: 0 });
     this.walk([SILL, GREET_SPOT], "in", () => {
       this.pose("stand", FACE_VIEWER, 0);
+      done();
+    });
+  }
+
+  /**
+   * Leads the crew down to the HQ: from where it stands, across the road and down the stairs the
+   * crew takes, fading out at their foot as the crew comes on behind. `instant`: just gone.
+   */
+  lead(done: () => void = () => undefined, instant = false) {
+    if (instant || !this.out) {
+      this.hide();
+      done();
+      return;
+    }
+    // The crew's way from the door, from where the road starts (the greeter is already outside).
+    this.walk(entrancePath().slice(2), "out", () => {
+      this.hide();
       done();
     });
   }
@@ -138,7 +147,9 @@ export class Greeter {
           remaining = 0;
         }
       }
-      // Into the dark of the doorway on the last leg.
+      // Its shadow stays under its feet, down the stairs too.
+      e.shadowZ = e.z;
+      // Into the dark of the doorway (or the HQ) on the last leg.
       if (fade === "out" && leg >= steps.length - 1) e.alpha = Math.max(0, (e.alpha ?? 1) - dt * 5);
       this.pose("march", dir, Math.floor((travelled / STRIDE) * ACT_FRAMES.march) % ACT_FRAMES.march);
       if (leg >= steps.length) {

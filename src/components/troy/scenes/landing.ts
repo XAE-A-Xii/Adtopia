@@ -37,6 +37,8 @@ export class LandingScene {
   /** Seconds since the current knock started, or -1. */
   private knock = -1;
   private plankDown = false;
+  /** Opened without the burst (for the greeter). */
+  private quiet = false;
   /** Sends the next soldier out of the door; false when nobody is waiting (set by the camp). */
   recruit: (() => boolean) | null = null;
 
@@ -45,9 +47,13 @@ export class LandingScene {
     private readonly events: LandingEvents = {},
   ) {
     this.island = stage.add({ x: 0, y: 0, z: 0, ground: true, job: { k: "horse-island" }, priority: 10 });
-    this.body = stage.add({ x: 0, y: 0, z: 0, job: { k: "horse-body" }, priority: 10 });
-    this.leaves = stage.add({ x: 0, y: 0, z: 0, sort: 22, job: { k: "horse-leaves", s: 0 }, priority: 9 });
-    this.plank = stage.add({ x: 0, y: 0, z: 0, sort: 1, job: null, priority: 8 });
+    // The building and its shutter sort by the doorway's back: anyone in the doorway or out in
+    // front of it is drawn over the building, not hidden behind (under) it.
+    const doorway = ENTRANCE.y + ENTRANCE.depth - 3;
+    this.body = stage.add({ x: 0, y: 0, z: 0, sort: doorway, job: { k: "horse-body" }, priority: 10 });
+    this.leaves = stage.add({ x: 0, y: 0, z: 0, sort: doorway + 0.5, job: { k: "horse-leaves", s: 0 }, priority: 9 });
+    // The light spilling out of the door lies on the pavement: under everyone who walks out over it.
+    this.plank = stage.add({ x: 0, y: 0, z: 0, sort: -10_000, job: null, priority: 8 });
     stage.add({ x: 0, y: 0, z: 0, hidden: false, tick: (dt) => this.tick(dt) });
   }
 
@@ -65,7 +71,14 @@ export class LandingScene {
 
   /** Ready when the horse can be shown: island, body and the closed doors (or the lit doorway would show). */
   ready(baker: Baker) {
-    return Promise.all([baker.request({ k: "horse-island" }, 10), baker.request({ k: "horse-body" }, 10), baker.request({ k: "horse-leaves", s: 0 }, 10)]);
+    // These three are tiny: baked on the spot, so the HQ's door shows at once, before any worker has
+    // even started (in development a worker first compiles the whole engine, which takes seconds).
+    const jobs: Job[] = [{ k: "horse-island" }, { k: "horse-body" }, { k: "horse-leaves", s: 0 }];
+    try {
+      return Promise.resolve(jobs.map((job) => baker.bakeNow(job)));
+    } catch {
+      return Promise.all(jobs.map((job) => baker.request(job, 10)));
+    }
   }
 
   /** Ready when the whole opening can play without a missing frame. */
@@ -78,11 +91,22 @@ export class LandingScene {
     if (this.opening < 0 && this.knock < 0) this.knock = 0;
   }
 
-  open() {
+  /**
+   * Rolls the shutter up and lets the light out. `quiet`: without the burst of sparks and the
+   * shake as it opens (the greeter steps out; the burst is saved for the crew, see burst()).
+   */
+  open(quiet = false) {
     if (this.opening >= 0) return;
     this.opening = 0;
+    this.quiet = quiet;
     this.knock = -1;
     this.leaves.y = 0;
+  }
+
+  /** The burst of sparks and the shake: the crew is coming out. */
+  burst() {
+    this.stage.shake = 0.55;
+    this.dust();
   }
 
   /** Opens instantly (for visitors coming straight to the camp, or reduced motion). */
@@ -141,8 +165,7 @@ export class LandingScene {
       // The plank hits the sand at about 89% of the timeline.
       if (!this.plankDown && t >= 0.885) {
         this.plankDown = true;
-        this.stage.shake = 0.55;
-        this.dust();
+        if (!this.quiet) this.burst();
         this.events.onPlankDown?.();
       }
     }

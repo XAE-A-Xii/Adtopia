@@ -85,10 +85,32 @@ export class GlowLayer {
   landingLevel = 0;
   /** 0..1: everything fades in with the room and out when it is hidden. */
   level = 0;
+  /** Until when confetti falls (scene time), and where: the room's box. */
+  private confettiUntil = -1;
+  private confettiStart = 0;
+  private confettiArea: { x0: number; y0: number; x1: number; y1: number; z: number } | null = null;
+  private now = 0;
+
+  /** Confetti over the room for `seconds`. */
+  confetti(seconds: number, area?: { x0: number; y0: number; x1: number; y1: number; z: number }) {
+    this.confettiStart = this.now;
+    this.confettiUntil = this.now + seconds;
+    if (area) this.confettiArea = area;
+  }
+
+  /** Sets the box confetti falls in (the room). */
+  setConfettiArea(area: { x0: number; y0: number; x1: number; y1: number; z: number }) {
+    this.confettiArea = area;
+  }
+
+  /** Single pixels to draw this frame (hearts rising off a crowd, fireworks): world point, colour, alpha. */
+  pixels: () => Array<{ p: P; rgb: string; a: number; size?: number }> = () => [];
+
   /** Where steam rises from (coffee cups): a few pale pixels drifting up and fading. */
   steam: () => P[] = () => [];
 
   paint(ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number, time: number) {
+    this.now = time;
     if ((this.level <= 0.01 && this.landingLevel <= 0.01) || typeof document === "undefined") return;
     const cell = Math.max(2, Math.round(px * 2));
     const w = Math.ceil(ctx.canvas.width / cell);
@@ -141,6 +163,29 @@ export class GlowLayer {
       const wink = 0.5 + 0.5 * Math.sin(time * 3 + m.phase * 5);
       g.fillStyle = `rgba(${m.rgb}, ${(0.35 + 0.5 * wink) * level})`;
       g.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+    }
+    // Confetti: bits of every neon falling, fluttering, while the HQ celebrates.
+    if (time < this.confettiUntil && this.confettiArea) {
+      const A = this.confettiArea;
+      const colours = ["#f05ccd", "#52d9ed", "#f5b86a", "#3d7bff", "#4dc3a0", "#ffffff"];
+      const age = time - this.confettiStart;
+      const fade = Math.min(1, (this.confettiUntil - time) / 1.2);
+      for (let i = 0; i < 160; i++) {
+        const fall = 22 + hash(i * 4.3) * 26;
+        const z = A.z - ((age * fall + hash(i * 2.9) * A.z) % A.z);
+        const p = at({ x: A.x0 + hash(i * 1.7) * (A.x1 - A.x0) + Math.sin(time * 3 + i) * 2, y: A.y0 + hash(i * 6.1) * (A.y1 - A.y0), z });
+        g.fillStyle = colours[i % colours.length];
+        g.globalAlpha = fade;
+        g.fillRect(Math.round(p.x), Math.round(p.y), Math.floor(time * 8 + i) % 2 ? 2 : 1, 1);
+      }
+      g.globalAlpha = 1;
+    }
+    // Hearts, fireworks: whatever the scene asks for this frame.
+    for (const px of this.pixels()) {
+      const q = at(px.p);
+      g.fillStyle = `rgba(${px.rgb}, ${px.a * Math.max(this.level, this.landingLevel)})`;
+      const size = px.size ?? 1;
+      g.fillRect(Math.round(q.x), Math.round(q.y), size, size);
     }
     // Steam: pale wisps rising off the cups, swaying, fading as they go.
     for (const [i, cup] of this.steam().entries()) {

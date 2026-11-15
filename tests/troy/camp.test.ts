@@ -98,9 +98,10 @@ function view(campaign: Record<string, unknown>): BrandView {
   } as unknown as BrandView;
 }
 
-function atPost(stage: StageType, agent: AgentState, station: { x: number; y: number }) {
+function atPost(stage: StageType, agent: AgentState, station: { x: number; y: number; z?: number }) {
   const e = agent.entity;
-  return stage.has(e) && Math.hypot(e.x - (station.x + agent.plan.x), e.y - (station.y + agent.plan.y)) < 0.6 && Math.abs(e.z - agent.plan.z) < 0.4;
+  // Posts are relative to the station, and a station stands on its own floor (the deck or the ground).
+  return stage.has(e) && Math.hypot(e.x - (station.x + agent.plan.x), e.y - (station.y + agent.plan.y)) < 0.6 && Math.abs(e.z - (station.z ?? 0) - agent.plan.z) < 0.4;
 }
 
 describe("the march into the camp", () => {
@@ -118,8 +119,8 @@ describe("the march into the camp", () => {
       const station = STATION[agent.plan.station as keyof typeof STATION];
       expect(atPost(stage, agent, station), `${agent.plan.id} at its post`).toBe(true);
     }
-    // The lookout climbed the ladder to the platform.
-    expect(internals.agents.get("lookout")!.entity.z).toBeGreaterThan(25);
+    // The signal watcher sits at the map desk on the upper floor.
+    expect(internals.agents.get("lookout")!.entity.z).toBe(STATION.scouts.z);
   });
 
   it("has the first agent out call the brand's team down into the HQ", () => {

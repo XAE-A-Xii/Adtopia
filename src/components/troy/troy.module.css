@@ -152,6 +152,185 @@
   outline-offset: calc(var(--px) * 2);
 }
 
+/*
+ * The console: the landing's input and its key, cyberpunk style. Panels with cut corners (drawn as
+ * a border-coloured shape with a slightly smaller panel inside, both clipped); glows go on the
+ * wrappers, outside the clipping.
+ */
+.console {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.consoleSlot {
+  flex: 1;
+  min-width: 0;
+  transition: filter 160ms ease;
+}
+
+.consoleField {
+  --cut: 11px;
+  height: 100%;
+  padding: 2px;
+  background: var(--line);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  transition: background 160ms ease;
+}
+
+.consoleInner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 14px;
+  background: linear-gradient(180deg, #232859, var(--paper));
+  clip-path: polygon(calc(var(--cut) - 1px) 0, 100% 0, 100% calc(100% - var(--cut) + 1px), calc(100% - var(--cut) + 1px) 100%, 0 100%, 0 calc(var(--cut) - 1px));
+}
+
+.consolePrompt {
+  color: var(--ink-faint);
+  font-size: 17px;
+  transition: color 160ms ease;
+}
+
+.consoleInner .input {
+  caret-color: var(--teal);
+}
+
+.consoleInner .input:focus-visible {
+  outline: none;
+}
+
+/* Focus lights the field alone: its border turns aqua and glows, the prompt blinks. */
+.consoleSlot:focus-within {
+  filter: drop-shadow(0 0 6px rgba(82, 217, 237, 0.55));
+}
+
+.consoleSlot:focus-within .consoleField {
+  background: var(--teal);
+}
+
+.consoleSlot:focus-within .consolePrompt {
+  color: var(--teal);
+  animation: promptBlink 1.1s steps(1, end) infinite;
+}
+
+@keyframes promptBlink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* The key: neon pink, the opposite corners cut. */
+.consoleKeySlot {
+  display: flex;
+  transition:
+    filter 160ms ease,
+    transform 80ms ease;
+}
+
+.consoleKey {
+  --cut: 11px;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 20px;
+  border: 0;
+  color: var(--paper);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  background: var(--crimson);
+  box-shadow:
+    inset 0 -3px 0 0 var(--crimson-dark),
+    inset 0 3px 0 0 rgba(255, 255, 255, 0.28);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+/* A band of light that sweeps across the key on hover. */
+.consoleKey::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.5) 48%, rgba(82, 217, 237, 0.35) 52%, transparent 70%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.consoleArrow {
+  display: inline-block;
+  transition: transform 160ms ease;
+}
+
+.consoleKeySlot:hover:not(:has(.consoleKey:disabled)) {
+  filter: drop-shadow(0 0 9px rgba(240, 92, 205, 0.7));
+}
+
+.consoleKey:hover:not(:disabled) {
+  background: #f78ade;
+}
+
+.consoleKey:hover:not(:disabled)::after {
+  animation: keySweep 650ms ease-out;
+}
+
+/* A glitch on the words: a red and an aqua ghost either side. */
+.consoleKey:hover:not(:disabled) .consoleKeyText {
+  text-shadow:
+    -1px 0 0 rgba(82, 217, 237, 0.95),
+    1px 0 0 rgba(255, 90, 110, 0.95);
+}
+
+.consoleKey:hover:not(:disabled) .consoleArrow {
+  transform: translateX(4px);
+}
+
+/* Pressed: the key sinks and dims, its glow tightens. */
+.consoleKeySlot:has(.consoleKey:active:not(:disabled)) {
+  transform: translateY(2px);
+  filter: drop-shadow(0 0 4px rgba(240, 92, 205, 0.6));
+}
+
+.consoleKey:active:not(:disabled) {
+  background: var(--crimson-dark);
+  color: var(--ink);
+  box-shadow: inset 0 3px 0 0 rgba(0, 0, 0, 0.3);
+}
+
+.consoleKey:focus-visible {
+  outline: none;
+}
+
+.consoleKeySlot:has(.consoleKey:focus-visible) {
+  filter: drop-shadow(0 0 0 var(--teal)) drop-shadow(0 0 6px rgba(82, 217, 237, 0.8));
+}
+
+.consoleKey:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+@keyframes keySweep {
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consoleKey:hover:not(:disabled)::after,
+  .consoleSlot:focus-within .consolePrompt {
+    animation: none;
+  }
+}
+
 .input {
   border: 0;
   background: transparent;
@@ -175,6 +354,30 @@
 
 .enter {
   animation: enter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* The greeter's speech bubble: up and to the left of its head (the anchor), the tail's tip on it. */
+.greeterBubble {
+  width: min(280px, calc(100vw - 32px));
+  transform: translate(calc(-100% + 2px), calc(-100% - 20px));
+}
+
+/* The tail hangs from the box's bottom right: its right edge on the border's outer edge (3 px out). */
+.greeterTail {
+  position: absolute;
+  top: 100%;
+  right: calc(var(--px) * -1);
+}
+
+/* Too narrow for the bubble beside the greeter: straight above its head, the tail in the middle. */
+@media (max-width: 639px) {
+  .greeterBubble {
+    transform: translate(-50%, calc(-100% - 20px));
+  }
+
+  .greeterTail {
+    right: calc(50% - 18px);
+  }
 }
 
 .leave {

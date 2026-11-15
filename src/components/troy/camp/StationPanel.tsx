@@ -12,7 +12,7 @@ import { EventLog, Reason } from "./EventLog";
 import { type CampActions, Pip } from "./Camp";
 import { money, platformName, remakeLine, when } from "./format";
 import { InternalBadge, ReferenceList, RoleBadge } from "./References";
-import { CampMap, Chip, crispIfTiny, Emblem, greekName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, STATE_COLOR, STATE_WORD, Steps } from "./ui";
+import { CampMap, Chip, crispIfTiny, Emblem, crewName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, STATE_COLOR, STATE_WORD, Steps } from "./ui";
 
 /** What a brief's video is judged on once posted, as the War tent says it. */
 const METRIC_WORDS: Record<string, string> = { views: "views", shares: "shares", saves: "saves", link_clicks: "link clicks", sign_ups: "sign-ups", purchases: "purchases" };
@@ -183,11 +183,11 @@ function AgentTile({ agent, baker, onClick }: { agent: AgentPlan; baker: Baker |
   const tone = agent.state === "working" ? "var(--crimson)" : agent.state === "done" ? "var(--olive)" : agent.state === "failed" ? "var(--crimson-dark)" : "var(--ink-faint)";
   return (
     <li>
-      <button type="button" onClick={onClick} className={`${styles.boxSoft} group block w-full px-1 pb-2 pt-1 text-center transition-transform hover:-translate-y-0.5`} aria-label={`${greekName(agent.id)}, ${agent.role}: ${agent.task}`}>
+      <button type="button" onClick={onClick} className={`${styles.boxSoft} group block w-full px-1 pb-2 pt-1 text-center transition-transform hover:-translate-y-0.5`} aria-label={`${crewName(agent.id)}, ${agent.role}: ${agent.task}`}>
         <span className="block bg-[rgba(234,214,173,0.35)]">
           <Portrait baker={baker} look={agent.look} act={agent.away ? "march" : agent.act} size={72} />
         </span>
-        <span className={`${styles.pixel} mt-1 block truncate text-[12px]`}>{greekName(agent.id)}</span>
+        <span className={`${styles.pixel} mt-1 block truncate text-[12px]`}>{crewName(agent.id)}</span>
         <span className="flex items-center justify-center gap-1 text-[10px] text-[var(--ink-soft)]">
           <span className={`inline-block size-[6px] ${agent.state === "working" ? styles.blink : ""}`} style={{ background: tone }} aria-hidden="true" />
           {agent.away ? "Out on a run" : agent.role}

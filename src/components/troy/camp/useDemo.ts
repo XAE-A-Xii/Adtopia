@@ -34,9 +34,19 @@ export type DemoPlayer = {
   previousRound: () => void;
   /** Runs the clock this many times faster (the tour's autoplay fast-forwards a step to fit its time). */
   setRate: (rate: number) => void;
+  /** The clock's speed before any fast-forward (?speed=). */
+  baseSpeed: number;
 };
 
 const TICK_MS = 250;
+
+/**
+ * The scene the replay is shown in: its clock (seconds of scene time) and how fast it runs. The
+ * demo clock follows the scene's time, so the agents always keep pace with the campaign: at any
+ * ?speed=, in the tour's fast-forwards, and when frames drop (the scene's steps are capped, so a
+ * wall clock would run ahead of everyone walking to their posts).
+ */
+export type SceneClock = { time: () => number | null; scale: (speed: number) => void };
 
 /**
  * Plays the demo campaign: loads the script (the recording for ?site=, if any), runs its clock
@@ -46,7 +56,7 @@ const TICK_MS = 250;
  * ← goes back a step, R starts over, A turns autoplay on or off. ?auto=1 starts with autoplay
  * on and ?speed=1.5 runs the clock faster.
  */
-export function useDemo(enabled: boolean, arrived: boolean, site: string | null = null): DemoPlayer {
+export function useDemo(enabled: boolean, arrived: boolean, site: string | null = null, scene: SceneClock | null = null): DemoPlayer {
   const [script, setScript] = useState<DemoScript | null>(null);
   const [state, setState] = useState<DemoState>(() => freshState());
   const [playing, setPlaying] = useState(true);
@@ -83,10 +93,18 @@ export function useDemo(enabled: boolean, arrived: boolean, site: string | null 
     if (!enabled || !arrived || !script) return;
     setState(freshState());
     let last = performance.now();
+    let lastScene = scene?.time() ?? null;
     const timer = setInterval(() => {
       const now = performance.now();
-      const dt = ((now - last) / 1000) * speed.current;
+      let dt = ((now - last) / 1000) * speed.current;
       last = now;
+      // With a scene, its own time drives the clock (it runs at the clock's speed).
+      scene?.scale(speed.current);
+      const sceneNow = scene?.time() ?? null;
+      if (sceneNow !== null) {
+        dt = lastScene === null ? 0 : Math.max(0, sceneNow - lastScene);
+        lastScene = sceneNow;
+      }
       if (!playingRef.current) return;
       setState((current) => {
         const next = advance(script, current, dt, autoRef.current, holdRef.current ?? Number.POSITIVE_INFINITY);
@@ -95,7 +113,7 @@ export function useDemo(enabled: boolean, arrived: boolean, site: string | null 
       });
     }, TICK_MS);
     return () => clearInterval(timer);
-  }, [enabled, arrived, script]);
+  }, [enabled, arrived, script, scene]);
 
   useEffect(() => {
     if (!notice) return;
@@ -166,5 +184,5 @@ export function useDemo(enabled: boolean, arrived: boolean, site: string | null 
   // clock only runs once the column has arrived.
   const view = useMemo(() => (enabled && script ? replay(script, state) : null), [enabled, script, state]);
   const done = script ? finished(script, state) : false;
-  return { script, view, playing, t: state.t, round: state.round, auto, done, notice, ...controls };
+  return { script, view, playing, t: state.t, round: state.round, auto, done, notice, baseSpeed: baseSpeed.current, ...controls };
 }

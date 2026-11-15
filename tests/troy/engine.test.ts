@@ -18,8 +18,12 @@ import {
   type Node,
   road,
   roadToLand,
+  DECK,
   ROOM,
   route,
+  stableGate,
+  underDeck,
+  upStairs,
   sandbars,
   STAIRS_FOOT,
   STAIRS_TOP,
@@ -144,10 +148,11 @@ describe("the horse opening", () => {
     for (let t = 0; t < 0.5; t += 0.01) expect(knockJolt(t)).toBeLessThanOrEqual(1);
   });
 
-  it("walks soldiers from inside the horse down to the sand", () => {
+  it("walks the agents out of the HQ's door, across the street and down onto the upper floor", () => {
     const path = exitPath();
-    expect(path[0].z).toBeGreaterThan(HORSE.sillZ);
-    expect(path[path.length - 1].z).toBe(0);
+    expect(path[0].z).toBe(ROOM.wall);
+    expect(path[path.length - 1]).toEqual(STAIRS_FOOT);
+    expect(STAIRS_FOOT.z).toBe(DECK.z);
   });
 });
 
@@ -158,18 +163,24 @@ describe("the camp's roads", () => {
     expect(road("theatre", "workshop")).toHaveLength(2);
   });
 
-  it("take the shortest way round the basement's ring of walkways", () => {
-    expect(route("horse", "agora")).toEqual(["horse", "theatre", "agora"]);
-    expect(route("horse", "tent")).toEqual(["horse", "oracle", "scouts", "tent"]);
-    expect(route("agora", "scouts")).toEqual(["agora", "workshop", "tent", "scouts"]);
-    expect(route("theatre", "horse")).toEqual(["theatre", "horse"]);
+  it("follow the pipeline along the upper floor, down the inner stairs and round the ground floor", () => {
+    expect(route("horse", "tent")).toEqual(["horse", "scouts", "oracle", "tent"]);
+    expect(route("horse", "agora")).toEqual(["horse", "scouts", "oracle", "tent", "upper", "lower", "workshop", "agora"]);
+    expect(route("agora", "scouts")).toEqual(["agora", "workshop", "lower", "upper", "tent", "oracle", "scouts"]);
+    expect(route("workshop", "theatre")).toEqual(["workshop", "theatre"]);
     expect(route("oracle", "oracle")).toEqual(["oracle"]);
+    // The stations are numbered in pipeline order, the first three upstairs.
+    expect(STATIONS.map((s) => s.n)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(STATIONS.map((s) => s.z > 0)).toEqual([true, true, true, false, false, false]);
   });
 
   it("walk in from the foot of the stairs to where the walkway meets the station", () => {
     const path = travel("horse", "agora");
     expect(path[0]).toEqual(STAIRS_FOOT);
-    expect(path.some((p) => p.x === hub("theatre").x && p.y === hub("theatre").y)).toBe(true);
+    expect(path.some((p) => p.x === hub("oracle").x && p.y === hub("oracle").y)).toBe(true);
+    // Down the inner stairs: from the deck's height to the ground floor.
+    expect(path.some((p) => p.z === DECK.z)).toBe(true);
+    expect(path[path.length - 1].z).toBe(0);
     const end = path[path.length - 1];
     expect(Math.hypot(end.x - STATION.agora.x, end.y - STATION.agora.y)).toBeCloseTo(34, 6);
     // And back the same way.
@@ -177,12 +188,14 @@ describe("the camp's roads", () => {
     expect(travel("oracle", "oracle")).toEqual([]);
   });
 
-  it("keep every station inside the basement's walls", () => {
+  it("put the upper floor's stations on the deck and the ground floor's clear of it", () => {
     for (const s of STATIONS) {
-      expect(s.x - ISLAND_RADIUS, s.id).toBeGreaterThan(ROOM.x0 - 4);
-      expect(s.y - ISLAND_RADIUS, s.id).toBeGreaterThan(ROOM.y0 - 4);
-      expect(s.x + ISLAND_RADIUS, s.id).toBeLessThan(ROOM.x1 + 4);
-      expect(s.y + ISLAND_RADIUS, s.id).toBeLessThan(ROOM.y1 + 4);
+      expect(s.x, s.id).toBeGreaterThan(ROOM.x0);
+      expect(s.y, s.id).toBeGreaterThan(ROOM.y0);
+      expect(s.x, s.id).toBeLessThan(ROOM.x1);
+      expect(s.y, s.id).toBeLessThan(ROOM.y1);
+      // On the deck if upstairs; out from under it if downstairs (the deck would hide them).
+      expect(underDeck(s.x, s.y), s.id).toBe(s.z > 0);
     }
   });
 
@@ -199,10 +212,11 @@ describe("the camp's roads", () => {
     const podium = prop("agora", "podium");
     const tiers = prop("theatre", "tier");
     const blockers: Partial<Record<(typeof STATIONS)[number]["id"], Array<{ x: number; y: number; r: number }>>> = {
-      // The shrine's platform corner nearest the road, and its middle.
+      // The format table and the chairs round it.
       oracle: [
-        { x: shrine.x + 12.5, y: shrine.y + 10.5, r: 1.5 },
         { x: shrine.x, y: shrine.y, r: 14 },
+        { x: shrine.x + 15, y: shrine.y, r: 2.5 },
+        { x: shrine.x - 3, y: shrine.y + 10.5, r: 2.5 },
       ],
       // The seats: an arc of radius 15 to 26 around the screen.
       theatre: [0, 1, 2, 3, 4].map((i) => ({ x: tiers.x + Math.cos((i / 4) * (Math.PI / 2)) * 20, y: tiers.y + Math.sin((i / 4) * (Math.PI / 2)) * 20, r: 7 })),
@@ -233,14 +247,16 @@ describe("the camp's roads", () => {
     }
   });
 
-  it("lead from the bike bay up the stairs and along the street to every shop", () => {
+  it("take the stairs on foot, and the bikes from the pavement along the street to every shop", () => {
+    // Up the street stairs from the deck to the pavement at the top, where the bikes are.
+    const up = upStairs();
+    expect(up[0].z).toBe(DECK.z);
+    expect(up[up.length - 1]).toEqual(stableGate());
     for (const land of LANDS) {
       const way = roadToLand(land.id);
-      expect(way[0]).toEqual(hub("scouts"));
-      // Up the stairs onto the street, and along it at the street's height.
-      expect(way.some((p) => p.x === STAIRS_TOP.x && p.y === STAIRS_TOP.y && p.z === ROOM.wall)).toBe(true);
+      // Nobody rides indoors: the whole ride is on the street, at its height.
+      expect(way.every((p) => p.z === LAND_Z)).toBe(true);
       const end = way[way.length - 1];
-      expect(end.z).toBe(LAND_Z);
       expect(Math.hypot(end.x - land.x, end.y - land.y)).toBeLessThan(LAND_RADIUS);
     }
     // The shops stand across the road, behind the right wall.
@@ -309,14 +325,15 @@ describe("the lands", () => {
 describe("the camp's places", () => {
   const onSand = (station: (typeof STATIONS)[number], x: number, y: number) => island(stationIsland(station, STATIONS.indexOf(station))).sdf(x, y) < 0;
 
-  it("keep the stable, its horses and its gate on the scouts' sand", () => {
-    const scouts = STATION.scouts;
+  it("park the bikes on the street's pavement, by the kerb, and the gate at the top of the stairs", () => {
     for (const stall of STALLS) {
-      expect(onSand(scouts, stall.horse.x, stall.horse.y)).toBe(true);
-      expect(onSand(scouts, stall.mount.x, stall.mount.y)).toBe(true);
+      for (const p of [stall.horse, stall.mount]) {
+        expect(p.y).toBeGreaterThan(ROOM.y0 - 32);
+        expect(p.y).toBeLessThan(ROOM.y0 - 8);
+      }
     }
-    expect(onSand(scouts, STABLE_GATE.x, STABLE_GATE.y)).toBe(true);
-    expect(onSand(scouts, SPOTS.courier.x, SPOTS.courier.y)).toBe(true);
+    expect(STABLE_GATE.y).toBeLessThan(ROOM.y0);
+    expect(Math.abs(STABLE_GATE.x - STAIRS_TOP.x)).toBeLessThan(20);
   });
 
   it("keep everyone's waiting places on their island", () => {

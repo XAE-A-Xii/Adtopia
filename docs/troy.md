@@ -1,14 +1,18 @@
 # Troy: the landing page and the camp
 
 Troy is the pixel-art front door of Surreel. `/` is a white page with a Trojan horse and one box:
-the company's website. As the page opens, the HQ's street door rolls up and one agent, the greeter
-(`scenes/greeter.ts`), steps out and waits on the pavement ("Hi! What's your website?").
-Submitting the website closes the camera in on it and it asks, in a speech bubble: "Do you have
-any preference or requirements?" The visitor types them or skips; the greeter walks back in while
-the campaign starts (the answer goes to `POST /api/brands` as `preferences`), then comes the
-crew: the campaign's agents march out, one by one, across the street and down the stairs to their
-posts in the camp. Escape or "Change website" pulls the camera back with the greeter still
-waiting; if the campaign can't start, the greeter comes back out. `/camp/[brandId]` is the camp:
+the company's website. As the page opens, the HQ's street door rolls up and one of the crew, Neon
+the greeter (`scenes/greeter.ts`), steps out and waits on the pavement just left of the building.
+Neon talks in a speech bubble up and to its left (clear of the SURREEL HQ sign), always in the same
+format; the box under the island is the visitor's answer, in the same place each time. First:
+"Hey, I'm Neon! Which site are we making videos for?" ("Hand it over"). Then: "<site>, nice!
+Anything the crew should know?", and the box takes an optional note ("Tell the crew", or
+"Surprise us" with nothing typed; "Wrong site? Change it" goes back). Neon says "Got it! Fetching
+the crew…" and walks back in while the campaign starts (the note goes to `POST /api/brands` as
+`preferences`), then comes the crew: the campaign's agents march out, one by one, across the
+street and down the stairs to their posts in the camp. If the campaign can't start, Neon comes back
+out and says so.
+`/camp/[brandId]` is the camp:
 the campaign's agents, one island per pipeline stage, doing the work the core track reports.
 
 ## Who owns what

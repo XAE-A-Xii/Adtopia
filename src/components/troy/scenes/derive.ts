@@ -241,10 +241,8 @@ export function derive(view: BrandView | null): CampPlan {
     role: "Signal watcher",
     task: scouting ? "Watching the scouts come and go" : "On watch",
     look: 0,
-    act: scouting ? "lookout" : "stand",
+    act: scouting ? "type" : "sit",
     ...SPOTS.lookout,
-    via: SPOTS.lookoutClimb,
-    sort: 1,
     state: scouting ? "working" : "idle",
   });
   agents.push({
@@ -280,9 +278,8 @@ export function derive(view: BrandView | null): CampPlan {
             : "Wrote the format study"
           : "Resting",
     look: 4,
-    act: style === "working" ? "watch" : style === "done" ? "stand" : "sit",
+    act: style === "working" ? "type" : "sit",
     ...SPOTS.watcher,
-    via: SPOTS.watcherSteps,
     state: style === "working" ? "working" : style === "done" ? "done" : "idle",
   });
 
@@ -304,9 +301,8 @@ export function derive(view: BrandView | null): CampPlan {
           ? "Signed off the battle plan"
           : "Waiting for the research",
     look: -1,
-    act: directing ? "point" : "stand",
-    ...SPOTS.general,
-    z: 0,
+    // At the cork board, pointing the plan out; up the library ladder for a reference while the script room writes.
+    ...(strat === "working" && room ? { act: "read" as const, ...SPOTS.ladder, via: SPOTS.ladderClimb } : { act: directing ? ("point" as const) : ("stand" as const), ...SPOTS.general, z: 0 }),
     state: strat === "working" ? "working" : strat === "done" ? "done" : "idle",
   });
   agents.push({
@@ -315,7 +311,7 @@ export function derive(view: BrandView | null): CampPlan {
     role: room ? "Script room" : "Scribe",
     task: strat === "working" ? (room ? `Writing the remakes line by line; a critic scores each (${room.written} of ${room.total} done)` : "Taking down every shot") : "Standing by",
     look: 5,
-    act: strat === "working" ? "read" : "stand",
+    act: strat === "working" ? "type" : "sit",
     ...SPOTS.scribe,
     z: 0,
     state: strat === "working" ? "working" : "idle",
