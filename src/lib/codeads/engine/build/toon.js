@@ -9,7 +9,7 @@
 // 'teeth', beard 0..1 (1 = to the floor), gray 0..1 (hair goes white), hairUp 0..1, xray (bool, skeleton flash), char 0..1,
 // tint [color, 0..1] (whole body, e.g. fossil stone), faceTint [color, k] (skin only: strain red, nausea green), hatLift 0..1
 // (the hard hat pops off; spikes show), noHat.
-// Nomen additions (code ads cast developers, not builders): makeToon({ build: 'heavy'|'fit', glasses: 'round'|'square',
+// Adtopia additions (code ads cast developers, not builders): makeToon({ build: 'heavy'|'fit', glasses: 'round'|'square',
 // hairStyle: 'mop'|'quiff', hood, headphones, jaw, watch, browW }) and the 'smirk' mouth. All optional and additive.
 // The code-ad cast (engine/cast.js) adds: build 'buff' (a V-shaped lifter: pecs, delts, traps, biceps, a thick neck) and
 // 'obese' (a gut the tee rides up over, moobs, chunky limbs), face 'chad' (a chiselled, stubbled jaw, high cheekbones) and
@@ -77,7 +77,7 @@ function eyeFx() {
   return EYEFX;
 }
 
-// ---------------------------------------------------------------- Nomen: a sculpted head, hair clumps, tee prints, stains
+// ---------------------------------------------------------------- Adtopia: a sculpted head, hair clumps, tee prints, stains
 /**
  * The leading man's head, sculpted from a unit sphere: the lower face squares off (crisp jaw corners) and tapers to a
  * narrower chin that juts forward with a flat underside; a brow ridge over deep-set eyes, cheekbones, hollows under them,
@@ -480,7 +480,7 @@ export function makeToon(o = {}) {
       const wide = ek === 'wide' ? 1.22 : 1;
       e.white.scale.set(ES.w * wide, ES.h * wide, 0.55); e.lid.scale.set((ES.w + 0.05) * wide, (ES.h + 0.04) * wide, ES.lz);
       e.pg.position.set(clamp(lx, -1, 1) * 0.03, clamp(ly, -1, 1) * 0.035 * Math.min(1, ES.h), 0); e.pg.scale.setScalar(ek === 'wide' ? 0.88 : 1); // wide = big whites + a still-readable pupil (0.72 read as blank discs)
-      e.lid.rotation.x = ek === 'closed' ? 1.62 : (LIDS[ek] ?? LIDS.open);   // cool (Nomen): lids a little low, a confident look
+      e.lid.rotation.x = ek === 'closed' ? 1.62 : (LIDS[ek] ?? LIDS.open);   // cool (Adtopia): lids a little low, a confident look
       const fx = ek === 'spiral' || ek === 'x'; e.fx.visible = fx; e.pg.visible = !fx;
       if (fx) { e.fx.material.map = EYEFX[ek]; e.fx.rotation.z = ek === 'spiral' ? (p.t ?? 0) * -9 * e.s : 0; }
       const b = p.brows ?? 0; e.brow.rotation.z = Math.PI / 2 + e.s * b * 0.45; e.brow.position.y = BY + Math.abs(b) * 0.012 + (ek === 'wide' ? 0.025 : 0);

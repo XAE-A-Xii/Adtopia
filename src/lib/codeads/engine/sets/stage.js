@@ -1,4 +1,4 @@
-// SET: a launch keynote (Nomen code ads). A black stage with a giant LED wall (the screen), a truss of spotlights with
+// SET: a launch keynote (Adtopia code ads). A black stage with a giant LED wall (the screen), a truss of spotlights with
 // beams, brand-coloured light pillars, the lead at a demo table with a headset mic, and the audience's heads in the dark
 // in front of the stage (they bob when the room cheers). The camera sits in the audience on +z.
 // Stage floor y = 0, front edge z = 1.0; the audience floor is 0.9 m lower. LED wall centre (0, 2.3, -2.9), 2.4 x 1.35,

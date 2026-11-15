@@ -327,7 +327,7 @@ export function lintStory(story: CodeAdStory, ctx: CodeAdContext): string[] {
   return issues;
 }
 
-// ---------- the Script the rest of Nomen reads ----------
+// ---------- the Script the rest of Adtopia reads ----------
 
 const JOB: Record<Gag, BeatJob> = { hack: "problem", explode: "agitate", bury: "agitate", zap: "agitate", money: "agitate", deliver: "reveal", team: "demo", approve: "demo", show: "demo", celebrate: "payoff", idle: "other" };
 

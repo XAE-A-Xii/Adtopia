@@ -1,4 +1,4 @@
-// Props for Nomen's code ads. makeAgent is the original engine's makeRoomba (engine/build/factory.js, video 026: the Roomba that
+// Props for Adtopia's code ads. makeAgent is the original engine's makeRoomba (engine/build/factory.js, video 026: the Roomba that
 // gets promoted) recoloured in the brand's colours, with a role sign on a mast instead of the chequered flag; the rest are
 // new: the brand's crate, a cardboard box with a printed label (piles that bury Gary), the big button (approvals).
 import * as THREE from 'three';

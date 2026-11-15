@@ -1,4 +1,4 @@
-// SET: the gym (Nomen code ads). A dollhouse cut of a weight room: rubber floor, a mirror wall with a big TV on it (the
+// SET: the gym (Adtopia code ads). A dollhouse cut of a weight room: rubber floor, a mirror wall with a big TV on it (the
 // screen), a squat rack with a loaded barbell, a dumbbell rack, a bench, kettlebells, fluorescent strips. The lead types
 // on a laptop set on a plyo box with one hand and curls a dumbbell with the other: the company runs while he trains.
 // Room x ∈ [-3.5, 3.5], z ∈ [-2.6, 2.4], the camera on +z.

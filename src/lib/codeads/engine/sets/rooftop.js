@@ -1,4 +1,4 @@
-// SET: a rooftop pool at golden hour (Nomen code ads). A teak deck on a high roof, an infinity pool whose water ripples,
+// SET: a rooftop pool at golden hour (Adtopia code ads). A teak deck on a high roof, an infinity pool whose water ripples,
 // loungers, potted palms, a glass railing over a sunset skyline, an outdoor screen on a stand (the screen) and a high
 // cocktail table with the laptop and a drink: the company runs while the lead is at the pool. The camera on +z.
 // Deck x ∈ [-4, 4], z ∈ [-3, 3]; the pool runs along the front-left.

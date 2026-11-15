@@ -2,7 +2,7 @@
 """
 synth.py - procedural sound design + score renderer (numpy/scipy only, fully deterministic)
 
-Vendored into Nomen from the original engine (audio/synth.py at 6122035, a reviewer's project) for code ads. Nomen's only change: --out.
+Vendored into Adtopia from the original engine (audio/synth.py at 6122035, a reviewer's project) for code ads. Adtopia's only change: --out.
     python3 -I src/lib/codeads/synth.py --cues <dir>/cues.json --out <dir> --no-pack   (src/lib/codeads/job.ts runs this)
 
     python3 -I audio/synth.py                 # render everything + self-verify
@@ -3245,7 +3245,7 @@ def main(argv=None):
     ap.add_argument("--dump-cues", action="store_true")
     ap.add_argument("--no-pack", action="store_true")
     ap.add_argument("--no-verify", action="store_true")
-    ap.add_argument("--out", help="(Nomen) write audio.wav + stems/ here and read the cue sheet's voice file from here")
+    ap.add_argument("--out", help="(Adtopia) write audio.wav + stems/ here and read the cue sheet's voice file from here")
     a = ap.parse_args(argv)
     global OUT_DIR, STEM_DIR
     cues = DEFAULT_CUES

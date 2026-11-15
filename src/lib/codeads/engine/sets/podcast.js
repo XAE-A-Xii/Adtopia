@@ -1,4 +1,4 @@
-// SET: a podcast studio (Nomen code ads): the clip format. Acoustic foam on the walls, a neon sign with the brand's
+// SET: a podcast studio (Adtopia code ads): the clip format. Acoustic foam on the walls, a neon sign with the brand's
 // name, a TV behind the host (the screen), a round table with a boom-arm microphone in front of the lead's mouth and a
 // second, empty one across, warm practicals. The lead sits on a stool in on-ear headphones, typing on a laptop on the
 // table. Room x ∈ [-3.5, 3.5], z ∈ [-2.6, 2.2], the camera on +z.

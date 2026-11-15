@@ -245,7 +245,7 @@ async function clip(beat: CodeAdBeat, options: NarrateOptions): Promise<{ path: 
     }
     const monid = narrator.monid;
     const speak = (body: Record<string, unknown>) => runToEnd(monid, "elevenlabs", "/text-to-speech", { body }, { pollMs: 1000, timeoutMs: 5 * 60_000 });
-    // eleven_v3 is the original engine's dramatic Adam; when the provider refuses it, Nomen's own model (dub.ts) reads instead.
+    // eleven_v3 is the original engine's dramatic Adam; when the provider refuses it, Adtopia's own model (dub.ts) reads instead.
     const done = await speak({ text, voice_id: voiceId, model_id: model, voice_settings: settings }).catch((error: unknown) => {
       if (model === TTS_MODEL.model_id || (error instanceof ApiError && error.retryable)) throw error;
       options.log?.(`ElevenLabs refused ${model} (${error instanceof Error ? error.message : String(error)}); reading with ${TTS_MODEL.model_id}`);

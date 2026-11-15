@@ -1,4 +1,4 @@
-// SET: the dev office, a dollhouse cut (adapted from the original engine's engine/sets/office.js, video 012, for Nomen's code ads).
+// SET: the dev office, a dollhouse cut (adapted from the original engine's engine/sets/office.js, video 012, for Adtopia's code ads).
 // The camera lives on +z and looks into the room. Room x∈[-3.5,3.5], z∈[-2.6,2.6], ceiling 2.9; the floor slab is cut open
 // at z = 2.6 like the build genre's cutaways. The back wall (z = -2.6) has windows on a painted skyline on both sides and, in
 // the middle, the WALL SCREEN (what the computer shows, big enough to read in a vertical frame). Gary stands at a standing

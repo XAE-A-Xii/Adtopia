@@ -101,13 +101,13 @@ Claims and numbers come from the product brief only; the linter flags any number
 Vendored into `src/lib/codeads/engine/` (browser modules, served to headless Chrome) and `src/lib/codeads/`:
 
 - `engine/core.js`: the renderer (bloom, grade, grain, tone mapping), deterministic timeline helpers, seeded random.
-- `engine/build/`: `toon.js` (the toon rig and its faces; Nomen added glasses, builds, hair, a hoodie, headphones), `fx.js` (analytic particles: sparks, smoke, dust, confetti,
+- `engine/build/`: `toon.js` (the toon rig and its faces; Adtopia added glasses, builds, hair, a hoodie, headphones), `fx.js` (analytic particles: sparks, smoke, dust, confetti,
   banknotes), `anim.js` (pop, drop, squash, wobble), `rail.js` (one gliding camera take: `planRail`), `cuts.js`
   (`makeKick`, the frame-relative impact shake), `captions.js` (one word at a time + callouts; font paths changed).
 - `engine/fonts/`: Fredoka 600/700 (OFL) and Luckiest Guy (Apache 2.0), from `@fontsource`.
 - `engine/props.js`: `makeAgent` is the original engine's `makeRoomba` (video 026) in the brand's colours with a role sign.
 - `engine/sets/devoffice.js`: adapted from `sets/office.js` (video 012): a dollhouse dev office with a wall screen.
-  New sets in the same style: `stage.js`, `gym.js`, `rooftop.js`, `versus.js` (Nomen's, not the original engine's).
+  New sets in the same style: `stage.js`, `gym.js`, `rooftop.js`, `versus.js` (Adtopia's, not the original engine's).
 - `synth.py`: `audio/synth.py` whole (numpy + scipy), plus an `--out` option.
 - Ported to TypeScript: `tools/narrate.py`'s word timing and layout (`narrate.ts`, `layout.ts`), `tools/render.mjs`
   (`render.ts`, on the DevTools pipe instead of puppeteer), the 024 `make_cues.py` "WORKSHOP" score (`cues.ts`).

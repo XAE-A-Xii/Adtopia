@@ -1,4 +1,4 @@
-// The wall screen's pictures (Nomen code ads): what the computer shows, drawn on a 1280×720 canvas as a pure function of
+// The wall screen's pictures (Adtopia code ads): what the computer shows, drawn on a 1280×720 canvas as a pure function of
 // the beat's screen and how far the narration has got (u 0..1), so any frame renders on its own. The screen fills about
 // two thirds of a vertical frame's width at most, so everything is big: few lines, few words.
 //   terminal  lines typed at a prompt ("> " lines are the machine's answers)

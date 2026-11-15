@@ -1,4 +1,4 @@
-// SET: the versus dollhouse (Nomen code ads, chud vs Chad). Two floors cut open like the build genre's cutaways, so a
+// SET: the versus dollhouse (Adtopia code ads, chud vs Chad). Two floors cut open like the build genre's cutaways, so a
 // vertical frame holds both: downstairs, the rival's basement (the old way): bare concrete, a dim bulb, pizza boxes,
 // energy-drink cans, a cheap monitor full of errors; upstairs, the lead's penthouse (the product): floor-to-ceiling
 // windows on a skyline, a clean desk, the brand's wall screen. The camera lives on +z.

@@ -148,7 +148,7 @@ export function buildCues(story: StoryJson, title = "code ad") {
     amb.push({ sound: "cabin_hum", t0: 0, t1: D, fade_in: 0.3, fade_out: 0.6, gain_db: -46, seed: 4 });
   }
   return {
-    title: `${title} (Nomen code ad: WORKSHOP marimba groove + construction foley + narrator)`,
+    title: `${title} (Adtopia code ad: WORKSHOP marimba groove + construction foley + narrator)`,
     duration: D,
     target_lufs: -14.0,
     limiter_ceiling_dbtp: -1.5,

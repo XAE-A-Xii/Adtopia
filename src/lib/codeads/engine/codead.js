@@ -1,4 +1,4 @@
-// Nomen's code-ad scene: the original engine's build genre (docs/BUILD.md in the original engine: one gliding camera take,
+// Adtopia's code-ad scene: the original engine's build genre (docs/BUILD.md in the original engine: one gliding camera take,
 // hard impact kicks, analytic FX, one word of narration at a time + callouts), compiled from a list of beats instead of a
 // hand-written shots.js. story.codead (src/lib/codeads/layout.ts) carries, per beat: its gag, who plays it, its absolute
 // times (t0..t1, speech s0..s1, the hit word's time) and what the big screen shows. Every frame is a pure function of t
