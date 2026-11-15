@@ -36,6 +36,8 @@ export function planProduction(script: Script, brief: CreativeBrief, product: Pr
   if (brief.format === "remake") return { format: "remake", aroll: [], broll: [], voiceover: null, screens: [] };
   // A code ad is animated from its story (script.code_ad) by src/lib/codeads: nothing to render here.
   if (brief.format === "code_ad") return { format: "code_ad", aroll: [], broll: [], voiceover: null, screens: [] };
+  // Brainrot ads generate their own stills, clips, voice and cut in creative/brainrot*.ts.
+  if (brief.format === "brainrot") return { format: "brainrot", aroll: [], broll: [], voiceover: null, screens: [] };
   const visuals = new Map(product.visuals.map((v) => [v.id, v]));
   const filmed = brief.format === "filmed_screen";
   const broll: BRollClip[] = [];

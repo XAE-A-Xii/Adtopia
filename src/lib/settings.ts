@@ -60,6 +60,12 @@ export const DEFAULTS = {
   hook_judge_url: "",
   hook_judge_key: "",
   hook_judge_secret: "",
+  /** Brainrot videos: the fal video model their clips render on. */
+  brainrot_video_model: "fal-ai/veo3.1/lite/image-to-video",
+  /** Brainrot videos: the video model's assumed price per second until a clip measures it (USD). */
+  brainrot_video_usd_per_second: "0.05",
+  /** Brainrot videos: the cost guard's cap per video (USD). */
+  brainrot_max_usd: "4",
 } as const;
 
 export type SettingKey = keyof typeof DEFAULTS;
