@@ -246,6 +246,7 @@ src/
     ├── strategy.ts         # The contract with the nomen-director agent
     ├── production.ts       # Frames, renders, QC, continuity and the cut
     ├── creative/           # References, script room, casting, remakes, screens, edit, voice
+    ├── codeads/            # 3D cartoon ads made in code: three.js in headless Chrome, synthesized score (docs/code-ads.md)
     ├── statics/            # Static ad packs
     ├── phones/             # Mobilerun phones: warm-up and outreach
     ├── publish.ts          # Posting and analytics
