@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { setSetting } from "@/lib/settings";
 import { GET as loopGet, POST as loopPost } from "@/app/api/brands/[id]/loop/route";
 import { db, now as nowIso } from "@/lib/db";
 import {
@@ -368,6 +369,9 @@ describe("advanceLoop", () => {
   });
 
   it("skips with the numbers when this week's spend leaves no room", async () => {
+    // A 4-video campaign, whatever the defaults are.
+    await setSetting("format_mix", "");
+    await setSetting("videos_per_campaign", "4");
     await enable(75, { cadence_days: 1 });
     const real = new Date();
     insertCampaign({ id: "cmp_a", status: "live", created_at: ago(3, real), updated_at: ago(2, real), spend: 40 * M, concepts: 2 });

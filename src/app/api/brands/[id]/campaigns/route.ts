@@ -22,6 +22,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       statics: typeof overrides.statics === "boolean" ? overrides.statics : defaults.statics,
       preferences: typeof overrides.preferences === "string" ? overrides.preferences : await lastPreferences(brandId),
     };
+    // The format mix holds when the video count is the default one.
+    if (defaults.formats && options.concepts === defaults.concepts) options.formats = defaults.formats;
     const campaignId = await startCampaign(brandId, options);
     after(tick);
     return Response.json({ campaignId }, { status: 201 });

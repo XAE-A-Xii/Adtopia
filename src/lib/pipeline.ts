@@ -17,12 +17,12 @@ import { breakdownAll, canonicalUrl, orderBreakdowns, pickAvoidingTaken, scoreCa
 import { applyRelevance, screenRelevance } from "./creative/relevance";
 import { scout, scoutSpecs } from "./creative/scout";
 import { targetSeconds, writeScript } from "./creative/script";
-import type { ProductBrief, ProductVisual, ReferenceBreakdown, ReferenceCandidate } from "./creative/types";
+import type { ProductBrief, ProductVisual, ReferenceBreakdown, ReferenceCandidate, VideoFormat } from "./creative/types";
 import { compactResearch, fallbackPlan, phaseASpecs, phaseCSpecs, planResearch, type ResearchPack, type ResearchPlan, type RunSpec, type Video } from "./research";
 import { ensureRuns, listRuns, progressRuns, requeueFailedRuns } from "./runs";
 import { cleanPreferences } from "./preferences";
 import { getBool, getInt, getSetting } from "./settings";
-import { type Concept, conceptFrom, DIRECTOR_PROMPT, normalizeStrategy, type PastResult, STRATEGY_SCHEMA, type Strategy, strategyMessage } from "./strategy";
+import { type Concept, conceptFrom, DIRECTOR_PROMPT, FORMATS, normalizeStrategy, type PastResult, STRATEGY_SCHEMA, type Strategy, strategyMessage } from "./strategy";
 
 // The campaign state machine. The worker calls advanceCampaign() every few seconds; every step is
 // idempotent, so a restart picks up exactly where it stopped. Rows live in the store (src/lib/store):
@@ -38,7 +38,7 @@ export type CampaignStatus = "running" | "review" | "publishing" | "live" | "fai
  * production: "ai" renders every video; "creators" casts each brief to a real creator instead (casting-job.ts).
  */
 /** `preferences`: what the customer asked for when the campaign started (see src/lib/preferences.ts). */
-export type CampaignOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; learnStyle: boolean; statics?: boolean; production?: "ai" | "creators"; preferences?: string };
+export type CampaignOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; learnStyle: boolean; statics?: boolean; production?: "ai" | "creators"; preferences?: string; formats?: VideoFormat[] };
 
 export type BrandRow = { id: string; name: string; domain: string; url: string; profile_json: string | null; identity_id: string | null; social_activated: number; created_at: string };
 
@@ -74,9 +74,20 @@ export const getBrand = async (id: string) => (await store().find<BrandRow>("bra
 export const getCampaign = async (id: string) => (await store().find<CampaignRow>("campaigns", { id }, { limit: 1 }))[0];
 export const listCreatives = (campaignId: string) => store().find<CreativeRow>("creatives", { campaign_id: campaignId }, { order: [["idx", "asc"], ["generation", "asc"]] });
 
+/** The format_mix setting: the formats every campaign makes, one video each, in order (unknown names dropped). */
+export function formatMix(): VideoFormat[] {
+  return getSetting("format_mix")
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name): name is VideoFormat => (FORMATS as string[]).includes(name))
+    .slice(0, 8);
+}
+
 export function defaultOptions(): CampaignOptions {
+  const formats = formatMix();
   return {
-    concepts: Math.max(1, Math.min(8, getInt("videos_per_campaign"))),
+    ...(formats.length ? { formats } : {}),
+    concepts: formats.length || Math.max(1, Math.min(8, getInt("videos_per_campaign"))),
     shotsPerConcept: Math.max(1, Math.min(3, getInt("shots_per_video"))),
     secondsPerShot: Math.max(4, Math.min(10, getInt("video_seconds"))),
     videoModel: getSetting("video_model"),
@@ -460,8 +471,12 @@ async function stepStrategy(campaign: CampaignRow) {
   if (campaign.strategy_json) return scriptRoom(campaign, claude, product, breakdowns);
   // remake (persona portraits, twin frames) and filmed_screen (a photo of a monitor) make images on fal.
   const falOnly: Partial<Record<string, string>> = fal ? {} : { remake: "talking_head_broll", filmed_screen: "voiceover_demo" };
+  // The format mix applies only to a campaign made with it (a static-ads-only one has no videos).
+  const formats = options.formats?.length === options.concepts ? options.formats : undefined;
   const keep = async (output: unknown) => {
     const strategy = normalizeStrategy(output, options, { referenceIds: breakdowns.map((b) => b.id), visualIds: product.visuals.map((v) => v.id) });
+    // A required format mix wins over the director's choice, brief by brief.
+    for (const [i, brief] of (strategy.campaign.briefs ?? []).entries()) brief.format = formats?.[i] ?? brief.format;
     for (const brief of strategy.campaign.briefs ?? []) brief.format = (falOnly[brief.format] as typeof brief.format | undefined) ?? brief.format;
     if (!strategy.campaign.briefs?.length) throw new Error("The creative director returned no video briefs.");
     await save("campaigns", campaign.id, { strategy_json: JSON.stringify(strategy) });
@@ -477,7 +492,7 @@ async function stepStrategy(campaign: CampaignRow) {
     model: DIRECTOR_MODEL,
     max_tokens: 32_000,
     system: DIRECTOR_PROMPT,
-    messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns, shared }, options, await pastResults(brand.id, campaign.id))}\n\n${Object.keys(falOnly).length ? `\n\nThis deployment cannot make the ${Object.keys(falOnly).join(" or ")} formats: choose from the others.` : ""}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
+    messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns, shared }, options, await pastResults(brand.id, campaign.id))}\n\n${Object.keys(falOnly).length ? `\n\nThis deployment cannot make the ${Object.keys(falOnly).join(" or ")} formats: choose from the others.` : ""}\n\n${formats ? `\n\nThis campaign must make exactly ${formats.length} videos, one in each of these formats, in this order: ${formats.join(", ")}. Write each brief for its format, and pick for each the reference that suits that format best.` : ""}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
     tools: [{ name: "submit_strategy", description: "Return the brand brief, the search plan and one video brief per video.", input_schema: STRATEGY_SCHEMA }],
   });
   await save("campaigns", campaign.id, { strategy_spend_micro: claudeCostMicro(DIRECTOR_MODEL, reply.usage) });
