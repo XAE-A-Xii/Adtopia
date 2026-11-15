@@ -432,6 +432,8 @@
 
 /* The greeter's speech bubble: up and to the left of its head (the anchor), the tail's tip on it. */
 .greeterBubble {
+  /* See-through, box and tail alike, so the HQ's sign shows behind it. */
+  --paper: rgba(28, 32, 68, 0.6);
   width: min(280px, calc(100vw - 32px));
   transform: translate(calc(-100% + 2px), calc(-100% - 20px));
 }

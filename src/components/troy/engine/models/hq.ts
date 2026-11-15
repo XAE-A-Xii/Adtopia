@@ -972,13 +972,15 @@ export function entranceBody() {
   // A cornice, and the roof gear the street's buildings have: a water tank and an aerial.
   m.box(E.x, E.y, Z + E.tall + 0.8, E.half + 0.6, E.depth + 0.6, 0.8, { mat: (h, out) => ((out.dither = 0), (out.ramp = R.hqMetal), (out.tone = h.nz > 0.5 ? 0.6 : 0.2)) });
   m.with(translate(0, FRONT - 2, Z), () => roofGear(m, -12, E.tall));
-  // The sign: ADTOPIA in pink over HQ in cyan, on a dark board above the door.
-  m.box(0, FRONT + 0.6, Z + 42, 17.6, 0.5, 5, { mat: solid(R.black, 0.4, 0) });
-  m.box(0, FRONT + 1.15, Z + 42, 16.8, 0.05, 4.6, {
+  // The sign: ADTOPIA in pink over HQ in cyan, on a dark board above the door. Its letters are a
+  // whole world unit to the pixel, like HQ's (smaller ones lose strokes at the scene's resolution),
+  // so the board runs a little past the building's corners.
+  m.box(0, FRONT + 0.6, Z + 42, 22.4, 0.5, 5, { mat: solid(R.black, 0.4, 0) });
+  m.box(0, FRONT + 1.15, Z + 42, 21.6, 0.05, 4.6, {
     mat: (h, out) => {
       out.dither = 0;
-      const u = (h.x + 16.4) / 0.8;
-      const v = (Z + 44.8 - h.z) / 0.8;
+      const u = h.x + textWidth("ADTOPIA") / 2;
+      const v = Z + 45.5 - h.z;
       if (wordPixel("ADTOPIA", u, v)) {
         out.ramp = R.neonPink;
         out.tone = 0.8;
