@@ -23,7 +23,8 @@ import { type MonidClient, type MonidRun, providerFailed, runCostMicro, TERMINAL
 import type { NaiveClient } from "./naive";
 import { type Continuity, reviewContinuity, reviewFrame, reviewShot, type Verdict } from "./qc";
 import { getBool, getInt, getSetting } from "./settings";
-import { captionFor, type Concept, type Strategy } from "./strategy";
+import { resolveCreativeCaption } from "./hookjudge";
+import { type Concept, type Strategy } from "./strategy";
 
 // Production: every shot gets a product-faithful first frame, a render, and a QC pass; then the
 // shots are cut into one ad. Naive renders first; Monid renders when Naive is out of credits.
@@ -248,6 +249,7 @@ export async function insertCreative(campaignId: string, idx: number, concept: C
     monid_cost: 0,
     error: null,
   }));
+  const caption = await resolveCreativeCaption(campaignId, concept);
   await store().insert("creatives", {
     id,
     campaign_id: campaignId,
@@ -256,7 +258,7 @@ export async function insertCreative(campaignId: string, idx: number, concept: C
     concept_json: JSON.stringify(concept),
     shots_json: JSON.stringify(shots),
     status: "queued",
-    caption: captionFor(concept),
+    caption,
     platforms_json: JSON.stringify(concept.platforms),
     created_at: now(),
     updated_at: now(),

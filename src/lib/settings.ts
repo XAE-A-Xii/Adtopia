@@ -54,11 +54,15 @@ export const DEFAULTS = {
   remake_screens: "auto",
   /** A prebuilt Naive character (chr_…) the brand's persona is made from, instead of a portrait from words; empty for our own. */
   persona_character: "",
+  /** Fine-tuned caption judge on Modal: endpoint URL and proxy-auth credentials (Modal-Key / Modal-Secret). */
+  hook_judge_url: "",
+  hook_judge_key: "",
+  hook_judge_secret: "",
 } as const;
 
 export type SettingKey = keyof typeof DEFAULTS;
 
-export const SECRET_KEYS: SettingKey[] = ["naive_api_key", "monid_api_key", "mobilerun_api_key", "elevenlabs_api_key", "fal_api_key", "anthropic_api_key"];
+export const SECRET_KEYS: SettingKey[] = ["naive_api_key", "monid_api_key", "mobilerun_api_key", "elevenlabs_api_key", "fal_api_key", "anthropic_api_key", "hook_judge_key", "hook_judge_secret"];
 
 const ENV: Partial<Record<SettingKey, string>> = {
   naive_api_key: "NAIVE_API_KEY",
@@ -72,6 +76,9 @@ const ENV: Partial<Record<SettingKey, string>> = {
   mobilerun_base_url: "MOBILERUN_BASE_URL",
   elevenlabs_base_url: "ELEVENLABS_BASE_URL",
   fal_base_url: "FAL_BASE_URL",
+  hook_judge_url: "HOOK_JUDGE_URL",
+  hook_judge_key: "HOOK_JUDGE_KEY",
+  hook_judge_secret: "HOOK_JUDGE_SECRET",
 };
 
 // SQLite answers in a microsecond, so it is read on every call, as before. Convex is a network
