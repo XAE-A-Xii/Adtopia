@@ -258,7 +258,7 @@ export function tourSteps(script: DemoScript): TourStep[] {
     key: "post",
     dwell: 5,
     title: "Step 6 · Approve and post",
-    body: "One click approves them all, and they go out to the brand's own accounts, labeled AI-generated: all at once, or one a day. The broadcast tower beams them up to the street.",
+    body: "One click approves them all, and Postiz sends them out to the brand's own accounts, labeled AI-generated: all at once, or one a day. The broadcast tower beams them up to the street.",
     hold: 0,
     run: 6,
     station: "agora",
