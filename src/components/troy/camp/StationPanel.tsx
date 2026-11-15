@@ -26,7 +26,7 @@ const ABOUT: Record<StationId, string> = {
   tent: "The director turns the research into a plan: the creative brief, search keywords and a few video concepts with their format. The script room then writes each concept's script and hook. Runs on Claude Haiku.",
   workshop: "Turns each script into a finished video, in eight steps: first frame, frame check, render, shot check, product screens, continuity check, voice-over and the cut.",
   theatre: "Your review: the finished videos play here. Approve the ones you want, or send one back for another take.",
-  agora: "Posts each approved video to the brand's own accounts, now or one a day, then follows how each one does against the niche's top videos.",
+  agora: "Posts each approved video to the brand's own accounts through Postiz, now or one a day, then follows how each one does against the niche's top videos.",
 };
 
 /** Production's eight steps for every video, as the workshop runs them. */
@@ -636,7 +636,7 @@ function Workshop({ view, busy, actions }: { view: BrandView; busy: string | nul
 }
 
 function Theatre({ view, busy, actions, demo, focus }: { view: BrandView; busy: string | null; actions: CampActions; demo: boolean; focus: string | null }) {
-  const accounts = useAccounts(demo ? null : view.brand.id, view.brand.connected);
+  const accounts = useAccounts(demo ? null : view.brand.id);
   const campaign = view.campaign;
   const finished = (campaign?.creatives ?? []).filter((c) => c.status === "ready").sort((a, b) => a.idx - b.idx);
   // Real-creator mode: a brief cast to a creator, waiting for your OK to send its outreach. A brief
@@ -700,15 +700,11 @@ function Theatre({ view, busy, actions, demo, focus }: { view: BrandView; busy: 
 
 type AccountsState = { accounts: SocialAccountView[] | null; error: string | null };
 
-/** The brand's connected accounts, read live from Naive when the theatre opens (none before it is activated). */
-function useAccounts(brandId: string | null, activated: boolean): AccountsState {
+/** The brand's connected accounts, read live from Postiz when the theatre opens. */
+function useAccounts(brandId: string | null): AccountsState {
   const [state, setState] = useState<AccountsState>({ accounts: null, error: null });
   useEffect(() => {
     if (!brandId) return;
-    if (!activated) {
-      setState({ accounts: [], error: null });
-      return;
-    }
     let alive = true;
     socialAccounts(brandId).then(
       (result) => alive && setState(result),
@@ -717,7 +713,7 @@ function useAccounts(brandId: string | null, activated: boolean): AccountsState 
     return () => {
       alive = false;
     };
-  }, [brandId, activated]);
+  }, [brandId]);
   return state;
 }
 
@@ -736,10 +732,10 @@ function Accounts({ state, busy, connect }: { state: AccountsState; busy: string
       ) : accounts === null ? (
         "Checking the brand's accounts…"
       ) : accounts.length === 0 ? (
-        <>Posting goes to the brand&apos;s own accounts, labeled AI-generated. Connect them once: {link("connect accounts")}.</>
+        <>Posting goes through Postiz to the brand&apos;s own accounts, labeled AI-generated. Connect them once: {link("connect accounts")}.</>
       ) : (
         <>
-          Posting to {accounts.map((a) => `${platformName(a.platform)} ${a.name}`).join(", ")}, labeled AI-generated. {link("Add accounts")}
+          Posting through Postiz to {accounts.map((a) => `${platformName(a.platform)} ${a.name}`).join(", ")}, labeled AI-generated. {link("Add accounts")}
         </>
       )}
     </p>
@@ -987,7 +983,7 @@ function Agora({ view, actions }: { view: BrandView; actions: CampActions }) {
       )}
       <Section title={`Posts · ${posts.length}`}>
         {posts.length === 0 ? (
-          <p className="text-[13px] text-[var(--ink-soft)]">Approve videos at Review, then send them out. The publisher posts each one to the brand&apos;s own accounts.</p>
+          <p className="text-[13px] text-[var(--ink-soft)]">Approve videos at Review, then send them out. Postiz posts each one to the brand&apos;s own accounts.</p>
         ) : (
           <ul className="space-y-3">
             {posts.map((post) => {

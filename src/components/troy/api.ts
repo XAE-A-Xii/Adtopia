@@ -77,13 +77,13 @@ export function regenerate(creativeId: string, note?: string) {
 
 export type SocialAccountView = { platform: string; name: string; id: string };
 
-/** The brand's connected social accounts, read live from Naive (GET /api/brands/[id]/social), with why it failed if it did. */
+/** The brand's connected social channels, read live from Postiz (GET /api/brands/[id]/social), with why it failed if it did. */
 export async function socialAccounts(brandId: string): Promise<{ accounts: SocialAccountView[]; error: string | null }> {
   const data = await call<{ accounts: SocialAccountView[]; error?: string }>(`/api/brands/${encodeURIComponent(brandId)}/social`, { cache: "no-store" });
   return { accounts: data.accounts ?? [], error: data.error ?? null };
 }
 
-/** A hosted page where the brand's owner connects its accounts; returns here afterwards. */
+/** Opens Postiz where the brand's owner connects its channels. */
 export async function connectLink(brandId: string, returnTo: string) {
   return (await call<{ url: string }>(`/api/brands/${encodeURIComponent(brandId)}/social`, { method: "POST", body: JSON.stringify({ returnTo }) })).url;
 }

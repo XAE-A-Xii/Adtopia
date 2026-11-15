@@ -13,6 +13,7 @@ const KEYS = [
   { key: "anthropic_api_key", label: "Anthropic", help: "Claude for the director, scripts, research planning and quality checks, instead of Naive. Optional." },
   { key: "fal_api_key", label: "fal", help: "First frames (Nano Banana Pro) and shot renders (Kling 3.0 Pro), instead of Naive and Monid. Optional." },
   { key: "elevenlabs_api_key", label: "ElevenLabs", help: "Voice-overs, transcription and remake voices, called directly instead of through Naive and Monid. Optional." },
+  { key: "postiz_api_key", label: "Postiz", help: "Posting and scheduling videos to connected social channels. Create a key in Postiz (platform.postiz.com)." },
 ];
 
 const VEO_PER_SECOND = 0.4;
