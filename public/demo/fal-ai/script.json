@@ -57,7 +57,7 @@
     }
   },
   "options": {
-    "concepts": 1,
+    "concepts": 3,
     "shotsPerConcept": 1,
     "secondsPerShot": 8,
     "videoModel": "google/veo-3.1",
@@ -65,7 +65,7 @@
     "statics": false,
     "production": "ai"
   },
-  "estimateUsd": 1.51,
+  "estimateUsd": 4.1,
   "plan": {
     "brand_name": "Fal",
     "category": "generative media API",
@@ -674,6 +674,20 @@
           ],
           "cta": "Tap Get Started, link in bio, to call your first model on fal.",
           "why": "The reference is a Runway Meta ad that ran 22 days and is still running, with a 'Sign up' button and a comment-for-link ask. That is the strongest conversion evidence in the set. It has a cloneability of 7.6/10 and runs 30.6 s, within the 45 s budget, with one static presenter in one continuous take. Fit is 7/10: a dev-tool demo suits the split layout. The screen-recording top panel is replaced by fal's real site screenshots, which keeps the layout without laying the product over someone else's screen. The other references are weaker: ref_be7c733d59 is only 4.6 cloneable and ref_29d48c6809 is 4.7 with 65% screen time and a money claim fal can't support."
+        },
+        {
+          "title": "Stop babysitting GPUs",
+          "format": "code ad (3D animation)",
+          "reference_id": "ref_29d48c6809",
+          "angle": "A code-made 3D cartoon of @hustlewithgianni's \"do this instead\" hook (2.1M views on 4K followers, 537.2x), set in a dev founder's office.",
+          "hook_plan": "Stop babysitting GPUs. Do this with fal instead."
+        },
+        {
+          "title": "I told my agent any way possible",
+          "format": "brainrot meme",
+          "reference_id": "",
+          "angle": "Brainrot memes break out on tiny accounts, so a deliberately cringe funnel meme with fal as the punchline: one API, over a thousand models, zero GPUs to babysit.",
+          "hook_plan": "POV: you told your AI agent 'any way possible'"
         }
       ],
       "posting_plan": {
@@ -1035,6 +1049,61 @@
             "outlier": null,
             "format": "Split-screen vertical: top half cycles through screen recordings, UI graphics and AI-generated clips; bottom half is a man in a black tee talking to a mic'd static camera against a purple-lit backdrop. Hard cuts about every 1.9 s, with the top panel changing on each claim. Word-by-word bold captions sit on the seam between the halves. Fast spoken delivery with no music evident from the frames.",
             "hook_mechanic": ""
+          }
+        },
+        {
+          "title": "Stop babysitting GPUs",
+          "format": "code ad (3D animation)",
+          "hook": "Stop babysitting GPUs. Do this with fal instead.",
+          "caption": "Stop babysitting GPUs: one API, over a thousand image, video, audio and 3D models. Swap models by changing one endpoint ID. fal.ai",
+          "platforms": [
+            "tiktok",
+            "instagram",
+            "youtube"
+          ],
+          "inspired_by": [
+            "https://www.tiktok.com/@hustlewithgianni/video/7623171286365179166"
+          ],
+          "why": "A code-made 3D cartoon of @hustlewithgianni's \"do this instead\" hook (2.1M views on 4K followers, 537.2x), set in a dev founder's office.",
+          "reference": {
+            "id": "ref_29d48c6809",
+            "url": "https://www.tiktok.com/@hustlewithgianni/video/7623171286365179166",
+            "author": "hustlewithgianni",
+            "views": 2061648,
+            "followers": 3838,
+            "outlier": 537.2,
+            "format": "code ad (3D animation)"
+          },
+          "brief": {
+            "format": "code ad (3D animation)",
+            "role": "reach"
+          },
+          "script": {
+            "total_seconds": 24.4,
+            "beats": [],
+            "review": null
+          }
+        },
+        {
+          "title": "I told my agent any way possible",
+          "format": "brainrot meme",
+          "hook": "POV: you told your AI agent 'any way possible'",
+          "caption": "i told my agent any way possible and it went feral. people be so greedy smh fal.ai",
+          "platforms": [
+            "tiktok",
+            "instagram",
+            "youtube"
+          ],
+          "inspired_by": [],
+          "why": "Brainrot memes break out on tiny accounts, so a deliberately cringe funnel meme with fal as the punchline: one API, over a thousand models, zero GPUs to babysit.",
+          "brief": {
+            "format": "brainrot meme",
+            "role": "reach"
+          },
+          "script": {
+            "total_seconds": 31.8,
+            "beats": [],
+            "review": null
           }
         }
       ],
@@ -1479,13 +1548,100 @@
       "video": "1.mp4",
       "poster": "1.png",
       "analytics": null
+    },
+    {
+      "idx": 1,
+      "concept": {
+        "title": "Stop babysitting GPUs",
+        "format": "code ad (3D animation)",
+        "hook": "Stop babysitting GPUs. Do this with fal instead.",
+        "caption": "Stop babysitting GPUs: one API, over a thousand image, video, audio and 3D models. Swap models by changing one endpoint ID. fal.ai",
+        "platforms": [
+          "tiktok",
+          "instagram",
+          "youtube"
+        ],
+        "inspired_by": [
+          "https://www.tiktok.com/@hustlewithgianni/video/7623171286365179166"
+        ],
+        "why": "A code-made 3D cartoon of @hustlewithgianni's \"do this instead\" hook (2.1M views on 4K followers, 537.2x), set in a dev founder's office.",
+        "reference": {
+          "id": "ref_29d48c6809",
+          "url": "https://www.tiktok.com/@hustlewithgianni/video/7623171286365179166",
+          "author": "hustlewithgianni",
+          "views": 2061648,
+          "followers": 3838,
+          "outlier": 537.2,
+          "format": "code ad (3D animation)"
+        },
+        "brief": {
+          "format": "code ad (3D animation)",
+          "role": "reach"
+        },
+        "script": {
+          "total_seconds": 24.4,
+          "beats": [],
+          "review": null
+        }
+      },
+      "caption": "Stop babysitting GPUs: one API, over a thousand image, video, audio and 3D models. Swap models by changing one endpoint ID. fal.ai",
+      "platforms": [
+        "tiktok",
+        "instagram",
+        "youtube"
+      ],
+      "qcScore": 7,
+      "cost": 0,
+      "generation": 1,
+      "shots": [],
+      "video": "2.mp4",
+      "poster": "2.png",
+      "analytics": null
+    },
+    {
+      "idx": 2,
+      "concept": {
+        "title": "I told my agent any way possible",
+        "format": "brainrot meme",
+        "hook": "POV: you told your AI agent 'any way possible'",
+        "caption": "i told my agent any way possible and it went feral. people be so greedy smh fal.ai",
+        "platforms": [
+          "tiktok",
+          "instagram",
+          "youtube"
+        ],
+        "inspired_by": [],
+        "why": "Brainrot memes break out on tiny accounts, so a deliberately cringe funnel meme with fal as the punchline: one API, over a thousand models, zero GPUs to babysit.",
+        "brief": {
+          "format": "brainrot meme",
+          "role": "reach"
+        },
+        "script": {
+          "total_seconds": 31.8,
+          "beats": [],
+          "review": null
+        }
+      },
+      "caption": "i told my agent any way possible and it went feral. people be so greedy smh fal.ai",
+      "platforms": [
+        "tiktok",
+        "instagram",
+        "youtube"
+      ],
+      "qcScore": 7,
+      "cost": 2.68,
+      "generation": 1,
+      "shots": [],
+      "video": "3.mp4",
+      "poster": "3.png",
+      "analytics": null
     }
   ],
   "events": [
     {
       "s": 0,
       "level": "info",
-      "message": "Campaign started: 1 videos, 1 shots each, google/veo-3.1"
+      "message": "Campaign started: 3 videos, 1 shots each, google/veo-3.1"
     },
     {
       "s": 16.7,
@@ -1530,7 +1686,7 @@
     {
       "s": 178.7,
       "level": "info",
-      "message": "The creative director is choosing which reference videos to transplant for 1 videos"
+      "message": "The creative director is choosing which reference videos to transplant for 3 videos"
     },
     {
       "s": 213,
@@ -1551,10 +1707,30 @@
       "s": 722.5,
       "level": "info",
       "message": "\"One API, a thousand models, deploy your own\" is ready (QC 7/10)"
+    },
+    {
+      "s": 762.5,
+      "level": "info",
+      "message": "\"Stop babysitting GPUs\": made as a code ad (3D animation) from @hustlewithgianni's video in the research (2.1M views on 4K followers)"
+    },
+    {
+      "s": 763.5,
+      "level": "info",
+      "message": "\"Stop babysitting GPUs\" is ready (QC 7/10)"
+    },
+    {
+      "s": 812.5,
+      "level": "info",
+      "message": "\"I told my agent any way possible\": made as a brainrot meme, held until a person clears it for posting"
+    },
+    {
+      "s": 813.5,
+      "level": "info",
+      "message": "\"I told my agent any way possible\" is ready (QC 7/10)"
     }
   ],
   "spend": {
-    "ai": 0.092474,
+    "ai": 2.772474,
     "monid": 6.01353,
     "style": 0,
     "strategy": 0.092474

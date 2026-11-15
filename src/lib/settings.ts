@@ -18,7 +18,7 @@ export const DEFAULTS = {
   video_model: "fal-ai/kling-video/v3/pro/image-to-video",
   video_seconds: "8",
   shots_per_video: "2",
-  videos_per_campaign: "4",
+  videos_per_campaign: "1",
   learn_style: "true",
   monid_video_fallback: "true",
   monid_video_resolution: "1080p",
