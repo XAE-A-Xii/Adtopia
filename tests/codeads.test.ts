@@ -107,7 +107,7 @@ describe("the code-ad story", () => {
     );
   });
 
-  it("becomes a Script the rest of Nomen reads, carrying the story", () => {
+  it("becomes a Script the rest of Adtopia reads, carrying the story", () => {
     const story = normalizeStory(raw, ctx);
     const script = storyScript(story, { score: 8, notes: [], rounds: 1 });
     expect(script.code_ad).toBe(story);

@@ -26,7 +26,7 @@ import type { Concept } from "@/lib/strategy";
 //   NOMEN_REMAKE_LIVE=plan npx vitest run tests/remake.live.test.ts           (the plan and estimate only)
 //   NOMEN_REMAKE_LIVE=dry  npx vitest run tests/remake.live.test.ts           (checks the inputs, pays nothing)
 //
-// Run from the main checkout (it reads data/), or set NOMEN_DATA_DIR=/path/to/nomen/data. Keys come
+// Run from the main checkout (it reads data/), or set NOMEN_DATA_DIR=/path/to/adtopia/data. Keys come
 // from NAIVE_API_KEY and MONID_API_KEY, or from .env.local next to data/. "plan" pays for the script
 // (Naive, cached in script.json) and one vision call, then stops at the cost guard. A rerun resumes
 // from the kept files without paying again; set NOMEN_REMAKE_TAG to something new for a fresh take.

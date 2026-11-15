@@ -10,7 +10,7 @@ import { proxy } from "@/proxy";
 const PASSWORD = "test-password#1";
 
 function request(path: string, cookie?: string) {
-  return new NextRequest(new URL(path, "https://nomen.example"), { headers: cookie ? { cookie: `${GATE_COOKIE}=${cookie}` } : {} });
+  return new NextRequest(new URL(path, "https://adtopia.example"), { headers: cookie ? { cookie: `${GATE_COOKIE}=${cookie}` } : {} });
 }
 
 afterEach(() => {

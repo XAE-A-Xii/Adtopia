@@ -295,7 +295,7 @@ function briefFor(c: Case, input: ReturnType<typeof campaignInputs>): CreativeBr
   };
 }
 
-/** A research-pool video broken down by Nomen's own analyst (Naive: speech to text and a vision model), kept in `out`. */
+/** A research-pool video broken down by Adtopia's own analyst (Naive: speech to text and a vision model), kept in `out`. */
 async function researchReference(data: string, c: Case, out: string, naive: NaiveClient, log: (message: string) => void): Promise<ReferenceBreakdown> {
   const kept = join(out, "reference.json");
   if (existsSync(kept)) return JSON.parse(await readFile(kept, "utf8")) as ReferenceBreakdown;
