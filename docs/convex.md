@@ -1,4 +1,4 @@
-# Surreel on Vercel with Convex
+# Adtopia on Vercel with Convex
 
 The core keeps its rows in a store with two backends (`src/lib/store/`):
 

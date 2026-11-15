@@ -840,7 +840,7 @@ const HUB_LIGHT = [R.hqMetal, R.neonCyan, R.jade, R.magenta, R.hqPurple, R.amber
 export const HUB_STATES = ["waiting", "working", "done", "failed", "skipped", "yours"] as const;
 
 /**
- * A round command table with the Surreel mark glowing over it. Round its rim, one light per station in
+ * A round command table with the Adtopia mark glowing over it. Round its rim, one light per station in
  * pipeline order: dark while it waits, cyan while it works, green done, amber when it waits on you,
  * magenta when it failed. `states` are the six codes; `blink` dims the working ones for a frame.
  */
@@ -872,7 +872,7 @@ export function commandTable(m: Model, states: number[], blink: boolean) {
       m.box(0, 0, 0, 1.2, 2.8, 0.25, { mat: state === 0 || !lit ? matte(ramp, -0.2) : neon(ramp, 0.4), cast: false });
     });
   }
-  // The projector and the Surreel mark: an N of light over the middle.
+  // The projector and the Adtopia mark: an N of light over the middle.
   m.cylinder(0, 0, 8.4, 2.2, 0.8, { mat: metal(0.4) });
   m.frustum(0, 0, 12.5, 2.2, 5.5, 3.4, { mat: neon(R.neonCyan, -2), cast: false });
   m.with(rotZ(Math.PI / 4), () => {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { TroyExperience } from "@/components/troy/TroyExperience";
 
-export const metadata: Metadata = { title: "Surreel HQ" };
+export const metadata: Metadata = { title: "Adtopia HQ" };
 
 export default async function CampPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

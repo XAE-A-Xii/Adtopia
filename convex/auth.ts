@@ -1,4 +1,4 @@
-// Every function here serves the Surreel server only. It proves itself with NOMEN_SERVER_SECRET,
+// Every function here serves the Adtopia server only. It proves itself with NOMEN_SERVER_SECRET,
 // set on both sides by scripts/vercel-build.sh; browsers never call Convex directly.
 
 export function guard(secret: string) {

@@ -1,7 +1,7 @@
 import type { Video } from "../research";
 import type { CloneComponent, Cloneability, FootageRead, ReferenceBeat } from "./types";
 
-// Cloneability: how faithfully Surreel can remake a reference one-to-one from its own footage. The
+// Cloneability: how faithfully Adtopia can remake a reference one-to-one from its own footage. The
 // footage clone has a lookalike AI persona perform the original's exact motion (Kling 3.0 Motion
 // Control: one person, single continuous takes), re-voices the original audio, and replaces graphics
 // and captions in place. One person talking to a propped-up phone in a plain room is what it does

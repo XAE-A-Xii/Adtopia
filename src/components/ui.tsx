@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-// Surreel's UI kit. The props below are a stable contract: other tracks import these components.
+// Adtopia's UI kit. The props below are a stable contract: other tracks import these components.
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ");
 

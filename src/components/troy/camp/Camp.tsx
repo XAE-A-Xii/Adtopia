@@ -946,10 +946,10 @@ function TopBar({
       className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-3 px-4 pb-6 pt-4 sm:gap-5 sm:px-6 ${visible ? styles.fadeIn : "opacity-0"}`}
       style={{ background: "linear-gradient(var(--page) 62%, rgba(21, 26, 53, 0))" }}
     >
-      <a href={home} className={`${styles.pixel} ${styles.link} pointer-events-auto flex shrink-0 items-center gap-2 text-[20px] font-semibold text-[var(--ink)]`} aria-label="Surreel home">
+      <a href={home} className={`${styles.pixel} ${styles.link} pointer-events-auto flex shrink-0 items-center gap-2 text-[20px] font-semibold text-[var(--ink)]`} aria-label="Adtopia home">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/surreel-mark.svg" alt="" width={28} height={28} className="size-7" style={{ imageRendering: "pixelated" }} />
-        <span className="hidden sm:inline">Surreel</span>
+        <img src="/brand/adtopia-mark.svg" alt="" width={28} height={28} className="size-7" style={{ imageRendering: "pixelated" }} />
+        <span className="hidden sm:inline">Adtopia</span>
       </a>
       {/* The demo's tour card takes this stretch of the bar and walks the steps itself. */}
       {campaign && !demo && (

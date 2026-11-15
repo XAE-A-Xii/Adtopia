@@ -78,7 +78,7 @@ export const VIDEO_WALL = { x0: DECK.rightX1 + 4, x1: ROOM.x1 - 4, z0: 6, z1: RO
  */
 export const STUDIO = { x: ROOM.x0 + DECK.depth, y: ROOM.y0 + DECK.depth, size: 54, tall: 50 };
 
-/** The big SURREEL sign on the mezzanine's front face over the editing bay (the HQ's tag hangs there). */
+/** The big ADTOPIA sign on the mezzanine's front face over the editing bay (the HQ's tag hangs there). */
 export const HQ_SIGN = { x: ROOM.x0 + DECK.depth, y: ROOM.y0 + 196, z: 40 };
 
 /** A cell of the old grid (kept for callers that place things around the middle). */

@@ -169,10 +169,10 @@ export type CampEvents = {
 /** What the soldiers call out at the big moments. */
 export const LINES = {
   /** The first soldier out of the horse, leading the column into the camp: the brand's men. */
-  rollOut: (brand: string | null) => `Team ${brand?.trim() || "Surreel"}, down to the HQ! Let's roll out!`,
+  rollOut: (brand: string | null) => `Team ${brand?.trim() || "Adtopia"}, down to the HQ! Let's roll out!`,
 };
 
-/** The shops whose billboards show the posted videos: the three platforms Surreel posts to. */
+/** The shops whose billboards show the posted videos: the three platforms Adtopia posts to. */
 const BILLBOARD_LANDS: LandId[] = ["tiktok", "instagram", "youtube"];
 
 /** Where the street's cars drive from and to (world x); they wrap round. */
@@ -1664,7 +1664,7 @@ export class CampScene {
     add({ a: { x: x0 + DECK.depth, y: y0 + DECK.depth, z: DECK.z + 7 }, b: { x: DECK.rightX1, y: y0 + DECK.depth, z: DECK.z + 7 }, rgb: NEON.pink, r: 9, strength: 0.28 });
     add({ a: { x: x0 + DECK.depth, y: y0 + DECK.depth, z: DECK.z - 1 }, b: { x: x0 + DECK.depth, y: DECK.leftY1, z: DECK.z - 1 }, rgb: NEON.cyan, r: 8, strength: 0.3 });
     add({ a: { x: x0 + DECK.depth, y: y0 + DECK.depth, z: DECK.z - 1 }, b: { x: DECK.rightX1, y: y0 + DECK.depth, z: DECK.z - 1 }, rgb: NEON.cyan, r: 8, strength: 0.3 });
-    // The SURREEL sign, the walls' screens and signs, the lamps, the coffee nook.
+    // The ADTOPIA sign, the walls' screens and signs, the lamps, the coffee nook.
     add({ a: { x: HQ_SIGN.x + 1, y: HQ_SIGN.y, z: HQ_SIGN.z }, rgb: NEON.pink, r: 40, strength: 0.5, pulse: 0.35, flicker: 0.02 });
     add({ a: { x: HQ_SIGN.x + 1, y: HQ_SIGN.y, z: HQ_SIGN.z - 13 }, rgb: NEON.cyan, r: 16, strength: 0.4 });
     for (const lamp of wallLamps()) add({ a: lamp, rgb: NEON.amber, r: 30, strength: 0.55, pulse: 0.15 });
@@ -1929,7 +1929,7 @@ export class CampScene {
       }
     } else {
       // Idle: the brand, and an equaliser.
-      centred("SURREEL", 30, 2, "#f05ccd");
+      centred("ADTOPIA", 30, 2, "#f05ccd");
       centred("AUTONOMOUS UGC STUDIO", 52, 0.8, "#52d9ed");
       const bars = 20;
       const bw = (W - 20) / bars;

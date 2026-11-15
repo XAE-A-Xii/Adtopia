@@ -6,7 +6,7 @@ import { NaiveClient } from "@/lib/naive";
 const live = process.env.CLAUDE_LIVE === "1";
 
 describe.skipIf(!live)("Claude on the Anthropic API (live)", () => {
-  it("answers a tool call on Sonnet 5.5 and a streamed call on Haiku 5.5, as Surreel's code makes them", async () => {
+  it("answers a tool call on Sonnet 5.5 and a streamed call on Haiku 5.5, as Adtopia's code makes them", async () => {
     expect(hasClaude()).toBe(true);
     const naive = new NaiveClient();
     const tool = { name: "verdict", description: "Return the verdict.", input_schema: { type: "object", required: ["pass", "reason"], properties: { pass: { type: "boolean" }, reason: { type: "string" } } } };

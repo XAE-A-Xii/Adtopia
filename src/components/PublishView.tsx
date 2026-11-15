@@ -68,7 +68,7 @@ export function PublishView({ brandId, campaign, onChange }: { brandId: string; 
     <div className="grid gap-5 lg:grid-cols-3">
       <Card
         title="The brand's accounts"
-        subtitle="Surreel posts only to accounts the brand owns, connected through Naive. It never sees the passwords."
+        subtitle="Adtopia posts only to accounts the brand owns, connected through Naive. It never sees the passwords."
         action={
           <Button size="sm" variant="ghost" onClick={() => void loadAccounts()}>
             Refresh

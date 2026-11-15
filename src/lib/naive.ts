@@ -269,7 +269,7 @@ export class NaiveClient {
   }
 
   /** Two-step upload (mint a one-shot link, then PUT the bytes), up to 60 MiB. */
-  async uploadFile(name: string, contentType: string, bytes: Buffer, folder = "Surreel") {
+  async uploadFile(name: string, contentType: string, bytes: Buffer, folder = "Adtopia") {
     const mint = await this.call<{ file_id: string; upload_url: string }>("POST", "/v1/files/uploads", { name, content_type: contentType, size_bytes: bytes.length, folder });
     const response = await fetch(mint.upload_url, {
       method: "PUT",

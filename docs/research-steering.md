@@ -5,7 +5,7 @@ with 100K likes sells far more. The research agents should look for the highest 
 customer, use reach as one good sign among others, and plan campaigns the way performance teams
 do: some videos to get eyes on the product, others to convert.
 
-Until now Surreel ranked references almost only on reach: views per follower, engagement and raw
+Until now Adtopia ranked references almost only on reach: views per follower, engagement and raw
 views. This doc covers what public signals predict conversion, what Monid can actually give us,
 and the steering built on that.
 
@@ -53,7 +53,7 @@ thresholds as rules of thumb.
    account's data: no library publishes them. They belong in measurement, below, not in research.
    ([Motion](https://motionapp.com/blog/key-creative-performance-metrics))
 8. **Saves and buying-intent comments** ("link?", "where can I buy", "price?") are widely used as
-   intent signals, but I found no study tying save rate to purchases. Surreel uses saves per like as
+   intent signals, but I found no study tying save rate to purchases. Adtopia uses saves per like as
    a heuristic, judged against the niche (below), and leaves comment text as a follow-up.
    ([Creatorflow on intent comments](https://creatorflow.so/blog/instagram-sales-signals-high-intent-comments/))
 
@@ -183,7 +183,7 @@ that asks; the critic scores `does_its_job`.
 
 ## Cloneability: references the footage clone can reproduce
 
-A follow-up: the agents should find videos that went viral and converted *and* that Surreel
+A follow-up: the agents should find videos that went viral and converted *and* that Adtopia
 can remake one-to-one, with face videos (the hardest, and the most return) done best. The remake
 now clones the reference's own footage: a lookalike AI persona performs the original's exact
 motion (Kling 3.0 Motion Control: one person, single continuous takes), the original audio is
@@ -283,7 +283,7 @@ Research can only guess which videos sell. To learn it:
 1. **A tracked link per video**: a unique short link or UTM (`utm_content=<creative id>`) in the
    bio or link-in-bio page, a per-video promo code, or an attributed deep link for apps.
 2. **Collect** link clicks from the shortener and sign-ups or purchases by `utm_content` from the
-   brand's analytics (or a Surreel pixel or webhook), plus platform stats (views, shares, saves,
+   brand's analytics (or a Adtopia pixel or webhook), plus platform stats (views, shares, saves,
    profile visits, hook and hold rate where the platform gives them).
 3. **Judge each video on its own metric** (`brief.metric`) and its cost per result, and feed that
    into `pastResults` with the role.

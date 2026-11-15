@@ -9,7 +9,7 @@ import { getSetting } from "../settings";
 export const DEVICE_STATES = ["creating", "assigned", "ready", "rebooting", "migrating", "resetting", "terminated", "maintenance", "stopped", "unknown"] as const;
 export type DeviceState = (typeof DEVICE_STATES)[number];
 
-/** `DeviceInfo` from the Devices API. Only the fields Surreel reads are typed. */
+/** `DeviceInfo` from the Devices API. Only the fields Adtopia reads are typed. */
 export type Device = {
   id: string;
   name: string;

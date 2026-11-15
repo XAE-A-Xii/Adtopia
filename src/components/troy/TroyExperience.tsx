@@ -310,7 +310,7 @@ export function TroyExperience({ initialView, brandId: initialBrandId, demoOnly 
         // Nobody is coming out: the greeter, still outside, asks for the website again, and the
         // box comes back with the reason.
         setPhase("idle");
-        setError(err instanceof ApiFailure && err.status === 404 ? "Surreel's API isn't running here yet. Start the app with the core track merged." : err instanceof Error ? err.message : String(err));
+        setError(err instanceof ApiFailure && err.status === 404 ? "Adtopia's API isn't running here yet. Start the app with the core track merged." : err instanceof Error ? err.message : String(err));
         setShakeKey((k) => k + 1);
       }
     },
@@ -334,8 +334,8 @@ export function TroyExperience({ initialView, brandId: initialBrandId, demoOnly 
         <header className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-5 px-5 py-4 sm:px-8 sm:py-6">
           <span className={`${styles.pixel} pointer-events-auto mr-auto flex items-center gap-2.5 text-[22px] font-semibold tracking-tight`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/surreel-mark.svg" alt="" width={31} height={31} className="size-[31px]" style={{ imageRendering: "pixelated" }} />
-            Surreel
+            <img src="/brand/adtopia-mark.svg" alt="" width={31} height={31} className="size-[31px]" style={{ imageRendering: "pixelated" }} />
+            Adtopia
           </span>
           {brands && brands.length > 0 && <BrandsMenu brands={brands} />}
           {!demoOnly && (

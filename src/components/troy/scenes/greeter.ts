@@ -28,7 +28,7 @@ const SILL: Point = { x: 0, y: FRONT + 2, z: ROOM.wall };
 /**
  * Where it stands to ask: on the light spilling from the door, on the pavement close to the
  * building; its speech bubble (up and to its left) may overlap the building's corner a little,
- * but only the edge of the SURREEL HQ sign.
+ * but only the edge of the ADTOPIA HQ sign.
  */
 export const GREET_SPOT: Point = { x: ENTRANCE.x, y: FRONT + 16, z: ROOM.wall };
 

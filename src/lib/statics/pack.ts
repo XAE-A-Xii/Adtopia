@@ -106,7 +106,7 @@ function readme(input: { brand: string; url: string; conceptLines: string[]; res
   const placements = PLACEMENTS.map((p) => `| ${p.platform} | \`${p.folder}/\` | ${p.label} | ${p.width}×${p.height} | ${Math.round(p.maxBytes / 1024 / 1024 * 10) / 10} MB | [source](${p.source}) |`).join("\n");
   return `# ${brand} static ad pack
 
-${input.count} ${input.approvedOnly ? "approved " : ""}concepts, each rendered at every size Google, Meta, X and Reddit recommend, with the copy each platform asks for. Made by Surreel on ${new Date().toISOString().slice(0, 10)}.
+${input.count} ${input.approvedOnly ? "approved " : ""}concepts, each rendered at every size Google, Meta, X and Reddit recommend, with the copy each platform asks for. Made by Adtopia on ${new Date().toISOString().slice(0, 10)}.
 
 ## What is in each folder
 
@@ -122,7 +122,7 @@ ${input.conceptLines.join("\n\n")}
 
 ## How the ads were made
 
-1. **Research.** Surreel pulled ${research?.sources.done ?? 0} of ${research?.sources.total ?? 0} sources: image ads in Meta's ad library ranked by impressions, competitors' and category leaders' image posts on X with their views and engagement, Google display ads from the Ads Transparency Center, the paid search ads on ${research?.plan.search_keywords.map((k) => `"${k}"`).join(" and ") || "the category's searches"}${research?.plan.b2b ? ", LinkedIn's ad library" : ""}, agency case studies and a screenshot of ${input.url}. Ad libraries do not publish results for commercial ads, so ads are ranked by the signals they do publish: impression rank, days running, number of versions, and on X views and engagement.
+1. **Research.** Adtopia pulled ${research?.sources.done ?? 0} of ${research?.sources.total ?? 0} sources: image ads in Meta's ad library ranked by impressions, competitors' and category leaders' image posts on X with their views and engagement, Google display ads from the Ads Transparency Center, the paid search ads on ${research?.plan.search_keywords.map((k) => `"${k}"`).join(" and ") || "the category's searches"}${research?.plan.b2b ? ", LinkedIn's ad library" : ""}, agency case studies and a screenshot of ${input.url}. Ad libraries do not publish results for commercial ads, so ads are ranked by the signals they do publish: impression rank, days running, number of versions, and on X views and engagement.
 2. **Study.** A vision model looked at the brand's own site and the ${studied.length} best-ranked ads and set the art direction below.
 3. **Copy.** Every number, quote, offer and command in the copy was checked against the brand's own site text; lines that failed were rewritten or dropped. Google text was checked for its editorial rules (no exclamation marks, emoji, repeated punctuation or shouting capitals).
 4. **Images.** Every size is drawn from the same layout with real fonts, so the type is exact and sharp.${input.generated ? ` ${input.generated} concept${input.generated > 1 ? "s use" : " uses"} a picture made with an AI image model; check it before running.` : " No picture was made by an AI image model: the pictures are the brand's own site and photos."} A vision check looked at the finished 4:5 and 1.91:1 images of every concept.

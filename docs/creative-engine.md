@@ -1,8 +1,8 @@
 # The creative engine
 
-Surreel remakes short videos that already went viral, adapted to the brand's product. It does not
+Adtopia remakes short videos that already went viral, adapted to the brand's product. It does not
 write ads from scratch. A video that got 40x more views than its account has followers proves its
-hook, structure and pacing work. Surreel finds those videos, breaks them down second by second, and
+hook, structure and pacing work. Adtopia finds those videos, breaks them down second by second, and
 rebuilds them with the brand's product, its real screenshots and an AI presenter.
 
 ## The flow

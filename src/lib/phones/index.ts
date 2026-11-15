@@ -1,4 +1,4 @@
-// OWNED BY THE PHONES TRACK (see docs/handoff-phones.md). Surreel's worker calls advancePhones() and
+// OWNED BY THE PHONES TRACK (see docs/handoff-phones.md). Adtopia's worker calls advancePhones() and
 // nothing else in this folder, so everything behind it can change freely.
 import { tick } from "./engine";
 

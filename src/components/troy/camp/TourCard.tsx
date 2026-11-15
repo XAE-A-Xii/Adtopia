@@ -12,7 +12,7 @@ const PANEL = 452;
 const MAX_WIDTH = 640;
 
 /** The folded state is the viewer's own: remembered between visits. */
-const FOLD_KEY = "surreel.tourFolded";
+const FOLD_KEY = "adtopia.tourFolded";
 
 export function readFolded() {
   try {

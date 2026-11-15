@@ -1,6 +1,6 @@
 # Handoff: the phones track
 
-Surreel turns a brand's website into researched, high-quality UGC-style video ads and posts them to
+Adtopia turns a brand's website into researched, high-quality UGC-style video ads and posts them to
 the brand's own accounts. This track adds **phones**: Mobilerun cloud phones that warm up a brand's
 own new social accounts before posting starts. It runs in parallel with the core build, so it
 lives in its own folders and touches the rest of the app at exactly two points.

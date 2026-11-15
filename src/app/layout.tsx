@@ -7,7 +7,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Surreel",
+  title: "Adtopia",
   description: "From a website to researched, high-quality UGC video ads on the brand's own accounts.",
 };
 
@@ -19,8 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/surreel-mark.svg" alt="" width={28} height={28} className="size-7" style={{ imageRendering: "pixelated" }} />
-              Surreel
+              <img src="/brand/adtopia-mark.svg" alt="" width={28} height={28} className="size-7" style={{ imageRendering: "pixelated" }} />
+              Adtopia
             </Link>
             <nav className="flex items-center gap-1 text-sm text-zinc-400">
               <Link href="/" className="rounded-lg px-3 py-1.5 hover:bg-white/5 hover:text-white">

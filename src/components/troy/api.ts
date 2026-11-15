@@ -34,7 +34,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(url, { ...init, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
   } catch {
-    throw new ApiFailure("Surreel's server can't be reached. Check your connection and try again.", 0);
+    throw new ApiFailure("Adtopia's server can't be reached. Check your connection and try again.", 0);
   }
   let data: unknown = null;
   try {

@@ -823,8 +823,8 @@ function wallDecor(m: Model) {
   storyboardWall(m);
   bookshelf(m);
 
-  // The big SURREEL sign on the mezzanine's face over the editing bay.
-  faceSign(m, "x", HQ_SIGN.x, HQ_SIGN.y, HQ_SIGN.z, "SURREEL", R.neonPink, 1.3);
+  // The big ADTOPIA sign on the mezzanine's face over the editing bay.
+  faceSign(m, "x", HQ_SIGN.x, HQ_SIGN.y, HQ_SIGN.z, "ADTOPIA", R.neonPink, 1.3);
   faceSign(m, "x", HQ_SIGN.x, HQ_SIGN.y, HQ_SIGN.z - 13, "HQ", R.neonCyan, 1);
 
   // Posters: over the landing of the inner stairs, on the mezzanine's end by the video wall, and
@@ -929,34 +929,12 @@ export function chargingRail(m: Model) {
 }
 
 // ----------------------------------------------------------------------------------------------
-// The HQ's street door (the landing): a narrow building with SURREEL in neon over a roll-up
+// The HQ's street door (the landing): a narrow building with ADTOPIA in neon over a roll-up
 // shutter. The shutter rolls up as the opening plays, light spills out across the pavement and
 // the agents come out. Its pieces are separate sprites, like the horse's body, doors and plank.
 
-/** A 5 x 7 pixel font, just the letters of the sign. */
-const GLYPHS: Record<string, string[]> = {
-  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
-  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
-  N: ["10001", "11001", "10101", "10101", "10011", "10001", "10001"],
-  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-  M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
-  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-  H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-  Q: ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
-};
-
-/** Lit pixels of a word set in GLYPHS, `u` across and `v` down in glyph pixels. */
-function wordPixel(word: string, u: number, v: number) {
-  const col = Math.floor(u);
-  const row = Math.floor(v);
-  if (row < 0 || row > 6 || col < 0) return false;
-  const letter = Math.floor(col / 6);
-  const x = col % 6;
-  if (letter >= word.length || x > 4) return false;
-  return GLYPHS[word[letter]]?.[row]?.[x] === "1";
-}
+/** Lit pixels of a word in the signs' 5 x 7 font, `u` across and `v` down in glyph pixels. */
+const wordPixel = textPixel;
 
 const E = ENTRANCE;
 const Z = ROOM.wall;
@@ -994,14 +972,14 @@ export function entranceBody() {
   // A cornice, and the roof gear the street's buildings have: a water tank and an aerial.
   m.box(E.x, E.y, Z + E.tall + 0.8, E.half + 0.6, E.depth + 0.6, 0.8, { mat: (h, out) => ((out.dither = 0), (out.ramp = R.hqMetal), (out.tone = h.nz > 0.5 ? 0.6 : 0.2)) });
   m.with(translate(0, FRONT - 2, Z), () => roofGear(m, -12, E.tall));
-  // The sign: SURREEL in pink over HQ in cyan, on a dark board above the door.
+  // The sign: ADTOPIA in pink over HQ in cyan, on a dark board above the door.
   m.box(0, FRONT + 0.6, Z + 42, 17.6, 0.5, 5, { mat: solid(R.black, 0.4, 0) });
   m.box(0, FRONT + 1.15, Z + 42, 16.8, 0.05, 4.6, {
     mat: (h, out) => {
       out.dither = 0;
       const u = (h.x + 16.4) / 0.8;
       const v = (Z + 44.8 - h.z) / 0.8;
-      if (wordPixel("SURREEL", u, v)) {
+      if (wordPixel("ADTOPIA", u, v)) {
         out.ramp = R.neonPink;
         out.tone = 0.8;
         out.glow = 1;

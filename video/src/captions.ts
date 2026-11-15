@@ -14,7 +14,7 @@ export type Caption = {
 };
 
 export const CAPTIONS: Caption[] = [
-  { key: "landing", kicker: "Surreel", title: "One input: a website", body: "Type the company's site. The agents run the whole campaign from there.", place: "bottom-left" },
+  { key: "landing", kicker: "Adtopia", title: "One input: a website", body: "Type the company's site. The agents run the whole campaign from there.", place: "bottom-left" },
   { key: "start", kicker: "The camp", title: "A team of agents for every step", body: "Research, strategy, scripts, videos and posting: each building is one stage, each soldier one agent.", place: "top-right" },
   { key: "scouts", kicker: "1 · Research", title: "The scouts fan out", body: "10 sources at once: the brand's site, TikTok, Instagram, YouTube, ad libraries, Reddit and AI answers. 42 research runs.", place: "top-right" },
   { key: "agent", kicker: "One agent, up close", title: "The TikTok scout", body: "He rides out for 23 searches and brings back what he finds. His card shows what he is doing right now.", place: "bottom-left" },
