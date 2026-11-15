@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Status = {
-  naive: { ok: boolean; organization?: string; balanceUsd?: number; strategist?: boolean; error?: string };
+  anthropic: { configured: boolean };
+  fal: { configured: boolean };
   monid: { ok: boolean; balanceUsd?: number; error?: string };
   mobilerun: { configured: boolean };
   ffmpeg: boolean;
@@ -38,7 +39,8 @@ export function StatusBar() {
   );
   return (
     <div className="hidden items-center gap-2 md:flex">
-      {pill(status.naive.ok && status.naive.strategist !== false, "Naive", status.naive.ok ? money(status.naive.balanceUsd) : "not connected", status.naive.error)}
+      {pill(status.anthropic.configured, "Claude", status.anthropic.configured ? "on" : "not set")}
+      {pill(status.fal.configured, "fal", status.fal.configured ? "on" : "not set")}
       {pill(status.monid.ok, "Monid", status.monid.ok ? money(status.monid.balanceUsd) : "not connected", status.monid.error)}
       {pill(status.mobilerun.configured, "Phones", status.mobilerun.configured ? "on" : "off")}
     </div>

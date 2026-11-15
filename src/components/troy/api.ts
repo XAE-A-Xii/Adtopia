@@ -77,7 +77,7 @@ export function regenerate(creativeId: string, note?: string) {
 
 export type SocialAccountView = { platform: string; name: string; id: string };
 
-/** The brand's connected social accounts, read live from Naive (GET /api/brands/[id]/social), with why it failed if it did. */
+/** The brand's connected social accounts (GET /api/brands/[id]/social), with why it failed if it did. */
 export async function socialAccounts(brandId: string): Promise<{ accounts: SocialAccountView[]; error: string | null }> {
   const data = await call<{ accounts: SocialAccountView[]; error?: string }>(`/api/brands/${encodeURIComponent(brandId)}/social`, { cache: "no-store" });
   return { accounts: data.accounts ?? [], error: data.error ?? null };

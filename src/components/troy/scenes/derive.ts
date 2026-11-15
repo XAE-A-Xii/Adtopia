@@ -537,7 +537,7 @@ function editorTask(creative: CreativeView) {
   const shot = creative.shots.find((s) => s.status !== "passed");
   // No presenter to film (a faceless format), or every shot passed: screens, voice-over, the edit.
   if (!shot) return creative.shots.length ? `${title}: cutting the edit` : `${title}: building screens, the voice-over and the edit`;
-  const verb = { pending: "framing", framed: "queuing", rendering: shot.provider === "monid" ? "rendering on Kling" : "rendering on Veo", rendered: "in quality check", passed: "approved", failed: "failed" }[shot.status];
+  const verb = { pending: "framing", framed: "queuing", rendering: shot.provider === "monid" ? "rendering on Kling (Monid)" : "rendering on Kling", rendered: "in quality check", passed: "approved", failed: "failed" }[shot.status];
   return `${title}: shot ${shot.n} of ${creative.shots.length} ${verb}`;
 }
 
@@ -551,7 +551,7 @@ export function stationForEvent(message: string, stage: string): StationId {
   if (/^client taste /.test(m)) return "theatre";
   if (/casting from \d+ creators|best fit @|outreach to @|people search for/.test(m)) return "workshop";
   // Rendering talk first: Monid is also the video fallback, so "monid" alone can't mean research.
-  if (/\bshot\b|render|\bqc\b|kling|veo|naive is out|product screens|the edit failed|first frame/.test(m) && !/ready for review/.test(m)) return "workshop";
+  if (/\bshot\b|render|\bqc\b|kling|veo|fal is out|product screens|the edit failed|first frame/.test(m) && !/ready for review/.test(m)) return "workshop";
   if (/ready for review|approved/.test(m)) return "theatre";
   // The creative engine's director and script room, before "reference" sends a line to the oracle.
   if (/strategist|creative director|script room|scripts ready|concepts, now producing|^campaign "/.test(m)) return "tent";

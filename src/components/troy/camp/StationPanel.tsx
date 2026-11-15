@@ -589,7 +589,6 @@ function Workshop({ view, busy, actions }: { view: BrandView; busy: string | nul
       </ol>
     </Section>
     <Section title={`Videos · ${creatives.filter((c) => c.status === "ready").length}/${creatives.length || campaign.options.concepts}`}>
-      {campaign.naiveOut && <p className="mb-3 bg-[rgba(201,143,58,0.12)] px-3 py-2 text-[12px]">Naive is out of credits, so new shots render on Kling through Monid.</p>}
       {creatives.length === 0 ? (
         <p className="text-[13px] text-[var(--ink-soft)]">The editing desks are set up; each editor starts when the script room hands over a script.</p>
       ) : (
@@ -700,7 +699,7 @@ function Theatre({ view, busy, actions, demo, focus }: { view: BrandView; busy: 
 
 type AccountsState = { accounts: SocialAccountView[] | null; error: string | null };
 
-/** The brand's connected accounts, read live from Naive when the theatre opens (none before it is activated). */
+/** The brand's connected accounts, read live when the theatre opens (none before it is activated). */
 function useAccounts(brandId: string | null, activated: boolean): AccountsState {
   const [state, setState] = useState<AccountsState>({ accounts: null, error: null });
   useEffect(() => {

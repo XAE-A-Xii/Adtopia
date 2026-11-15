@@ -407,7 +407,7 @@ export function replay(script: DemoScript, state: DemoState): BrandView {
             return {
               n: shot.n,
               status,
-              provider: working ? (shot.provider ?? "naive") : null,
+              provider: working ? (shot.provider ?? "fal") : null,
               renders: working ? Math.max(1, shot.renders) : 0,
               frameUrl: null,
               qc: status === "passed" ? (shot.qc ?? { score: c.qcScore ?? 8, pass: true, issues: [], fix_prompt: "" }) : null,
@@ -478,7 +478,7 @@ export function replay(script: DemoScript, state: DemoState): BrandView {
   const totalCost = videos.reduce((n, c) => n + c.cost, 0);
   const rendered = videos.length ? videos.reduce((n, c) => n + (totalCost ? c.cost : 1) * (progress.get(c.idx) ?? 0), 0) / (totalCost || videos.length) : 0;
   const spend = {
-    naive: Math.round(script.spend.naive * rendered * 100) / 100,
+    ai: Math.round(script.spend.ai * rendered * 100) / 100,
     monid: Math.round(script.spend.monid * between(0, tl.research[1], t) * 100) / 100,
     style: tl.style && t >= tl.style[1] ? script.spend.style : 0,
     strategy: t >= tl.strategy[1] ? script.spend.strategy : 0,
@@ -501,7 +501,6 @@ export function replay(script: DemoScript, state: DemoState): BrandView {
       stage: finalStage,
       stageIndex: stageOrder.indexOf(finalStage),
       error: null,
-      naiveOut: false,
       options: script.options,
       estimateUsd: script.estimateUsd,
       plan: t >= planAt ? script.plan : null,
@@ -665,7 +664,7 @@ export async function loadDemoScript(site: string | null): Promise<DemoScript> {
   try {
     const index = await fetch("/demo/index.json", { cache: "no-cache" });
     if (!index.ok) return SAMPLE;
-    // A recording answers to its domain and to any other name it lists (naive.ai for usenaive.ai).
+    // A recording answers to its domain and to any aliases it lists.
     const list = ((await index.json()) as { scripts?: Array<{ id: string; domain: string; aliases?: string[] }> }).scripts ?? [];
     const checked = site ? normalizeSite(site) : null;
     const wanted = checked && "domain" in checked ? checked.domain : null;
