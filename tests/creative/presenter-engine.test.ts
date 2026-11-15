@@ -96,24 +96,24 @@ describe("the presenter recipe", () => {
 describe("the presenter engine in production", () => {
   it("renders presenter shots on Kling 3.0 with its own voice, a second long, and re-poses later frames from shot 1", async () => {
     const brandId = await createBrand("kling.example");
-    const campaignId = await startCampaign(brandId, { concepts: 1, shotsPerConcept: 2, secondsPerShot: 4, videoModel: "google/veo-3.1", learnStyle: false });
+    const campaignId = await startCampaign(brandId, { concepts: 1, shotsPerConcept: 2, secondsPerShot: 4, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: false });
     const plan = planProduction(script, brief, product);
     const concept = conceptFrom(brief, script, plan, undefined, product);
     expect(concept.shots.map((s) => s.pose)).toEqual(["Leans toward the camera with a raised eyebrow", "Settles back and smiles"]);
     const id = await insertCreative(campaignId, 0, concept);
 
     const images: Array<{ prompt: string; image_urls?: string[] }> = [];
+    const falSubmits: string[] = [];
     const runs: Array<{ endpoint: string; body: Record<string, unknown> }> = [];
-    const naive = {
-      generateImage: async (input: { prompt: string; image_urls?: string[] }) => {
+    const fal = {
+      run: async (_endpoint: string, input: { prompt: string; image_urls?: string[] }) => {
         images.push(input);
-        return { model: "fake", files: [{ id: `fil_${images.length}`, content_type: "image/png" }], cost_micro_usd: 40_000 };
+        return { images: [{ url: `https://files.invalid/fil_${images.length}.png` }] };
       },
-      fileUrl: async (fileId: string) => ({ url: `https://files.invalid/${fileId}.png`, expires_at: "" }),
-      generateVideo: async () => {
-        throw new Error("the Naive video model is not the engine");
+      submit: async (endpoint: string) => {
+        falSubmits.push(endpoint);
+        return `req_${falSubmits.length}`;
       },
-      message: async () => ({ stop_reason: "end_turn", content: [{ type: "text", text: '{"pass": true, "issues": []}' }] }),
     };
     const monid = {
       run: async (_provider: string, endpoint: string, input: { body?: Record<string, unknown> }) => {
@@ -122,32 +122,34 @@ describe("the presenter engine in production", () => {
       },
       getRun: async (runId: string) => ({ runId, status: "RUNNING" as const }),
     };
-    const ctx = { campaignId, brandId, naive, monid, naiveOut: () => false, markNaiveOut: async () => undefined, strategy: { brand: {} } } as unknown as ProductionContext;
-    for (let tick = 0; tick < 3; tick++) {
-      const [row] = await listCreatives(campaignId);
-      await advanceCreative(ctx, row);
-    }
-    expect(runs.map((r) => r.endpoint)).toEqual(["/v1/video/kling-3.0-i2v", "/v1/video/kling-3.0-i2v"]);
-    expect(runs[0].body).toMatchObject({ audio: "native", multi_shot: false, resolution: "1080p", media: [{ type: "first_frame", url: "https://files.invalid/fil_1.png" }] });
-    expect(runs[0].body.duration).toBe(Math.ceil(plan.aroll[0].seconds + 1));
-    // Shot 2's frame is shot 1's still with only the pose changed.
-    expect(images[1].image_urls?.[0]).toBe("fil_1");
-    expect(images[1].prompt).toMatch(/^The first reference image is shot 1 of this video\. Make the same photo again/);
-    expect(images[1].prompt).toContain("Only the pose and expression change: Settles back and smiles.");
-    const [row] = await listCreatives(campaignId);
-    expect(JSON.parse(row.shots_json).map((s: { provider: string; status: string }) => [s.provider, s.status])).toEqual([
-      ["monid", "rendering"],
-      ["monid", "rendering"],
-    ]);
-    // presenter_engine "naive" sends shots to the Naive video model again.
-    await setSetting("presenter_engine", "naive");
+    const ctx = { campaignId, brandId, claude: { message: async () => ({ stop_reason: "end_turn", content: [{ type: "text", text: '{"pass": true, "issues": []}' }] }) }, fal, monid, strategy: { brand: {} } } as unknown as ProductionContext;
+    await setSetting("presenter_engine", "monid");
     try {
+      for (let tick = 0; tick < 3; tick++) {
+        const [row] = await listCreatives(campaignId);
+        await advanceCreative(ctx, row);
+      }
+      expect(runs.map((r) => r.endpoint)).toEqual(["/v1/video/kling-3.0-i2v", "/v1/video/kling-3.0-i2v"]);
+      expect(runs[0].body).toMatchObject({ audio: "native", multi_shot: false, resolution: "1080p", media: [{ type: "first_frame", url: "https://files.invalid/fil_1.png" }] });
+      expect(runs[0].body.duration).toBe(Math.ceil(plan.aroll[0].seconds + 1));
+      // Shot 2's frame is shot 1's still with only the pose changed.
+      expect(images[1].image_urls?.[0]).toBe("https://files.invalid/fil_1.png");
+      expect(images[1].prompt).toMatch(/^The first reference image is shot 1 of this video\. Make the same photo again/);
+      expect(images[1].prompt).toContain("Only the pose and expression change: Settles back and smiles.");
+      const [row] = await listCreatives(campaignId);
+      expect(JSON.parse(row.shots_json).map((s: { provider: string; status: string }) => [s.provider, s.status])).toEqual([
+        ["monid", "rendering"],
+        ["monid", "rendering"],
+      ]);
+
+      // Default presenter_engine sends shots to fal Kling 3.0 i2v directly.
+      await setSetting("presenter_engine", "kling-3.0");
       const second = await insertCreative(campaignId, 1, concept);
-      const calls: string[] = [];
-      const veo = { ...naive, generateVideo: async () => (calls.push("veo"), { id: "med_1", status: "queued", model: "google/veo-3.1", result: null, error: null, cost_micro_usd: null }) };
-      const rows = await listCreatives(campaignId);
-      await advanceCreative({ ...ctx, naive: veo } as unknown as ProductionContext, rows.find((r) => r.id === second)!);
-      expect(calls).toEqual(["veo", "veo"]);
+      for (let tick = 0; tick < 3; tick++) {
+        const rows = await listCreatives(campaignId);
+        await advanceCreative(ctx, rows.find((r) => r.id === second)!);
+      }
+      expect(falSubmits).toEqual(["fal-ai/kling-video/v3/pro/image-to-video", "fal-ai/kling-video/v3/pro/image-to-video"]);
     } finally {
       await setSetting("presenter_engine", "kling-3.0");
     }

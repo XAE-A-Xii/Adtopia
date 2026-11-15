@@ -46,7 +46,7 @@ const breakdown: ReferenceBreakdown = {
   fit: { score: 7, reason: "" },
   transcript: beats.map((b) => b.line).join(" "),
 };
-const product: ProductBrief = { name: "Naive", one_liner: "Agents that run your company", kind: "software", audience: "", problem: "", aha: "", features: [], claims: [], proof: [], objections: [], offer: "", voice: "", look: "", visuals: [] };
+const product: ProductBrief = { name: "Monid", one_liner: "One balance for every agent tool", kind: "software", audience: "", problem: "", aha: "", features: [], claims: [], proof: [], objections: [], offer: "", voice: "", look: "", visuals: [] };
 
 const inset = { x: 0.55, y: 0.6, w: 0.4, h: 0.35 };
 const layoutAnswer = {
@@ -123,7 +123,7 @@ const persona = (role: "host" | "cohost", description: string, voice: string): P
 function fakes(corners: "good" | "bad") {
   const calls = { kling: [] as Array<{ prompt: string; multi_shot: boolean }>, cohost: [] as string[], corners: 0, images: [] as string[], stt: [] as string[] };
   const words = (list: string, from: number, step: number) => list.split(" ").map((text, i) => ({ text, start: from + i * step, end: from + i * step + step * 0.8, type: "word" }));
-  const naive: RemakeDeps["naive"] = {
+  const claude: RemakeDeps["claude"] = {
     async message(input) {
       const tool = (input.tools?.[0] as { name?: string } | undefined)?.name;
       if (tool === "remake_layout") return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "remake_layout", input: layoutAnswer }] };
@@ -142,19 +142,12 @@ function fakes(corners: "good" | "bad") {
       if (text.includes("Pair 1")) return { stop_reason: "end_turn", content: [{ type: "text", text: '{"score": 7, "framing": true, "same_people": true, "original_visible": false, "mismatched_pairs": [], "issues": []}' }] };
       return { stop_reason: "end_turn", content: [{ type: "text", text: '{"pass": true, "issues": []}' }] };
     },
-    async generateImage(input) {
-      calls.images.push(input.prompt.slice(0, 40));
-      const plate = /monitor on a desk/.test(input.prompt);
-      return { model: "fake", files: [{ id: plate ? "fil_plate" : `fil_twin${calls.images.length}`, content_type: "image/png" }], cost_micro_usd: 40_000 };
-    },
-    async fileUrl(id) {
-      return { url: `https://files.invalid/${id}.png`, expires_at: "" };
-    },
-    async generateVideo() {
-      throw new Error("not used");
-    },
-    async getMediaJob() {
-      throw new Error("not used");
+  };
+  const fal: RemakeDeps["fal"] = {
+    async run(_endpoint, input) {
+      calls.images.push(String(input.prompt ?? "").slice(0, 40));
+      const plate = /monitor on a desk/.test(String(input.prompt ?? ""));
+      return { images: [{ url: `https://files.invalid/${plate ? "fil_plate" : `fil_twin${calls.images.length}`}.png` }] } as never;
     },
   };
   const monid: RemakeDeps["monid"] = {
@@ -177,7 +170,8 @@ function fakes(corners: "good" | "bad") {
     },
   };
   const deps: RemakeDeps = {
-    naive,
+    claude,
+    fal,
     monid,
     files: folderFiles(join(dir, `kept-${corners}`)),
     host: async (path) => `https://host.invalid/${basename(path)}`,

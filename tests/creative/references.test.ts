@@ -33,7 +33,6 @@ import {
 import type { ReferenceBreakdown, ReferenceCandidate } from "@/lib/creative/types";
 import { ApiError } from "@/lib/http";
 import { ffmpegPath } from "@/lib/media";
-import type { Transcription } from "@/lib/naive";
 import { QC_MODEL } from "@/lib/qc";
 import type { Video } from "@/lib/research";
 
@@ -621,6 +620,7 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
 
   afterAll(async () => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     await rm(root, { recursive: true, force: true });
   });
 
@@ -634,19 +634,9 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
   ];
   const transcriptText = segments.map((s) => s.text).join(" ");
 
-  const job = (status: Transcription["status"], withResult = true): Transcription => ({
-    id: "med_1",
-    object: "media_job",
-    kind: "transcription",
-    status,
-    model: "stt/auto",
-    input: {},
-    result: withResult ? { text: transcriptText, language: "en", duration_seconds: 7, segments } : null,
-    error: status === "failed" ? { code: "provider_error", message: "the provider failed" } : null,
-    cost_micro_usd: withResult ? 120 : null,
-    session_id: null,
-    created_at: "2026-11-07T10:00:00Z",
-    completed_at: withResult ? "2026-11-07T10:00:01Z" : null,
+  const whisperResult = () => ({
+    text: transcriptText,
+    chunks: segments.map((s) => ({ timestamp: [s.start_seconds, s.end_seconds], text: s.text })),
   });
 
   const toolInput = {
@@ -668,19 +658,15 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
     fit: { score: 14, reason: "Same before/after structure works for the containers." },
   };
 
-  function stubClient(overrides: Partial<Record<keyof BreakdownClient, unknown>> = {}) {
-    const uploads: Array<{ name: string; contentType: string; size: number }> = [];
+  function stubClient(overrides: Partial<{ message: unknown; falRun: unknown }> = {}) {
+    vi.stubEnv("ELEVENLABS_API_KEY", "");
+    const falRun = (overrides.falRun as ReturnType<typeof vi.fn>) ?? vi.fn(async () => whisperResult());
+    const message = (overrides.message as ReturnType<typeof vi.fn>) ?? vi.fn(async () => ({ content: [{ type: "tool_use", name: "reference_breakdown", input: toolInput }], stop_reason: "tool_use" }));
     const client = {
-      uploadFile: vi.fn(async (name: string, contentType: string, bytes: Buffer) => {
-        uploads.push({ name, contentType, size: bytes.length });
-        return "fil_audio1";
-      }),
-      transcribe: vi.fn(async () => job("processing", false)),
-      getTranscription: vi.fn(async () => job("completed")),
-      message: vi.fn(async () => ({ content: [{ type: "tool_use", name: "reference_breakdown", input: toolInput }], stop_reason: "tool_use" })),
-      ...overrides,
-    } as unknown as BreakdownClient & Record<keyof BreakdownClient, ReturnType<typeof vi.fn>>;
-    return { client, uploads };
+      message,
+      fal: { run: falRun },
+    } as unknown as BreakdownClient;
+    return { client, falRun, message };
   }
 
   const reference = (media_url: string | null, overrides: Partial<Video> = {}): ReferenceCandidate => {
@@ -696,8 +682,8 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
 
   it("transcribes, frames and maps the model's breakdown into the contract", async () => {
     const work = join(root, "work-main");
-    const { client, uploads } = stubClient();
-    const breakdown = await breakdownReference(client, reference(clip), { workDir: work, brand, pollMs: 1 });
+    const { client, falRun, message } = stubClient();
+    const breakdown = await breakdownReference(client, reference(clip), { workDir: work, brand });
 
     // pacing from ffmpeg
     expect(breakdown.duration).toBe(7);
@@ -705,17 +691,18 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
     expect(breakdown.pacing.avg_shot_seconds).toBeCloseTo(1.8, 1);
     expect(breakdown.pacing.words_per_minute).toBe(Math.round(27 / ((1.9 + 1.9 + 1.4 + 1.4) / 60)));
 
-    // speech to text: the audio went up to Files, was transcribed with timestamps, and polled
-    expect(uploads).toHaveLength(1);
-    expect(uploads[0].contentType).toBe("audio/mpeg");
-    expect(uploads[0].size).toBeGreaterThan(1000);
-    expect(client.transcribe).toHaveBeenCalledWith({ file_id: "fil_audio1", model: "stt/auto", timestamps: true, language: "en" }, "nomen-ref-stt-fil_audio1");
-    expect(client.getTranscription).toHaveBeenCalledWith("med_1");
+    // speech to text: the audio went to fal Whisper with segment timestamps
+    expect(falRun).toHaveBeenCalledWith("fal-ai/whisper", {
+      audio_url: expect.stringMatching(/^data:audio\/mpeg;base64,/),
+      task: "transcribe",
+      chunk_level: "segment",
+      language: "en",
+    });
     expect(breakdown.transcript).toBe(transcriptText);
 
     // one vision call with labelled frames, the transcript, the cuts and the brand
-    expect(client.message).toHaveBeenCalledTimes(1);
-    const request = client.message.mock.calls[0][0] as { model: string; system: string; tools: Array<{ name: string }>; messages: Array<{ content: Array<{ type: string; text?: string }> }> };
+    expect(message).toHaveBeenCalledTimes(1);
+    const request = message.mock.calls[0][0] as { model: string; system: string; tools: Array<{ name: string }>; messages: Array<{ content: Array<{ type: string; text?: string }> }> };
     expect(request.model).toBe(QC_MODEL);
     expect(request.tools[0].name).toBe("reference_breakdown");
     expect(request.system).toMatch(/word for word from the transcript/);
@@ -776,18 +763,18 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
   }, 60_000);
 
   it("accepts a file: URL", async () => {
-    const { client } = stubClient({ transcribe: vi.fn(async () => job("completed")) });
+    const { client, falRun } = stubClient();
     const breakdown = await breakdownReference(client, reference(pathToFileURL(clip).href), { workDir: join(root, "work-file-url"), brand });
     expect(breakdown.pacing.cuts).toBe(3);
-    expect(client.getTranscription).not.toHaveBeenCalled();
+    expect(falRun).toHaveBeenCalledTimes(1);
   }, 60_000);
 
   it("falls back to plain JSON when the model fumbles the tool call", async () => {
     const message = vi
       .fn()
-      .mockRejectedValueOnce(new ApiError("naive", 502, "provider_error", "the model returned a malformed tool call"))
+      .mockRejectedValueOnce(new ApiError("anthropic", 502, "provider_error", "the model returned a malformed tool call"))
       .mockResolvedValueOnce({ content: [{ type: "text", text: `Here it is:\n${JSON.stringify(toolInput)}` }], stop_reason: "end_turn" });
-    const { client } = stubClient({ message, transcribe: vi.fn(async () => job("completed")) });
+    const { client } = stubClient({ message });
     const breakdown = await breakdownReference(client, reference(clip), { workDir: join(root, "work-json"), brand });
     expect(message).toHaveBeenCalledTimes(2);
     expect(message.mock.calls[1][0].tools).toBeUndefined();
@@ -797,7 +784,7 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
 
   it("throws a retryable ApiError when the model returns nothing usable", async () => {
     const message = vi.fn(async () => ({ content: [{ type: "text", text: "Sorry, I can't." }], stop_reason: "end_turn" }));
-    const { client } = stubClient({ message, transcribe: vi.fn(async () => job("completed")) });
+    const { client } = stubClient({ message });
     const work = join(root, "work-unreadable");
     const error = await breakdownReference(client, reference(clip), { workDir: work, brand }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
@@ -807,18 +794,17 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
   }, 60_000);
 
   it("throws a retryable ApiError when the transcription fails upstream", async () => {
-    const { client } = stubClient({ transcribe: vi.fn(async () => job("failed", false)) });
+    const { client, message } = stubClient({ falRun: vi.fn(async () => { throw new ApiError("fal", 502, "job_failed", "the provider failed"); }) });
     const error = await breakdownReference(client, reference(clip), { workDir: join(root, "work-stt-failed"), brand }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).retryable).toBe(true);
-    expect(client.message).not.toHaveBeenCalled();
+    expect(message).not.toHaveBeenCalled();
   }, 60_000);
 
   it("skips speech to text for a video with no audio track", async () => {
-    const { client } = stubClient();
+    const { client, falRun } = stubClient();
     const breakdown = await breakdownReference(client, reference(silent), { workDir: join(root, "work-silent"), brand });
-    expect(client.uploadFile).not.toHaveBeenCalled();
-    expect(client.transcribe).not.toHaveBeenCalled();
+    expect(falRun).not.toHaveBeenCalled();
     expect(breakdown.pacing.words_per_minute).toBeNull();
     expect(breakdown.transcript).toBe("");
     expect(breakdown.beats.every((b) => b.line === "")).toBe(true);
@@ -830,7 +816,7 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
 
   it("keeps the caption's guess, with the real length, when the model leaves out the clone block", async () => {
     const { clone: _clone, ...withoutClone } = toolInput;
-    const { client } = stubClient({ transcribe: vi.fn(async () => job("completed")), message: vi.fn(async () => ({ content: [{ type: "tool_use", name: "reference_breakdown", input: withoutClone }], stop_reason: "tool_use" })) });
+    const { client } = stubClient({ message: vi.fn(async () => ({ content: [{ type: "tool_use", name: "reference_breakdown", input: withoutClone }], stop_reason: "tool_use" })) });
     const breakdown = await breakdownReference(client, reference(clip, { caption: "storytime: meal prep" }), { workDir: join(root, "work-no-clone"), brand });
     expect(breakdown.footage).toBeUndefined();
     expect(breakdown.cloneability).toMatchObject({ score: 7, basis: "metadata" });
@@ -841,28 +827,27 @@ describe.skipIf(!bin)("breakdownReference on a synthetic video with three hard c
       "fetch",
       vi.fn(async () => new Response("gone", { status: 403 })),
     );
-    const { client } = stubClient();
+    const { client, falRun } = stubClient();
     const work = join(root, "work-404");
     const error = await breakdownReference(client, reference("https://cdn.example.com/expired.mp4"), { workDir: work, brand }).catch((e: unknown) => e);
     vi.unstubAllGlobals();
     expect(error).toBeInstanceOf(ReferenceUnavailableError);
     expect((error as ReferenceUnavailableError).retryable).toBe(false);
     expect((error as Error).message).toMatch(/could not be downloaded.*HTTP 403/);
-    expect(client.uploadFile).not.toHaveBeenCalled();
+    expect(falRun).not.toHaveBeenCalled();
     expect(await readdir(work)).toEqual([]);
   });
 
   it("breaks down several references three at a time and reports failures separately", async () => {
-    // In flight from the audio upload to the end of the vision call: most of each breakdown.
+    // In flight from transcription to the end of the vision call: most of each breakdown.
     let inFlight = 0;
     let peak = 0;
     const { client } = stubClient({
-      uploadFile: vi.fn(async () => {
+      falRun: vi.fn(async () => {
         inFlight++;
         peak = Math.max(peak, inFlight);
-        return "fil_audio1";
+        return whisperResult();
       }),
-      transcribe: vi.fn(async () => job("completed")),
       message: vi.fn(async () => {
         await new Promise((resolve) => setTimeout(resolve, 200));
         inFlight--;

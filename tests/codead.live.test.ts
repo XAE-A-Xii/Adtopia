@@ -12,20 +12,20 @@ import { breakdownReference, canonicalUrl, scoreCandidates } from "@/lib/creativ
 import type { Video } from "@/lib/research";
 import type { CodeAdStory, Hero, Scene } from "@/lib/codeads/types";
 import { getBrandKit } from "@/lib/creative/brandkit";
+import { type ClaudeClient, claudeClient } from "@/lib/claude";
 import { targetSeconds } from "@/lib/creative/script";
 import { findChrome } from "@/lib/creative/screens";
 import type { CreativeBrief, FunnelRole, ProductBrief, ReferenceBreakdown } from "@/lib/creative/types";
 import { ApiError } from "@/lib/http";
 import { MonidClient } from "@/lib/monid";
-import { NaiveClient } from "@/lib/naive";
 import type { Files } from "@/lib/store/types";
 
 // Opt-in runs of code ads for real campaigns. They read each campaign read-only from data/nomen.db (NOMEN_DATA_DIR,
 // e.g. the main checkout's data/) and write only into this checkout's data/codead-live/<name>/ (or NOMEN_CODEAD_OUT).
 // Rendering is local and free (headless Chrome + WebGL, ffmpeg, python3 with numpy and scipy).
 //
-//   NOMEN_CODEAD_LIVE=all    …  the Naïve case: writer + critic (Naive, ~$0.10), narration (ElevenLabs on Monid, ~$0.04),
-//                               mix, render, frame check (Naive vision, cents) → final.mp4 + frames.jpg
+//   NOMEN_CODEAD_LIVE=all    …  writer + critic (Claude), narration (ElevenLabs direct or on Monid),
+//                               mix, render, frame check (Claude vision) → final.mp4 + frames.jpg
 //   NOMEN_CODEAD_LIVE=story | make | page   …  only the story / the ad from the saved story / the page folder for stills
 //   NOMEN_CODEAD_LIVE=batch  …  every case in CASES (NOMEN_CODEAD_CASES=name,name picks some), one after another
 //   NOMEN_CODEAD_LIVE=stills NOMEN_CODEAD_DIR=<an ad folder with story.json>   stills + a sheet, free
@@ -33,7 +33,7 @@ import type { Files } from "@/lib/store/types";
 // Options: NOMEN_CODEAD_HERO (geek | mogger), NOMEN_CODEAD_NARRATOR=v3 (the original engine's dramatic Adam read),
 // NOMEN_CODEAD_VOICE=scratch (the free macOS voice), NOMEN_CODEAD_TARGET (seconds), NOMEN_CODEAD_STORY (a CodeAdStory
 // JSON to use as it is), NOMEN_CODEAD_TAG, NOMEN_CODEAD_FPS (60), NOMEN_CODEAD_QC=off (no frame check).
-// Keys: NAIVE_API_KEY and MONID_API_KEY, or .env.local next to the data folder.
+// Keys: ANTHROPIC_API_KEY and MONID_API_KEY (or ELEVENLABS_API_KEY), or .env.local next to the data folder.
 //
 //   NOMEN_DATA_DIR=<a checkout>/data NOMEN_CODEAD_LIVE=batch npx vitest run tests/codead.live.test.ts
 
@@ -57,19 +57,16 @@ type Case = {
   research?: string;
   /** Use this saved story instead of writing one, and this narrator (re-renders). */
   story?: string;
-  narrator?: "v3" | "naive";
+  narrator?: "v3";
   target?: number;
 };
 
-const NAIVE = "cmp_70daa9e79a4b42008d74", MONID = "cmp_f98819d8b08f46a7a422", MOBILERUN = "cmp_8258fde751824aeba97f";
+const MONID = "cmp_f98819d8b08f46a7a422", MOBILERUN = "cmp_8258fde751824aeba97f";
 
 const CASES: Case[] = [
-  // The first sample (mplentg's "I Let AI Run My Side Hustle": an AI given one instruction, make money), re-rendered with
-  // a developer in place of the builder, a little faster, on its kept story and voice.
-  ...(["geek", "mogger"] as const).map((hero): Case => ({ name: `naive-dare-${hero}`, campaign: NAIVE, reference: "ref_88a571100e", hero, title: "How a credit card becomes a company", role: "convert", angle: "", hook_plan: "", cta: "Pick a company template at usenaive.ai", story: "data/codead-live/naive-v3/story.json", narrator: "v3", target: 24 })),
   {
     // For the demo: research → breakdown → code ad. hannahlearnsstuff's discovery hook, 1.9M views on 1,049 followers
-    // (1,814x) and 32K saves, from the Monid campaign's own research pool; narrated by Naive (the Monid wallet is empty).
+    // (1,814x) and 32K saves, from the Monid campaign's own research pool.
     name: "monid-sooner",
     campaign: MONID,
     reference: "",
@@ -80,29 +77,6 @@ const CASES: Case[] = [
     angle: "The tool you wish you'd known about sooner: one line, 'set up monid.ai/SKILL.md', and your agent finds, compares and pays for 2900+ tools from one balance, with no sign-up per tool.",
     hook_plan: "The reference's regret-and-discovery hook ('I'm actually upset I didn't know about this sooner'), then the discovery shown step by step.",
     cta: "Start with $1 in free credit at monid.ai",
-    narrator: "naive",
-  },
-  {
-    name: "naive-shorts",
-    campaign: NAIVE,
-    reference: "ref_29a74e567d", // zachhh.mp4: "Shorts + Claude = $528/day", a numbered three-step tutorial (1.3M views)
-    hero: "geek",
-    title: "A short-form channel in three steps",
-    role: "convert",
-    angle: "A short-form video channel run by an agent team, in three steps: pick Naïve's Short Form template, deploy it, watch the first session brief, script and generate a video.",
-    hook_plan: "The reference's two-logos-plus-a-promise card and numbered steps, for Naïve's Short Form template.",
-    cta: "Deploy the Short Form template at usenaive.ai",
-  },
-  {
-    name: "naive-rules",
-    campaign: NAIVE,
-    reference: "ref_593aea417a", // ElevenLabs' agents ad: "Every enterprise sees the potential of AI agents" (ran 44 days)
-    hero: "mogger",
-    title: "Agents you can trust with a company",
-    role: "convert",
-    angle: "Everyone sees what AI agents could do; nobody trusts them with money or customers. Naïve: each agent gets its own identity, policy lives in one committed file, and anything that costs money waits for your yes.",
-    hook_plan: "The reference's flattering premise with an unspoken 'but', answered by the product's guardrails.",
-    cta: "Build your company with agents at usenaive.ai",
   },
   {
     name: "monid-setup",
@@ -149,31 +123,7 @@ const CASES: Case[] = [
     cta: "Start free at mobilerun.ai",
   },
   // Chad and the chud: the same engine in new scenes (stage, gym, rooftop) and versus ads (the old way downstairs, the
-  // product upstairs). Narrated by Naive (the Monid wallet is empty).
-  {
-    name: "naive-versus",
-    campaign: NAIVE,
-    reference: "ref_88a571100e", // mplentg: "I Let AI Run My Side Hustle", an AI given one instruction: make money (644K views)
-    scene: "versus",
-    title: "Two founders, one instruction: make money",
-    role: "convert",
-    angle: "Two founders give AI agents the same goal. One wires agents to his card by hand (keys, scripts, no rules) and it goes wrong; the other deploys a Naïve company template, where agents get a company to run and spending waits for approval.",
-    hook_plan: "The reference's one-instruction dare, run twice side by side: the old way downstairs, Naïve upstairs.",
-    cta: "Pick a company template at usenaive.ai",
-    narrator: "naive",
-  },
-  {
-    name: "naive-keynote",
-    campaign: NAIVE,
-    reference: "ref_593aea417a", // ElevenLabs' agents ad: "Every enterprise sees the potential of AI agents" (ran 44 days)
-    scene: "stage",
-    title: "Introducing a company run by agents",
-    role: "convert",
-    angle: "A launch keynote: Naïve, where you pick a company template, deploy it, and a team of agents runs it, each with its own identity, under policy you commit and approvals you give.",
-    hook_plan: "The reference's big-claim opener as a keynote reveal on a giant screen, then one feature per beat.",
-    cta: "Build your company with agents at usenaive.ai",
-    narrator: "naive",
-  },
+  // product upstairs).
   {
     name: "monid-gym",
     campaign: MONID,
@@ -184,7 +134,6 @@ const CASES: Case[] = [
     angle: "Nobody shows the setup that gives an agent its tools. One line, 'set up monid.ai/SKILL.md', and the agent finds, compares and pays for 2900+ tools from one balance, while you get your workout in.",
     hook_plan: "The reference's gap hook ('nobody shows you the actual setup'), shown between sets.",
     cta: "Start with $1 in free credit at monid.ai",
-    narrator: "naive",
   },
   {
     name: "mobilerun-rooftop",
@@ -196,7 +145,6 @@ const CASES: Case[] = [
     angle: "Your agent runs your app's tests on real cloud phones (tap, swipe, type, SMS codes) and on a fleet of devices at once, while you're at the pool. Describe the task in plain language.",
     hook_plan: "The reference's odd pairing (an AI agent and a phone), poolside: the agent works the phones, you don't.",
     cta: "Start free at mobilerun.ai",
-    narrator: "naive",
   },
   {
     name: "monid-versus",
@@ -208,7 +156,6 @@ const CASES: Case[] = [
     angle: "Downstairs, a developer signs up for every API his agent needs, one key and one subscription at a time. Upstairs, the agent pays per call for 2900+ tools from one Monid balance.",
     hook_plan: "The reference's big-spend opener as the pile of keys and subscriptions, against one balance.",
     cta: "Start with $1 in free credit at monid.ai",
-    narrator: "naive",
   },
 ];
 
@@ -238,7 +185,7 @@ function folderFiles(root: string): Files {
 function loadKeys() {
   const data = resolve(process.env.NOMEN_DATA_DIR ?? join(process.cwd(), "data"));
   for (const file of [join(process.cwd(), ".env.local"), join(dirname(data), ".env.local")]) {
-    if ((!process.env.NAIVE_API_KEY || !process.env.MONID_API_KEY) && existsSync(file)) process.loadEnvFile(file);
+    if ((!process.env.ANTHROPIC_API_KEY || !process.env.MONID_API_KEY) && existsSync(file)) process.loadEnvFile(file);
   }
   process.env.NOMEN_BRANDKITS_DIR = join(data, "brandkits");
   return data;
@@ -257,7 +204,7 @@ function campaignInputs(data: string, campaignId: string, referenceId: string, r
   return { brandId: campaign.brand_id, brand, product, reference, kit: getBrandKit(campaign.brand_id) };
 }
 
-/** Naive answers "at capacity" (429) at busy times: wait it out, as the worker does on its next tick. */
+/** Claude answers "at capacity" (429) at busy times: wait it out, as the worker does on its next tick. */
 async function patient<T>(work: () => Promise<T>, log: (message: string) => void, tries = 8): Promise<T> {
   for (let i = 1; ; i++) {
     try {
@@ -295,8 +242,8 @@ function briefFor(c: Case, input: ReturnType<typeof campaignInputs>): CreativeBr
   };
 }
 
-/** A research-pool video broken down by Nomen's own analyst (Naive: speech to text and a vision model), kept in `out`. */
-async function researchReference(data: string, c: Case, out: string, naive: NaiveClient, log: (message: string) => void): Promise<ReferenceBreakdown> {
+/** A research-pool video broken down by Nomen's own analyst (Claude + fal Whisper), kept in `out`. */
+async function researchReference(data: string, c: Case, out: string, claude: ClaudeClient, log: (message: string) => void): Promise<ReferenceBreakdown> {
   const kept = join(out, "reference.json");
   if (existsSync(kept)) return JSON.parse(await readFile(kept, "utf8")) as ReferenceBreakdown;
   const db = new Database(join(data, "nomen.db"), { readonly: true, fileMustExist: true });
@@ -307,7 +254,7 @@ async function researchReference(data: string, c: Case, out: string, naive: Naiv
   if (!video) throw new Error(`${c.research} is not in ${c.campaign}'s research pool`);
   const [candidate] = scoreCandidates([video], () => "category");
   const product = campaignInputs(data, c.campaign, "", { id: "", url: "" } as ReferenceBreakdown).product;
-  const breakdown = await patient(() => breakdownReference(naive, candidate, { workDir: join(out, "breakdown"), brand: { name: product.name, one_liner: product.one_liner, kind: product.kind } }), log);
+  const breakdown = await patient(() => breakdownReference(claude, candidate, { workDir: join(out, "breakdown"), brand: { name: product.name, one_liner: product.one_liner, kind: product.kind } }), log);
   await writeFile(kept, JSON.stringify(breakdown, null, 1));
   log(`breakdown of ${breakdown.author}: ${breakdown.beats.length} beats, hook "${breakdown.hook.line.slice(0, 100)}", ${breakdown.hook.mechanic.slice(0, 160)}`);
   return breakdown;
@@ -316,9 +263,8 @@ async function researchReference(data: string, c: Case, out: string, naive: Naiv
 /** Writes (or reuses) the case's story and makes the ad into `out`. */
 async function runCase(c: Case, data: string, out: string, stage: "story" | "make" | "page" | "all", log: (message: string) => void) {
   await mkdir(out, { recursive: true });
-  // Claude alone (ANTHROPIC_API_KEY) also writes, critiques and checks: the client routes messages to it.
-  const naive = process.env.NAIVE_API_KEY || process.env.ANTHROPIC_API_KEY ? new NaiveClient(process.env.NAIVE_API_KEY ?? "") : null;
-  const research = c.research && naive ? await researchReference(data, c, out, naive, log) : undefined;
+  const claude = process.env.ANTHROPIC_API_KEY ? claudeClient() : null;
+  const research = c.research && claude ? await researchReference(data, c, out, claude, log) : undefined;
   const input = campaignInputs(data, c.campaign, c.reference, research);
   const target = Number(process.env.NOMEN_CODEAD_TARGET) || c.target || targetSeconds(input.reference, "code_ad");
   const storyPath = join(out, "story.json");
@@ -327,9 +273,9 @@ async function runCase(c: Case, data: string, out: string, stage: "story" | "mak
   if (given) story = JSON.parse(await readFile(given, "utf8")) as CodeAdStory;
   else if (stage !== "all" && stage !== "story" && existsSync(storyPath)) story = JSON.parse(await readFile(storyPath, "utf8")) as CodeAdStory;
   else {
-    expect(naive, "NAIVE_API_KEY or ANTHROPIC_API_KEY is needed to write the story").toBeTruthy();
+    expect(claude, "ANTHROPIC_API_KEY is needed to write the story").toBeTruthy();
     const scene = (process.env.NOMEN_CODEAD_SCENE as Scene | undefined) ?? c.scene;
-    const written = await patient(() => writeCodeAd(naive!, { product: input.product, brief: briefFor(c, input), reference: input.reference, targetSeconds: target, site: siteOf(input.brand), ...(scene ? { scene } : {}) }), log);
+    const written = await patient(() => writeCodeAd(claude!, { product: input.product, brief: briefFor(c, input), reference: input.reference, targetSeconds: target, site: siteOf(input.brand), ...(scene ? { scene } : {}) }), log);
     story = written.story;
     await writeFile(join(out, "script.json"), JSON.stringify(written.script, null, 1));
     log(`story: ${story.beats.length} beats, ${story.scene ?? "office"}${story.rival ? ` vs ${story.rival.name}` : ""}, critic ${written.script.review?.score ?? "?"}/10 (${written.script.review?.notes.join(" | ").slice(0, 600) ?? ""})`);
@@ -344,8 +290,7 @@ async function runCase(c: Case, data: string, out: string, stage: "story" | "mak
   const voice = process.env.NOMEN_CODEAD_VOICE === "scratch" ? "scratch" : process.env.ELEVENLABS_API_KEY ? "direct" : process.env.MONID_API_KEY ? "eleven" : "scratch";
   const pick = process.env.NOMEN_CODEAD_NARRATOR ?? c.narrator;
   const narrator: Narrator =
-    pick === "naive" && naive ? { kind: "naive", naive }
-    : voice === "direct" ? { kind: "eleven", ...(pick === "v3" ? { model: ADAM_V3.model, settings: ADAM_V3.settings } : {}) }
+    voice === "direct" ? { kind: "eleven", ...(pick === "v3" ? { model: ADAM_V3.model, settings: ADAM_V3.settings } : {}) }
     : voice === "eleven" ? { kind: "eleven", monid: new MonidClient(process.env.MONID_API_KEY!), ...(pick === "v3" ? { model: ADAM_V3.model, settings: ADAM_V3.settings } : {}) }
     : { kind: "scratch" };
   const adInput: Parameters<typeof makeCodeAd>[0] = {
@@ -361,7 +306,7 @@ async function runCase(c: Case, data: string, out: string, stage: "story" | "mak
     dir: join(out, "work"),
     chrome: chrome!,
     targetSeconds: target,
-    naive: process.env.NOMEN_CODEAD_QC === "off" ? null : naive,
+    claude: process.env.NOMEN_CODEAD_QC === "off" ? null : claude,
     fps: Number(process.env.NOMEN_CODEAD_FPS) || 60,
     log,
   };
@@ -381,12 +326,12 @@ async function runCase(c: Case, data: string, out: string, stage: "story" | "mak
 
 const outFor = (name: string) => resolve(process.env.NOMEN_CODEAD_OUT ?? join(process.cwd(), "data", "codead-live", name));
 
-describe.skipIf(!["story", "make", "all", "page"].includes(mode))("a code ad for the Naïve campaign (live)", () => {
+describe.skipIf(!["story", "make", "all", "page"].includes(mode))("a code ad for the Monid campaign (live)", () => {
   it("writes and makes the ad", async () => {
     const data = loadKeys();
     const log = (message: string) => console.log(`[code ad] ${message}`);
-    const c: Case = { name: "naive", campaign: process.env.NOMEN_CODEAD_CAMPAIGN ?? NAIVE, reference: process.env.NOMEN_CODEAD_REFERENCE ?? "ref_88a571100e", hero: (process.env.NOMEN_CODEAD_HERO as Hero) ?? "geek", title: process.env.NOMEN_CODEAD_TITLE ?? "How a credit card becomes a company", role: "convert", angle: process.env.NOMEN_CODEAD_ANGLE ?? "An AI agent with your card and no rules is chaos; Naïve gives agents a company to run, with approvals and budgets.", hook_plan: "", cta: process.env.NOMEN_CODEAD_CTA ?? "Pick a company template at usenaive.ai" };
-    await runCase(c, data, outFor(`naive-${process.env.NOMEN_CODEAD_TAG ?? "v1"}`), mode as "story" | "make" | "page" | "all", log);
+    const c: Case = { name: "monid", campaign: process.env.NOMEN_CODEAD_CAMPAIGN ?? MONID, reference: process.env.NOMEN_CODEAD_REFERENCE ?? "ref_119a19b980", hero: (process.env.NOMEN_CODEAD_HERO as Hero) ?? "geek", title: process.env.NOMEN_CODEAD_TITLE ?? "One line gives your agent 2900+ tools", role: "convert", angle: process.env.NOMEN_CODEAD_ANGLE ?? "Everyone talks about AI agents; one line sets up Monid so your agent pays per call across 2900+ tools from one balance.", hook_plan: "", cta: process.env.NOMEN_CODEAD_CTA ?? "Start with $1 in free credit at monid.ai" };
+    await runCase(c, data, outFor(`monid-${process.env.NOMEN_CODEAD_TAG ?? "v1"}`), mode as "story" | "make" | "page" | "all", log);
   }, 3_600_000);
 });
 

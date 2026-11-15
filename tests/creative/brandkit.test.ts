@@ -247,7 +247,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   kitRoot = await mkdtemp(join(tmpdir(), "nomen-brandkits-"));
   vi.stubEnv("NOMEN_BRANDKITS_DIR", kitRoot);
-  vi.stubEnv("NAIVE_API_KEY", "");
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
   const conn = db();
   conn.exec("delete from settings; delete from events; delete from brands;");
   conn.prepare("insert into brands (id, name, domain, url, created_at, updated_at) values (?, ?, ?, ?, ?, ?)").run(BRAND, "Acme", "acme.dev", "https://acme.dev", now(), now());
@@ -411,7 +411,7 @@ describe("repo links", () => {
     expect(args).toEqual(expect.arrayContaining(["clone", "--depth", "1", "--single-branch", "--filter=blob:limit=25m", "https://github.com/acme/cloud.git"]));
     expect(args.indexOf("--")).toBe(args.length - 3);
     expect(options.env.GIT_TERMINAL_PROMPT).toBe("0");
-    expect(options.env).not.toHaveProperty("NAIVE_API_KEY");
+    expect(options.env).not.toHaveProperty("ANTHROPIC_API_KEY");
     expect(options.timeout).toBeLessThanOrEqual(90_000);
     expect(existsSync(cloneDir)).toBe(false);
     expect(existsSync(dirname(cloneDir))).toBe(false);
@@ -659,7 +659,7 @@ describe.skipIf(!hasFfmpeg)("caption pass", () => {
   it("tolerates a failing model and retries those images on the next pass", async () => {
     await addUploadedFiles(BRAND, [{ name: "hero.png", bytes: png(640, 360) }]);
     const failing = vi.fn(async () => {
-      throw new ApiError("naive", 402, "insufficient_credits", "out of credits");
+      throw new ApiError("anthropic", 402, "insufficient_credits", "out of credits");
     });
     const failed = await captionAssets({ message: failing } as never, BRAND);
     expect(failed.captioned).toBe(0);
@@ -671,8 +671,8 @@ describe.skipIf(!hasFfmpeg)("caption pass", () => {
     expect(getBrandKit(BRAND).assets[0]).toMatchObject({ kind: "screenshot", caption: "landing page hero with a big headline" });
   });
 
-  it("runs in the background after an upload when a Naive key is set, without failing the request", async () => {
-    vi.stubEnv("NAIVE_API_KEY", "sk_test_brandkit");
+  it("runs in the background after an upload when an Anthropic key is set, without failing the request", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk_test_brandkit");
     const fetchMock = vi.fn(async () => Response.json(reply([{ n: 1, caption: "pricing table with three plans", kind: "screenshot" }])));
     vi.stubGlobal("fetch", fetchMock);
     const response = await upload([["pricing.png", png(900, 600)]]);

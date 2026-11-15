@@ -230,7 +230,7 @@ describe("ads as conversion evidence", () => {
 describe("the research plan", () => {
   it("asks for conversion searches, and benchmarks for reach and for conversion", async () => {
     let tools: Array<{ input_schema: { required: string[]; properties: Record<string, { items?: { required?: string[] } }> } }> = [];
-    const naive = {
+    const claude = {
       message: async (request: { tools: typeof tools }) => {
         tools = request.tools;
         return {
@@ -252,7 +252,7 @@ describe("the research plan", () => {
         };
       },
     };
-    const planned = await planResearch(naive as never, { domain: "drinkolipop.com", brand: pack.brand, siteExcerpt: "", similar: [] });
+    const planned = await planResearch(claude as never, { domain: "drinkolipop.com", brand: pack.brand, siteExcerpt: "", similar: [] });
     expect(tools[0].input_schema.required).toContain("conversion_queries");
     expect(tools[0].input_schema.required).toContain("face_queries");
     // The fixture plan predates face queries: the fallback's fill in.
@@ -273,14 +273,14 @@ describe("the research plan", () => {
   it("asks for face-to-camera UGC searches, keeps the model's, and falls back to storytime and testimonial", async () => {
     let system = "";
     let tools: Array<{ input_schema: { properties: Record<string, { description?: string }> } }> = [];
-    const naive = {
+    const claude = {
       message: async (request: { system: string; tools: typeof tools }) => {
         system = request.system;
         tools = request.tools;
         return { content: [{ type: "tool_use", name: "research_plan", input: { ...plan, face_queries: ["storytime gut health", "", "POV you switched sodas", "extra"] } }] };
       },
     };
-    const planned = await planResearch(naive as never, { domain: "drinkolipop.com", brand: pack.brand, siteExcerpt: "", similar: [] });
+    const planned = await planResearch(claude as never, { domain: "drinkolipop.com", brand: pack.brand, siteExcerpt: "", similar: [] });
     expect(planned.face_queries).toEqual(["storytime gut health", "POV you switched sodas"]);
     expect(system).toMatch(/one person talking to camera/);
     expect(tools[0].input_schema.properties.face_queries.description).toMatch(/talking-head testimonial or 'I tried X', storytime, a POV reaction, or green-screen commentary/);
@@ -304,11 +304,11 @@ describe("parsing helpers", () => {
 });
 
 describe("the research planner when the model is busy", () => {
-  const input = { domain: "usenaive.ai", brand: { name: "Naive", description: "", slogan: "", industry: "", colors: [], logo: "", socials: [], images: [] }, siteExcerpt: "", similar: [] };
+  const input = { domain: "acme.com", brand: { name: "Acme", description: "", slogan: "", industry: "", colors: [], logo: "", socials: [], images: [] }, siteExcerpt: "", similar: [] };
 
   it("waits for a busy model instead of falling back to a generic plan", async () => {
     const { ApiError } = await import("@/lib/http");
-    const busy = { message: async () => Promise.reject(new ApiError("naive", 429, "rate_limited", "the service is at capacity")) };
+    const busy = { message: async () => Promise.reject(new ApiError("anthropic", 429, "rate_limited", "the service is at capacity")) };
     await expect(planResearch(busy as never, input as never)).rejects.toThrow(/capacity/);
   });
 

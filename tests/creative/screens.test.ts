@@ -391,7 +391,7 @@ describe.skipIf(!canRender)("buildScreens", () => {
     const html = await typingHtml();
     const calls: Array<{ kind: "write" | "check"; id: string; text: string }> = [];
     let checks = 0;
-    const naive = {
+    const claude = {
       message: async (input: { system?: string; messages: Array<{ content: unknown }>; tools?: Array<{ name: string }> }) => {
         const text = JSON.stringify(input.messages);
         const id = text.includes("bad-one") ? "bad-one" : "good-one";
@@ -406,7 +406,7 @@ describe.skipIf(!canRender)("buildScreens", () => {
         return { stop_reason: "end_turn", content: [{ type: "text", text: `\`\`\`html\n${html}\n\`\`\`\n\`\`\`json\n{"states": [{"t": 0, "label": "empty"}, {"t": 1.3, "label": "typed"}, {"t": 1.6, "label": "connected"}]}\n\`\`\`` }] };
       },
     };
-    const result = await buildScreens(naive as never, [request({ id: "good-one" }), request({ id: "bad-one" })], { product, kit }, { workDir: work, concurrency: 2 });
+    const result = await buildScreens(claude as never, [request({ id: "good-one" }), request({ id: "bad-one" })], { product, kit }, { workDir: work, concurrency: 2 });
 
     expect(result.clips.map((c) => c.id)).toEqual(["good-one"]);
     expect(result.clips[0].path).toBe(join(work, "good-one.v2.mp4"));
@@ -423,8 +423,8 @@ describe.skipIf(!canRender)("buildScreens", () => {
 describe("buildScreens without Chrome", () => {
   it("fails every screen up front, without model calls, when there is no Chrome", async () => {
     let called = 0;
-    const naive = { message: async () => (called++, { stop_reason: "end_turn", content: [] }) };
-    const result = await buildScreens(naive as never, [request()], { product, kit: null }, { workDir: join(tmpdir(), "nomen-no-chrome"), render: { chromePath: "/nonexistent/chrome" } });
+    const claude = { message: async () => (called++, { stop_reason: "end_turn", content: [] }) };
+    const result = await buildScreens(claude as never, [request()], { product, kit: null }, { workDir: join(tmpdir(), "nomen-no-chrome"), render: { chromePath: "/nonexistent/chrome" } });
     expect(called).toBe(0);
     expect(result.clips).toEqual([]);
     expect(result.failures[0].error).toMatch(/No Chrome or Chromium found/);

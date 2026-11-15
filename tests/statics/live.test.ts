@@ -12,8 +12,8 @@ const { buildPackZip } = await import("@/lib/statics/pack");
 const { advancePack, getPack, latestPack, listStaticAds, retryPack } = await import("@/lib/statics/pipeline");
 
 // A real static-ads-only campaign, from research to a downloadable pack. It spends real money on
-// Monid (research) and Naive (study, copy, checks): about $0.3 and $1-2. Run it with
-//   NODE_USE_ENV_PROXY=1 NAIVE_API_KEY=… MONID_API_KEY=… NOMEN_LIVE_STATICS=monid.ai NOMEN_LIVE_OUT=/some/dir npx vitest run tests/statics/live.test.ts
+// Monid (research) and Anthropic (study, copy, checks): about $0.3 and $1-2. Run it with
+//   ANTHROPIC_API_KEY=… MONID_API_KEY=… NOMEN_LIVE_STATICS=monid.ai NOMEN_LIVE_OUT=/some/dir npx vitest run tests/statics/live.test.ts
 
 const domain = process.env.NOMEN_LIVE_STATICS;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

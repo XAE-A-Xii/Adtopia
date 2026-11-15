@@ -179,7 +179,7 @@ describe("the reference view", () => {
 
 type Campaign = NonNullable<BrandView["campaign"]>;
 const campaign = (fields: Partial<Campaign>) =>
-  ({ id: "cmp_1", status: "running", stage: "style", stageIndex: 1, error: null, options: { concepts: 3 }, style: null, strategy: null, runs: [], creatives: [], posts: [], references: [], spend: { naive: 0, monid: 0, style: 0, strategy: 0 }, ...fields }) as unknown as Campaign;
+  ({ id: "cmp_1", status: "running", stage: "style", stageIndex: 1, error: null, options: { concepts: 3 }, style: null, strategy: null, runs: [], creatives: [], posts: [], references: [], spend: { ai: 0, monid: 0, style: 0, strategy: 0 }, ...fields }) as unknown as Campaign;
 const brand = (c: Campaign) => ({ brand: { id: "brd_1", name: "Monid", domain: "monid.ai" }, campaign: c, campaigns: [], events: [] }) as unknown as BrandView;
 
 describe("the camp on the creative engine", () => {

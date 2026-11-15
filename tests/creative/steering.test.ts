@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { scout, scoutDigest } from "@/lib/creative/scout";
 import { lintScript, normalizeScript, type ScriptContext, writeScript } from "@/lib/creative/script";
 import type { BeatJob, CreativeBrief, ProductBrief, ReferenceBreakdown, ScriptBeat } from "@/lib/creative/types";
 import { compactResearch, type Video } from "@/lib/research";
-import { balanceRoles, conceptFrom, METRICS, normalizeStrategy, referenceDigest, STRATEGY_SCHEMA, strategyMessage } from "@/lib/strategy";
+import { balanceRoles, conceptFrom, DIRECTOR_PROMPT, METRICS, normalizeStrategy, referenceDigest, STRATEGY_SCHEMA, strategyMessage } from "@/lib/strategy";
 
 // Steering the agents toward return on investment, not just reach: every video has a funnel role,
 // the director plans a mix, and convert videos keep their reference's selling beats.
@@ -159,14 +158,14 @@ describe("scripts for convert videos", () => {
 
   it("tell the writer and the critic the video's job and the reference's selling beats", async () => {
     const requests: Array<{ system: string; messages: Array<{ content: string }>; tools?: Array<{ input_schema: { properties: Record<string, { required?: string[] }> } }> }> = [];
-    const naive = {
+    const claude = {
       message: async (request: (typeof requests)[number]) => {
         requests.push(request);
         if (requests.length === 1) return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "script", input: { beats: [beat(1, "hook", "Your agent needs twelve API keys."), beat(2, "cta", "Get the free credit, link below.")] } }] };
         return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "script_review", input: { scores: {}, score: 9, notes: [], revised_beats: [] } }] };
       },
     } as unknown as Parameters<typeof writeScript>[0];
-    await writeScript(naive, ctx);
+    await writeScript(claude, ctx);
     expect(requests[0].system).toMatch(/convert: this video is judged on clicks and sign-ups/);
     expect(requests[0].messages[0].content).toContain("Role: convert (judged on sign ups)");
     expect(requests[0].messages[0].content).toContain('"how_it_sells"');
@@ -176,18 +175,18 @@ describe("scripts for convert videos", () => {
 
   it("tell the writer and the critic what the customer asked for, when they asked", async () => {
     const requests: Array<{ messages: Array<{ content: string }> }> = [];
-    const naive = {
+    const claude = {
       message: async (request: (typeof requests)[number]) => {
         requests.push(request);
         if (requests.length === 1) return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "script", input: { beats: [beat(1, "hook", "Your agent needs twelve API keys."), beat(2, "cta", "Get the free credit, link below.")] } }] };
         return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "script_review", input: { scores: {}, score: 9, notes: [], revised_beats: [] } }] };
       },
     } as unknown as Parameters<typeof writeScript>[0];
-    await writeScript(naive, { ...ctx, preferences: "No slang, aimed at CTOs" });
+    await writeScript(claude, { ...ctx, preferences: "No slang, aimed at CTOs" });
     expect(requests[0].messages[0].content).toContain("<customer_preferences>\nNo slang, aimed at CTOs\n</customer_preferences>");
     expect(requests[1].messages[0].content).toContain("No slang, aimed at CTOs");
     requests.length = 0;
-    await writeScript(naive, ctx);
+    await writeScript(claude, ctx);
     expect(requests[0].messages[0].content).not.toContain("customer_preferences");
   });
 });
@@ -206,14 +205,14 @@ describe("the scout's view", () => {
     expect(scoutDigest([base, { ...base, url: "v", caption: "duet with @x" }]).map((v) => v.clones)).toEqual([7, 2.5]);
 
     let request: { system: string; messages: Array<{ content: string }> } | null = null;
-    const naive = {
+    const claude = {
       message: async (sent: typeof request) => {
         request = sent;
         return { content: [{ type: "tool_use", name: "scout_report", input: { notes: "n", searches: [{ platform: "tiktok", query: "storytime api bill", why: "" }, { platform: "tiktok", query: "POV agent pays", why: "" }] } }] };
       },
     };
     const plan = { brand_name: "Monid", category: "agent tools", audience: "devs", competitors: [], content_queries: [], conversion_queries: [], face_queries: ["storytime api bill"], ads_query: "", reddit_query: "", aeo_prompts: [] };
-    const report = await scout(naive as never, { plan, videos: [base], brand: { name: "Monid", description: "" }, alreadySearched: [] });
+    const report = await scout(claude as never, { plan, videos: [base], brand: { name: "Monid", description: "" }, alreadySearched: [] });
     // The face search already ran in the first wave, so the scout's repeat of it is dropped.
     expect(report.searches.map((s) => s.query)).toEqual(["POV agent pays"]);
     expect(request!.system).toMatch(/Make at least one search find that face-to-camera UGC in this niche/);
@@ -247,10 +246,9 @@ describe("the director picks what the footage clone can reproduce", () => {
     expect(why).toMatch(/when its cloneability is below 6, what makes it worth the harder remake/);
   });
 
-  it("carries the same rules in the director agent's own instructions", () => {
-    const director = readFileSync(new URL("../../naive/agents/director.md", import.meta.url), "utf8");
-    expect(director).toMatch(/\*\*Face-to-camera UGC is the core format\.\*\*/);
-    expect(director).toMatch(/Prefer references with `cloneability` 6 or more/);
-    expect(director).toMatch(/When you pick a reference below 6, say in `why` what makes it worth the harder remake/);
+  it("carries the same rules in the director's own instructions", () => {
+    expect(DIRECTOR_PROMPT).toMatch(/\*\*Face-to-camera UGC is the core format\.\*\*/);
+    expect(DIRECTOR_PROMPT).toMatch(/Prefer references with `cloneability` 6 or more/);
+    expect(DIRECTOR_PROMPT).toMatch(/When you pick a reference below 6, say in `why` what makes it worth the harder remake/);
   });
 });

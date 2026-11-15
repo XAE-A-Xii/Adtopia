@@ -26,7 +26,7 @@ import {
 } from "@/lib/creative/clone";
 import { bestRead, changedSpans, deliveryTags, emotionTags, fitSegments, parseWords, phrasesOf, soundArgs, timeOurBeats, timeOurWords, voiceMode, voiceRuns } from "@/lib/creative/dub";
 import { ageOf, chooseVoice, cohostDescription, DEFAULT_VOICES, genderOf, pickVoice, readVoices } from "@/lib/creative/persona";
-import { jobFile, klingMotion, klingMotionBody, klingNative, klingNativeBody, klingSeconds, naiveVideo, presenterFor, shotList, speakingPrompt } from "@/lib/creative/presenter";
+import { klingMotion, klingMotionBody, klingNative, klingNativeBody, klingSeconds, presenterFor, shotList, speakingPrompt } from "@/lib/creative/presenter";
 import type { RemakeSegment, Stage } from "@/lib/creative/remake";
 import type { Quad } from "@/lib/creative/types";
 import { diffWords, numberWords, phraseSyllables, spoken, syllables, tokens } from "@/lib/creative/words";
@@ -136,8 +136,8 @@ describe("segments, layers and takes", () => {
     const estimate = estimateCost(layers, { name: "kling-motion", perSecond: 0.168, minSeconds: 3 }, { personas: 1, graphics: 3, plates: 1 });
     expect(estimate.presenter_seconds).toBe(9); // a 2 s take bills 3 s, the 6 s cut-out 6 s
     expect(estimate.usd.presenter).toBeCloseTo(1.51, 2);
-    expect(estimate.usd).toMatchObject({ images: 0.24, audio: 0.15, graphics: 0.15 });
-    expect(estimate.usd.total).toBeCloseTo(estimate.usd.presenter + 0.24 + 0.15 + 0.15 + estimate.usd.vision, 1);
+    expect(estimate.usd).toMatchObject({ images: 0.9, audio: 0.15, graphics: 0.15 });
+    expect(estimate.usd.total).toBeCloseTo(estimate.usd.presenter + 0.9 + 0.15 + 0.15 + estimate.usd.vision, 1);
   });
 });
 
@@ -165,16 +165,11 @@ describe("twin frames and the presenter", () => {
 
   it("picks presenters by name, with what each needs and whose voice it leaves", () => {
     const monid = { run: async () => ({ runId: "r1", status: "RUNNING" as const }), getRun: async () => ({ runId: "r1", status: "COMPLETED" as const, output: { video: { download_link: "https://v/out.mp4" } }, cost: { value: 0.5, currency: "USD" } }) };
-    const naive = { generateVideo: async () => ({ id: "med_1", status: "queued" as const, model: "m", result: null, error: null, cost_micro_usd: null }), getMediaJob: async () => ({ id: "med_1", status: "completed" as const, model: "m", result: { files: [{ file_id: "fil_v", content_type: "video/mp4" }] }, error: null, cost_micro_usd: 3_200_000 }), fileUrl: async (id: string) => ({ url: `https://n/${id}`, expires_at: "" }) };
-    expect(presenterFor("", { naive, monid })).toMatchObject({ name: "kling-native", voice: "own", multiShot: true, needs: { frame: true, motion: false, audio: false } });
-    const kling = presenterFor("kling-motion", { naive, monid });
+    expect(presenterFor("", { monid })).toMatchObject({ name: "kling-native", voice: "own", multiShot: true, needs: { frame: true, motion: false, audio: false } });
+    const kling = presenterFor("kling-motion", { monid });
     expect(kling).toMatchObject({ name: "kling-motion", voice: "none", multiShot: false, needs: { frame: true, motion: true, audio: false } });
-    const veo = presenterFor("naive:google/veo-3.1", { naive, monid });
-    expect(veo).toMatchObject({ name: "naive:google/veo-3.1", voice: "own", ratios: ["9:16", "16:9"] });
-    expect(() => presenterFor("heygen", { naive, monid })).toThrow(/unknown presenter/);
-    expect(jobFile({ result: { files: [{ file_id: "fil_a" }] } })).toBe("fil_a");
+    expect(() => presenterFor("heygen", { monid })).toThrow(/unknown presenter/);
     expect(klingMotion(monid).price).toEqual({ perSecond: 0.168, minSeconds: 3, maxSeconds: 30 });
-    expect(naiveVideo(naive, "google/veo-3.1").price.minSeconds).toBe(4);
   });
 
   it("asks Kling 3.0 to voice the take itself, mirroring the reference's cuts as shots", async () => {
@@ -492,6 +487,6 @@ describe("syllables in words that mix letters and numbers", () => {
     expect(syllables("v1")).toBe(2); // "v" + "one"
     expect(syllables("Part67")).toBe(5); // "part" + "sixty seven"
     expect(syllables("$400,000")).toBe(7); // "four hundred thousand dollars"
-    expect(phraseSyllables("Click Deploy on Naive Short Form v1")).toBeGreaterThan(8);
+    expect(phraseSyllables("Click Deploy on Monid Tool Pack v1")).toBeGreaterThan(8);
   });
 });

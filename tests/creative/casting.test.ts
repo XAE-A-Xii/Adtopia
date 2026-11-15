@@ -120,7 +120,7 @@ describe("casting a brief", () => {
     const flaky: CastingDeps["message"] = async (req) => {
       if ((req.tools?.[0] as { name?: string } | undefined)?.name === "briefing" && !fumbled) {
         fumbled = true;
-        throw new ApiError("naive", 502, "bad_tool_call", "the model returned a malformed tool call");
+        throw new ApiError("anthropic", 502, "bad_tool_call", "the model returned a malformed tool call");
       }
       if (!req.tools) {
         expect(String(req.messages[0].content)).toMatch(/Answer with only one JSON object with these fields: title, summary, hook/);

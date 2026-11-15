@@ -30,32 +30,32 @@ const ahead = (days: number, from = NOW) => new Date(from.getTime() + days * DAY
 // ---------- the estimate and spend accounting ----------
 
 describe("estimateCampaignMicro", () => {
-  const veo = { concepts: 4, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "google/veo-3.1" };
+  const kling = { concepts: 4, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "fal-ai/kling-video/v3/pro/image-to-video" };
 
   it("prices every video as a 36 s presenter video rendered twice, plus the untracked allowance and research", () => {
-    // 4 x (36 s x 2 renders x $0.40 + $2) + $1
-    expect(estimateCampaignMicro(veo)).toBe(124.2 * M);
+    // 4 x (36 s x 2 renders x $0.168 + $2) + $1
+    expect(estimateCampaignMicro(kling)).toBe(Math.round((4 * (36 * 2 * 0.168 + 2) + 1) * M));
   });
 
   it("uses the options' seconds when they ask for more than 36 s", () => {
-    expect(estimateCampaignMicro({ ...veo, concepts: 1, shotsPerConcept: 5, secondsPerShot: 8 })).toBe((40 * 2 * 0.4 + 2 + 1) * M);
+    expect(estimateCampaignMicro({ ...kling, concepts: 1, shotsPerConcept: 5, secondsPerShot: 8 })).toBe(Math.round((40 * 2 * 0.168 + 2 + 1) * M));
   });
 
-  it("assumes an unknown model costs $0.50 a second, more than Veo", () => {
-    expect(estimateCampaignMicro({ ...veo, concepts: 1, videoModel: "someone/new-model" })).toBe((36 * 2 * 0.5 + 2 + 1) * M);
+  it("assumes an unknown model costs $0.50 a second, more than Kling", () => {
+    expect(estimateCampaignMicro({ ...kling, concepts: 1, videoModel: "someone/new-model" })).toBe((36 * 2 * 0.5 + 2 + 1) * M);
   });
 
   it("is never below the UI's video estimate", () => {
     for (const concepts of [1, 2, 4, 8])
       for (const shotsPerConcept of [1, 2, 3])
         for (const secondsPerShot of [4, 8, 10]) {
-          const options = { ...veo, concepts, shotsPerConcept, secondsPerShot };
+          const options = { ...kling, concepts, shotsPerConcept, secondsPerShot };
           expect(estimateCampaignMicro(options)).toBeGreaterThan(estimateUsd({ ...options, learnStyle: true })! * M);
         }
   });
 
   it("covers the measured 2-video campaign that spent $26.10 against a $12.80 video estimate", () => {
-    expect(estimateCampaignMicro({ ...veo, concepts: 2 })).toBeGreaterThan(26.1 * M);
+    expect(estimateCampaignMicro({ ...kling, concepts: 2 })).toBeGreaterThan(26.1 * M);
   });
 });
 
@@ -63,11 +63,11 @@ describe("campaignSpendMicro", () => {
   const zero = { naive_spend_micro: 0, monid_spend_micro: 0, style_spend_micro: 0, strategy_spend_micro: 0, creative_micro: 0, research_micro: 0, videos: 0, planned: 0 };
 
   it("adds the untracked allowance to the recorded spend", () => {
-    expect(campaignSpendMicro({ ...zero, naive_spend_micro: 26 * M, monid_spend_micro: 0.07 * M, videos: 2, planned: 2 })).toBe(26.07 * M + 2 * UNTRACKED_USD_PER_VIDEO * M);
+    expect(campaignSpendMicro({ ...zero, monid_spend_micro: 26.07 * M, videos: 2, planned: 2 })).toBe(26.07 * M + 2 * UNTRACKED_USD_PER_VIDEO * M);
   });
 
   it("takes the larger of the stored totals and a fresh sum of their sources", () => {
-    const stale = { ...zero, naive_spend_micro: 1 * M, strategy_spend_micro: 0.2 * M, creative_micro: 5 * M, research_micro: 0.1 * M };
+    const stale = { ...zero, monid_spend_micro: 1 * M, strategy_spend_micro: 0.2 * M, creative_micro: 5 * M, research_micro: 0.1 * M };
     expect(campaignSpendMicro(stale)).toBe(5.3 * M);
   });
 
@@ -237,10 +237,10 @@ function insertBrand(id = BRAND) {
   db().prepare("insert into brands (id, name, domain, url, created_at, updated_at) values (?, ?, ?, ?, ?, ?)").run(id, "Loop Co", `${id}.com`, `https://${id}.com`, nowIso(), nowIso());
 }
 
-function insertCampaign(fields: { id: string; brand?: string; status: string; created_at: string; updated_at?: string; naive?: number; concepts?: number }) {
+function insertCampaign(fields: { id: string; brand?: string; status: string; created_at: string; updated_at?: string; spend?: number; concepts?: number }) {
   db()
     .prepare(
-      `insert into campaigns (id, brand_id, status, stage, options_json, naive_spend_micro, created_at, updated_at)
+      `insert into campaigns (id, brand_id, status, stage, options_json, monid_spend_micro, created_at, updated_at)
        values (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
@@ -248,8 +248,8 @@ function insertCampaign(fields: { id: string; brand?: string; status: string; cr
       fields.brand ?? BRAND,
       fields.status,
       fields.status === "running" ? "production" : fields.status === "publishing" ? "review" : fields.status,
-      JSON.stringify({ concepts: fields.concepts ?? 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "google/veo-3.1", learnStyle: true }),
-      fields.naive ?? 0,
+      JSON.stringify({ concepts: fields.concepts ?? 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: true }),
+      fields.spend ?? 0,
       fields.created_at,
       fields.updated_at ?? fields.created_at,
     );
@@ -285,7 +285,7 @@ beforeEach(() => {
 describe("loopHistory", () => {
   it("adds up recorded spend and the allowance, and reads open posts", async () => {
     const real = new Date();
-    insertCampaign({ id: "cmp_a", status: "publishing", created_at: ago(2, real), naive: 20 * M });
+    insertCampaign({ id: "cmp_a", status: "publishing", created_at: ago(2, real), spend: 20 * M });
     const crv = insertCreative("cmp_a", { cost: 21 * M });
     insertCreative("cmp_a", { status: "failed" });
     insertCreative("cmp_a", { rejected: 1 });
@@ -368,15 +368,15 @@ describe("advanceLoop", () => {
   });
 
   it("skips with the numbers when this week's spend leaves no room", async () => {
-    await enable(150, { cadence_days: 1 });
+    await enable(75, { cadence_days: 1 });
     const real = new Date();
-    insertCampaign({ id: "cmp_a", status: "live", created_at: ago(3, real), updated_at: ago(2, real), naive: 40 * M, concepts: 2 });
+    insertCampaign({ id: "cmp_a", status: "live", created_at: ago(3, real), updated_at: ago(2, real), spend: 40 * M, concepts: 2 });
     await advanceLoop(real);
     expect(campaignsOf()).toHaveLength(1);
     const latest = events().at(-1)!;
-    // $40 recorded + 2 x $2 allowance; the default 4-video estimate is $124.20
+    // $40 recorded + 2 x $2 allowance; the default 4-video estimate is $57.38
     expect(latest).toMatchObject({ level: "warn" });
-    expect(latest.message).toContain("Over budget: $44.00 spent in the last 7 days + up to $124.20 for the next campaign is more than the $150.00 weekly budget.");
+    expect(latest.message).toContain("Over budget: $44.00 spent in the last 7 days + up to $57.38 for the next campaign is more than the $75.00 weekly budget.");
   });
 
   it("waits for a person to post the last campaign, then moves on when they skip it", async () => {

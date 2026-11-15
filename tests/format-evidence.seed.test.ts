@@ -17,7 +17,7 @@ import { parse, save, store } from "@/lib/db";
 import type { Video } from "@/lib/research";
 
 const run = process.env.NOMEN_SEED_EVIDENCE === "1";
-const CAMPAIGNS = ["cmp_f98819d8b08f46a7a422", "cmp_70daa9e79a4b42008d74"]; // Monid, Naive
+const CAMPAIGNS = ["cmp_f98819d8b08f46a7a422", "cmp_70daa9e79a4b42008d74"]; // Monid, sample 2
 const DIR = join(process.cwd(), "data", "media", "format-evidence");
 
 type Example = { url: string; author: string; views: number; followers: number | null; caption: string };

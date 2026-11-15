@@ -1,12 +1,12 @@
 import { writeFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
+import { claudeClient } from "@/lib/claude";
 import { studyCandidates, studyFormat } from "@/lib/format";
-import { NaiveClient } from "@/lib/naive";
 import { compactResearch, type ResearchPlan } from "@/lib/research";
 
-// Live check of the format study against a real campaign's research (costs a few cents on Naive):
-// NOMEN_LIVE_CAMPAIGN=cmp_… NAIVE_API_KEY=… npx vitest run tests/format.live.test.ts
+// Live check of the format study against a real campaign's research:
+// NOMEN_LIVE_CAMPAIGN=cmp_… ANTHROPIC_API_KEY=… npx vitest run tests/format.live.test.ts
 const campaignId = process.env.NOMEN_LIVE_CAMPAIGN ?? "";
 
 describe.skipIf(!campaignId)("format study (live)", () => {
@@ -20,7 +20,7 @@ describe.skipIf(!campaignId)("format study (live)", () => {
     }));
     const pack = compactResearch(campaign.domain, runs, JSON.parse(campaign.plan_json) as ResearchPlan);
     expect(studyCandidates(pack).length).toBeGreaterThan(0);
-    const study = await studyFormat(new NaiveClient(), pack, `${campaignId}-test`);
+    const study = await studyFormat(claudeClient(), pack, `${campaignId}-test`);
     expect(study?.markdown.length).toBeGreaterThan(500);
     if (process.env.NOMEN_LIVE_OUT) writeFileSync(process.env.NOMEN_LIVE_OUT, study!.markdown);
   }, 300_000);
