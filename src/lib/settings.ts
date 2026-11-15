@@ -19,6 +19,8 @@ export const DEFAULTS = {
   video_seconds: "8",
   shots_per_video: "2",
   videos_per_campaign: "1",
+  /** Formats a campaign must make, one video each, in order ("split_screen,code_ad,brainrot"). Empty: the director picks, videos_per_campaign of them. */
+  format_mix: "split_screen,code_ad,brainrot",
   learn_style: "true",
   monid_video_fallback: "true",
   monid_video_resolution: "1080p",

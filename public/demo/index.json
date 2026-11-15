@@ -2,6 +2,11 @@
   "version": 1,
   "scripts": [
     {
+      "id": "adaptionlabs-ai",
+      "domain": "adaptionlabs.ai",
+      "name": "Adaption Labs"
+    },
+    {
       "id": "fal-ai",
       "domain": "fal.ai",
       "name": "Fal"
