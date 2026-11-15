@@ -206,7 +206,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
     const creative = company ? creatives.find((c) => c.id === company.creativeId) : null;
     const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
     return (
-      <Section title={company ? `Company ${company.idx + 1}` : "The battle"} aside={battle.rival ? <span className="text-[11px] text-[var(--ink-faint)]">against {battle.rival.name}</span> : undefined}>
+      <Section title={company ? `Video ${company.idx + 1}` : "How the posts are doing"} aside={battle.rival ? <span className="text-[11px] text-[var(--ink-faint)]">rival: {battle.rival.name}</span> : undefined}>
         {company ? (
           <Parchment>
             <div className="flex gap-3">
@@ -222,12 +222,12 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
                   {company.ratio !== null && company.views
                     ? `${pct((company.likes ?? 0) / company.views)} likes per view against ${pct(battle.benchmark!.engagement)} for the top videos: ${company.ratio >= 1 ? "ahead" : "behind"} by ${Math.abs(Math.round((company.ratio - 1) * 100))}%.`
                     : company.state === "engaged"
-                      ? "Posted. The company lands in the rival's city and forms up on the quay until the numbers come in."
+                      ? "Posted: it plays on its platform's screen along the street until the numbers come in."
                       : company.state === "sent"
-                        ? "Its post is going out: the company is aboard its ship, sailing for the rival's city."
+                        ? "Its post is going out to the platforms."
                         : company.state === "failed"
-                          ? "Its post failed, so the company stays on the quay at home."
-                          : "Mustered on the quay below the agora beside its ship, waiting for the video to be approved and sent."}
+                          ? "Its post failed."
+                          : "Waiting for the video to be approved and posted."}
                 </p>
                 {company.views !== null && (
                   <p className="mt-1.5 text-[11px] text-[var(--ink-faint)]">
@@ -269,7 +269,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
           <CampMap stations={plan.stations} route={info?.errand ?? null} here={info?.errand?.to ?? null} />
         </div>
         <p className="mt-2 text-[12px] leading-snug text-[var(--ink-soft)]">
-          {info?.errand ? `Carrying finished work from the ${STATION[info.errand.from].name.toLowerCase()} to the ${STATION[info.errand.to].name.toLowerCase()}.` : "Each time a station finishes its part, the courier rides it to the next one."}
+          {info?.errand ? `Carrying finished work from the ${STATION[info.errand.from].name.toLowerCase()} to the ${STATION[info.errand.to].name.toLowerCase()}.` : "Each time a station finishes its part, the courier carries it to the next one."}
         </p>
       </Section>
     );
@@ -284,7 +284,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
             <Icon name="eye" size={16} color="var(--teal)" />
             <span className={`${styles.pixel} text-[15px]`}>{style ? `${style.samples.length || "Top"} videos studied` : agent.state === "working" ? "Watching now" : "Not started"}</span>
           </p>
-          <p className="mt-1 text-[12px] leading-snug text-[var(--ink-soft)]">Structure, pacing and hooks of the best short videos in the category, written down for the strategist.</p>
+          <p className="mt-1 text-[12px] leading-snug text-[var(--ink-soft)]">The hook, pacing, shot types, captions and on-screen text of the best videos in the niche, frame by frame, written down for the director.</p>
           {style?.slug && <p className="mt-2 text-[11px] text-[var(--ink-faint)]">Saved as {style.slug}{style.version ? `@${style.version}` : ""}</p>}
         </Parchment>
       </Section>
@@ -293,9 +293,9 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
 
   if (agent.id === "general" || agent.id === "scribe") {
     const strategy = campaign.strategy;
-    if (!strategy) return <Note>The battle plan is written once the research is in.</Note>;
+    if (!strategy) return <Note>The plan is written once the research is in.</Note>;
     return agent.id === "general" ? (
-      <Section title="The battle plan">
+      <Section title="The plan">
         <Parchment>
           <p className={`${styles.pixel} text-[16px] leading-snug`}>{strategy.campaign.name}</p>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--ink-soft)]">{strategy.campaign.objective}</p>

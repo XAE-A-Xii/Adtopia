@@ -238,8 +238,8 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "lookout",
     station: "scouts",
-    role: "Signal watcher",
-    task: scouting ? "Watching the scouts come and go" : "On watch",
+    role: "Research operator",
+    task: scouting ? "Tracking the scouts' runs on the wall map and filing the research pack" : "At the map desk",
     look: 0,
     act: scouting ? "type" : "sit",
     ...SPOTS.lookout,
@@ -249,7 +249,7 @@ export function derive(view: BrandView | null): CampPlan {
     id: "courier",
     station: "scouts",
     role: "Courier",
-    task: "Rides each finished piece of work on to the next station",
+    task: "Carries each finished piece of work on to the next station",
     look: 3,
     act: "stand",
     ...SPOTS.courier,
@@ -298,7 +298,7 @@ export function derive(view: BrandView | null): CampPlan {
             ? "Choosing which viral video each of ours remakes, and how"
             : "Writing the brief, the search plan and the concepts"
         : strat === "done"
-          ? "Signed off the battle plan"
+          ? "Signed off the plan"
           : "Waiting for the research",
     look: -1,
     // At the cork board, pointing the plan out; up the library ladder for a reference while the script room writes.
@@ -308,8 +308,8 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "scribe",
     station: "tent",
-    role: room ? "Script room" : "Scribe",
-    task: strat === "working" ? (room ? `Writing the remakes line by line; a critic scores each (${room.written} of ${room.total} done)` : "Taking down every shot") : "Standing by",
+    role: room ? "Script room" : "Script writer",
+    task: strat === "working" ? (room ? `Writing the remakes line by line; a critic scores each (${room.written} of ${room.total} done)` : "Writing each concept's script and hook") : "Standing by",
     look: 5,
     act: strat === "working" ? "type" : "sit",
     ...SPOTS.scribe,
@@ -329,7 +329,7 @@ export function derive(view: BrandView | null): CampPlan {
       id: `editor:${slot}`,
       station: "workshop",
       role: "Editor",
-      task: creative ? editorTask(creative) : "Waiting at the desk for a concept from the strategy table",
+      task: creative ? editorTask(creative) : "Waiting at the desk for a script from the script room",
       look: slot % 6,
       act: state === 1 ? "type" : "sit",
       x: desk.x + EDITOR_OFFSET.x,
@@ -345,7 +345,7 @@ export function derive(view: BrandView | null): CampPlan {
     id: "painter",
     station: "workshop",
     role: "Frame artist",
-    task: framing ? "Painting the first frame of each shot so the product looks right" : "Waiting at the easel for shots to paint",
+    task: framing ? "Making the first frame of each shot: the presenter, the setting, the framing" : "Waiting at the frame screen for shots",
     look: 2,
     act: framing ? "paint" : "stand",
     ...SPOTS.painter,

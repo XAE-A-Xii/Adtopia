@@ -45,9 +45,9 @@ export function BrandKitDrawer({ brandId, brandName, stage, wide, onClose }: { b
   // The product brief reads the kit at the start of the reference study; production reads it for screens.
   const timing =
     stage === "research"
-      ? "In time: the oracle reads the kit when it starts studying your product, right after the scouts."
+      ? "In time: the viral study reads the kit when it starts studying your product, right after the research."
       : stage === "style"
-        ? "The oracle is studying your product now; what you add here still goes into the product screens."
+        ? "The viral study is looking at your product now; what you add here still goes into the product screens."
         : stage === "strategy" || stage === "production"
           ? "This campaign's product study is done. The screen builder still uses the kit for videos in production, and the next campaign reads all of it."
           : "The next campaign reads it from the start.";

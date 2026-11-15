@@ -22,7 +22,7 @@ import { ago, money } from "./format";
 import { Screening } from "./Screening";
 import { StationPanel } from "./StationPanel";
 import type { TourStep } from "./tour";
-import { TourCard } from "./TourCard";
+import { PullCord, readFolded, saveFolded, TourCard } from "./TourCard";
 import { textPixel } from "../engine/font";
 import { type DemoPlayer, type SceneClock, useDemo } from "./useDemo";
 import { recording, useTour } from "./useTour";
@@ -183,6 +183,13 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
     [engine],
   );
   const tour = useTour({ enabled: demo, arrived, player, apply: applyStep, pace: paceScene });
+  // The guide (the tour's card) is for people new to the HQ: it folds away, and stays folded.
+  const [guideFolded, setGuideFolded] = useState(false);
+  useEffect(() => setGuideFolded(readFolded()), []);
+  const foldGuide = useCallback((folded: boolean) => {
+    setGuideFolded(folded);
+    saveFolded(folded);
+  }, []);
   // Filming the demo video (?record=1): the tour drives the camera, the captions are added in the
   // edit, so the tour's card, the dispatches and the replay controls stay off screen.
   const [filming] = useState(() => recording());
@@ -859,7 +866,18 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
         <Screening videos={finishedVideos} references={campaign?.references ?? []} id={screening} onPick={setScreening} onClose={() => setScreening(null)} actions={actions} busy={busy} wide={wide} arrows={!tour.on} />
       )}
 
-      {arrived && demo && tour.on && !filming && <TourCard tour={tour} wide={wide} screening={Boolean(screening)} clear={panel && wide && !screening ? 440 : 0} onBottom={setTourBottom} playing={player.playing} onPause={player.toggle} />}
+      {arrived && demo && tour.on && !filming && !guideFolded && (
+        <TourCard tour={tour} wide={wide} screening={Boolean(screening)} clear={panel && wide && !screening ? 440 : 0} onBottom={setTourBottom} playing={player.playing} onPause={player.toggle} onFold={() => foldGuide(true)} />
+      )}
+      {/* Folded (or closed), the guide leaves a pull-cord at the top of the screen to bring it back. */}
+      {arrived && demo && !filming && (guideFolded || !tour.on) && (
+        <PullCord
+          onPull={() => {
+            if (!tour.on) tour.toggle();
+            foldGuide(false);
+          }}
+        />
+      )}
 
       {demo && player.notice && (
         <p role="status" className={`${styles.boxSoft} ${styles.enter} absolute left-1/2 top-[76px] z-30 -translate-x-1/2 px-3 py-1.5 text-[13px]`}>
@@ -888,7 +906,8 @@ export function Camp({ brandId, arrived, engine, home = "/", site = null }: { br
   );
 }
 
-const STEP_NAMES = ["Scouts", "Oracle", "War tent", "Workshop", "Theatre", "Agora"];
+/** The six steps, as the stations are named. */
+const STEP_NAMES = STATIONS.map((s) => s.name);
 
 function TopBar({
   view,
@@ -929,27 +948,9 @@ function TopBar({
     >
       <a href={home} className={`${styles.pixel} ${styles.link} pointer-events-auto flex shrink-0 items-center gap-2 text-[20px] font-semibold text-[var(--ink)]`} aria-label="Surreel home">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/nomen-logo.png" alt="" width={40} height={28} className="h-7 w-auto" />
+        <img src="/brand/surreel-mark.svg" alt="" width={28} height={28} className="size-7" style={{ imageRendering: "pixelated" }} />
         <span className="hidden sm:inline">Surreel</span>
       </a>
-      {view && (
-        <div className={`${styles.boxSoft} pointer-events-auto flex min-w-0 items-center gap-2.5 px-2 py-1.5 sm:px-3`} title={`${view.brand.name} · ${view.brand.domain}`}>
-          {view.brand.profile?.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={view.brand.profile.logo} alt="" className="size-6 shrink-0 object-contain" />
-          ) : (
-            <span className={`${styles.pixel} grid size-6 shrink-0 place-items-center bg-[var(--sand)] text-xs`}>{view.brand.name[0]}</span>
-          )}
-          {/* On phones the name would truncate to a letter or two: the logo stands in for it there. */}
-          <span className="hidden min-w-0 sm:block">
-            <span className="block truncate text-sm font-semibold leading-tight">{view.brand.name}</span>
-            <span className="block truncate text-[11px] leading-tight text-[var(--ink-soft)]">{view.brand.domain}</span>
-          </span>
-          <span className="sr-only sm:hidden">{view.brand.name}</span>
-        </div>
-      )}
-
-      {demo && !recording() && <DemoControls player={demo} />}
       {/* The demo's tour card takes this stretch of the bar and walks the steps itself. */}
       {campaign && !demo && (
         <nav aria-label="Campaign progress" className="pointer-events-auto ml-auto hidden items-center gap-1 lg:flex">
@@ -1370,7 +1371,7 @@ function standing(ratio: number) {
   return pct === 0 ? "Your videos are level with" : `Your videos are ${Math.abs(pct)}% ${pct > 0 ? "ahead of" : "behind"}`;
 }
 
-const COMPANY_WORD: Record<Company["state"], string> = { formed: "mustered", approved: "cleared to sail", sent: "under sail", engaged: "landed", failed: "post failed" };
+const COMPANY_WORD: Record<Company["state"], string> = { formed: "waiting", approved: "approved", sent: "posting", engaged: "live", failed: "post failed" };
 
 /** Over each company of the army: which video it fights for, and how that video is doing. */
 function CompanyTag({ engine, company, index, word, detail }: { engine: RefObject<Engine | null>; company: Company; index: number; word: string; detail: 0 | 1 | 2 }) {

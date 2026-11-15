@@ -152,6 +152,80 @@
   outline-offset: calc(var(--px) * 2);
 }
 
+/* The guide's keys: the same on every step (a key that can't go further just does nothing). */
+.guideKey[aria-disabled="true"] {
+  cursor: default;
+}
+
+/* The guide's fold key: dark, its arrow in aqua, as big as the others. */
+.guideFold {
+  color: var(--teal);
+  background: var(--paper);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line);
+}
+
+.guideFold:hover {
+  color: var(--paper);
+  background: var(--teal);
+}
+
+/* The folded guide's pull-cord: a thin neon cord from the top of the screen, a tab on its end. */
+.cord {
+  display: block;
+  width: 2px;
+  height: 22px;
+  background: linear-gradient(var(--line), var(--teal));
+  animation: cordSway 3.2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.cordTab {
+  margin-top: -1px;
+  padding: 3px 10px 4px;
+  border: 0;
+  color: var(--paper);
+  font-size: 12px;
+  background: var(--teal);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+.cordTab:hover {
+  transform: translateY(3px);
+  filter: drop-shadow(0 0 6px rgba(82, 217, 237, 0.7));
+}
+
+.cordTab:active {
+  transform: translateY(6px);
+}
+
+@keyframes cordSway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cord {
+    animation: none;
+  }
+}
+
 /*
  * The console: the landing's input and its key, cyberpunk style. Panels with cut corners (drawn as
  * a border-coloured shape with a slightly smaller panel inside, both clipped); glows go on the

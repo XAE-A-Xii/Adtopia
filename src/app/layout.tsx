@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/nomen-logo.png" alt="" width={40} height={28} className="h-7 w-auto" />
+              <img src="/brand/surreel-mark.svg" alt="" width={28} height={28} className="size-7" style={{ imageRendering: "pixelated" }} />
               Surreel
             </Link>
             <nav className="flex items-center gap-1 text-sm text-zinc-400">

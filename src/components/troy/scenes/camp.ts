@@ -109,7 +109,7 @@ type Trip = "camp" | "out" | "there" | "back" | "done" | "empty";
 type Stall = { steed: Entity; rider: Agent | null };
 
 /** How a station is named in a sentence ("walking over to the war tent"). */
-const PLACE: Record<Node, string> = { upper: "the top of the inner stairs", lower: "the foot of the inner stairs", horse: "the street door", scouts: "the intelligence desk", oracle: "the reference archive", tent: "the strategy table", workshop: "the production studio", theatre: "the approval desk", agora: "the publishing terminal" };
+const PLACE: Record<Node, string> = { upper: "the top of the inner stairs", lower: "the foot of the inner stairs", horse: "the street door", scouts: "the research desk", oracle: "the format table", tent: "the writers' corner", workshop: "the production studio", theatre: "the review lounge", agora: "the publishing desk" };
 
 /** What a figure standing at its post looks like it is doing, by its act. */
 const ACT_WORDS: Record<Act, string> = {
@@ -118,12 +118,12 @@ const ACT_WORDS: Record<Act, string> = {
   carry: "Carrying a data package",
   climb: "Climbing",
   type: "Typing at the desk",
-  paint: "Painting at the easel",
+  paint: "Making a first frame",
   inspect: "Studying a shot through a lens",
   read: "Taking notes",
-  lookout: "Keeping watch from the tower",
-  herald: "Sounding the trumpet from the podium",
-  point: "Pointing out the plan on the map",
+  lookout: "Watching the wall map",
+  herald: "Sending the posts out from the uplink",
+  point: "Pointing out the plan on the cork board",
   cheer: "Cheering",
   sit: "Sitting",
   watch: "Watching the screen",

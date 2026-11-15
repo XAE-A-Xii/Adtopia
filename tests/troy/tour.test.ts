@@ -27,7 +27,6 @@ describe("the tour", () => {
 
   it("walks the campaign from the website to the next campaign, one step per part of the work", () => {
     expect(steps.map((s) => s.key)).toEqual([
-      "start",
       "scouts",
       "agent",
       "findings",
@@ -58,12 +57,12 @@ describe("the tour", () => {
     const by = Object.fromEntries(steps.map((s) => [s.key, s]));
     const ride = scoutWindow(recording, "tiktok")!;
     expect(by.agent).toMatchObject({ agent: "scout:tiktok", station: null });
-    expect(by.agent.title).toBe("Ride along with the TikTok scout");
+    expect(by.agent.title).toBe("Step 1 · Ride along with the TikTok scout");
     expect(by.agent.at).toBeCloseTo(Math.max(3.5, ride.start - 0.3));
     // The fan-out waits where he sets out; he is followed until he is back, before the findings.
     expect(by.scouts.hold).toBe(by.agent.at);
     expect(by.agent.hold).toBe(Math.min(ride.back + 1, tl.research[1] - 1));
-    expect(by.agent.body).toContain(`rides up to TikTok for ${ride.runs.length} searches`);
+    expect(by.agent.body).toContain("it rides to the TikTok shop");
   });
 
   it("holds each stage until what it made is on screen, and never before the step starts", () => {
@@ -74,32 +73,28 @@ describe("the tour", () => {
     for (const step of steps) if (step.at !== undefined && typeof step.hold === "number") expect(step.hold, step.key).toBeGreaterThanOrEqual(step.at);
   });
 
-  it("reads its captions from the recording", () => {
+  it("explains the animation, not the campaign: no numbers, no video titles, no tools", () => {
     const by = Object.fromEntries(steps.map((s) => [s.key, s]));
-    expect(by.start.title).toBe(`${recording.brand.domain} goes in`);
-    expect(by.findings.body).toContain(`${recording.research!.videos} top videos`);
-    expect(by.findings.body).toContain('Format checks found that 3D "what if" simulation shorts are breaking out and brainrot memes break out on tiny accounts.');
-    expect(by.tent.body).toContain("a code ad (3D animation) and three brainrot meme videos.");
-    expect(by.workshop.body).toContain("the 3D ad is animated in code");
-    expect(tourSteps({ ...recording, creatives: recording.creatives.map((c) => ({ ...c, concept: c.concept && { ...c.concept, format: "organic talking head" } })) }).find((s) => s.key === "workshop")!.body).toContain("an original on the research's best formula, with an AI creator");
-    expect(by[`video-${videos[0].idx}`].body).toBe("Code ad (3D animation). Reason 1 from the research.");
-    expect(by[`video-${videos[0].idx}`].title).toBe(`Video 1: ${videos[0].concept?.title}`);
+    expect(by.scouts.title).toBe("Step 1 · Research");
+    expect(by[`video-${videos[0].idx}`].title).toBe(`Step 5 · Review: video 1 of ${videos.length}`);
+    for (const step of steps) {
+      // Only the step number, and a video's place among the videos, may be digits.
+      expect(step.body, step.key).not.toMatch(/\d/);
+      expect(`${step.title} ${step.body}`, step.key).not.toMatch(/Monid|ElevenLabs|Claude|Haiku|Veo|Kling|anyapi|tikhub|fal\b/i);
+      for (const c of videos) if (c.concept?.title) expect(`${step.title} ${step.body}`, step.key).not.toContain(c.concept.title);
+    }
   });
 });
 
 describe("the tour's real creators", () => {
-  it("adds a step for the briefs cast to creators, with the client's verdicts", () => {
+  it("adds a step for the briefs cast to creators", () => {
     const casting = { status: "approved", pick: { handle: "maker" }, reviews: [{ creator: "loud", approve: false, score: 3.5 }, { creator: "maker", approve: true, score: 8 }] };
     const script: DemoScript = { ...recording, creatives: recording.creatives.map((c, i) => (i === 1 ? { ...c, concept: c.concept && ({ ...c.concept, casting } as typeof c.concept) } : c)) };
     const steps = tourSteps(script);
     const creators = steps.find((s) => s.key === "creators")!;
     expect(creators).toMatchObject({ station: "theatre", focus: "creators" });
-    expect(creators.body).toContain("turned down 1 of them and approved @maker (8/10)");
     expect(steps.map((s) => s.key).indexOf("creators")).toBe(steps.map((s) => s.key).indexOf("post") - 1);
     expect(tourSteps(recording).some((s) => s.key === "creators")).toBe(false);
-    // One creator approved for two briefs is named once.
-    const twice: DemoScript = { ...recording, creatives: recording.creatives.map((c, i) => (i < 2 ? { ...c, concept: c.concept && ({ ...c.concept, casting } as typeof c.concept) } : c)) };
-    expect(tourSteps(twice).find((s) => s.key === "creators")!.body).toContain("approved @maker (8/10) for two briefs.");
   });
 });
 
@@ -118,17 +113,6 @@ describe("the clock under the tour", () => {
     expect(back.publish).toBeNull();
     expect(Object.values(back.approved).every(Boolean)).toBe(true);
     expect(seek(SAMPLE, posted, tl.strategy[0])).toMatchObject({ t: tl.strategy[0], approved: {}, publish: null });
-  });
-});
-
-describe("the battle step", () => {
-  it("says when the replay's numbers are illustrative, and never otherwise", () => {
-    const battle = (script: DemoScript) => tourSteps(script).find((s) => s.key === "battle")!.body;
-    expect(battle(recording)).toMatch(/never made up/);
-    expect(battle(recording)).not.toMatch(/illustrative/);
-    const unposted: DemoScript = { ...recording, creatives: recording.creatives.map((c) => ({ ...c, analytics: null })) };
-    expect(battle(unposted)).toMatch(/numbers here are illustrative/);
-    expect(battle(unposted)).not.toMatch(/never made up/);
   });
 });
 

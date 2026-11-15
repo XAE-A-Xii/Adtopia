@@ -95,12 +95,12 @@ function at(id: StationId, stage: PipelineStage, n: number, name: string, role: 
 // ground floor to production (4, the biggest, in the middle of the room in front of the studio), to
 // review in front of the video wall (5) and on to publishing and analytics (6).
 export const STATIONS: Station[] = [
-  at("scouts", "research", 1, "Research", "Intelligence desk", ROOM.x0 + 150, ROOM.y0 + 46, DECK.z),
-  at("oracle", "style", 2, "Viral study", "Reference archive", ROOM.x0 + 46, ROOM.y0 + 56, DECK.z),
-  at("tent", "strategy", 3, "Strategy · Scripts", "Strategy table", ROOM.x0 + 44, ROOM.y0 + 165, DECK.z),
-  at("workshop", "production", 4, "Production", "Production studio", ROOM.x0 + 146, ROOM.y0 + 142, 0),
-  at("theatre", "review", 5, "Review", "Screening and approval", ROOM.x1 - 55, ROOM.y0 + 58, 0),
-  at("agora", "live", 6, "Publish · Analytics", "Publishing terminal", ROOM.x1 - 52, ROOM.y1 - 58, 0),
+  at("scouts", "research", 1, "Research", "Brand research", ROOM.x0 + 150, ROOM.y0 + 46, DECK.z),
+  at("oracle", "style", 2, "Viral study", "Format study", ROOM.x0 + 46, ROOM.y0 + 56, DECK.z),
+  at("tent", "strategy", 3, "Strategy · Scripts", "Director and script room", ROOM.x0 + 44, ROOM.y0 + 165, DECK.z),
+  at("workshop", "production", 4, "Production", "The workshop", ROOM.x0 + 146, ROOM.y0 + 142, 0),
+  at("theatre", "review", 5, "Review", "Your review", ROOM.x1 - 55, ROOM.y0 + 58, 0),
+  at("agora", "live", 6, "Publish · Analytics", "Posting and performance", ROOM.x1 - 52, ROOM.y1 - 58, 0),
 ];
 
 export const STATION = Object.fromEntries(STATIONS.map((s) => [s.id, s])) as Record<StationId, Station>;
