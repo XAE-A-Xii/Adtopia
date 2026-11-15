@@ -1,4 +1,4 @@
-# Nomen on Vercel with Convex
+# Adtopia on Vercel with Convex
 
 The core keeps its rows in a store with two backends (`src/lib/store/`):
 
@@ -34,7 +34,7 @@ the store contract and the pipeline against both, with Convex on `convex-test`
    connected to the `nomen` project, Production and Preview environments, no custom prefix). Or
    create a project at convex.dev, generate a Production deploy key, and add it to the Vercel project
    as `CONVEX_DEPLOY_KEY`, Production only.
-2. **Provider keys.** In the Vercel project's environment variables, add `NAIVE_API_KEY` and
+2. **Provider keys.** In the Vercel project's environment variables, add `ANTHROPIC_API_KEY`, `FAL_KEY`, and
    `MONID_API_KEY` for Production, as type "Sensitive". Never put them in the repo or in chat.
 3. **Redeploy.** The project's build command is `bash scripts/vercel-build.sh`. With a deploy key it
    runs `npx convex deploy`, sets `NOMEN_SERVER_SECRET` and `NOMEN_SITE_URL` on the Convex deployment,

@@ -1,5 +1,5 @@
+import type { ClaudeClient } from "../claude";
 import { download } from "../media";
-import type { NaiveClient } from "../naive";
 import { extractJson } from "../research";
 import { getSetting } from "../settings";
 import { TYPE_STYLES, type TypeStyle } from "./fonts";
@@ -75,7 +75,7 @@ const STUDY_TOOL = {
   },
 };
 
-export async function studyStatics(naive: NaiveClient, input: { research: StaticResearch; brandName: string; category: string; screenshotPath: string | null; tmpDir: string }): Promise<Study> {
+export async function studyStatics(claude: Pick<ClaudeClient, "messageStream">, input: { research: StaticResearch; brandName: string; category: string; screenshotPath: string | null; tmpDir: string }): Promise<Study> {
   const picks = studySet(input.research);
   const content: unknown[] = [];
   const studied: string[] = [];
@@ -114,7 +114,7 @@ export async function studyStatics(naive: NaiveClient, input: { research: Static
     ].join("\n"),
   });
   const model = getSetting("static_model");
-  const reply = await naive.messageStream({ model, max_tokens: 8000, messages: [{ role: "user", content }], tools: [STUDY_TOOL] });
+  const reply = await claude.messageStream({ model, max_tokens: 8000, messages: [{ role: "user", content }], tools: [STUDY_TOOL] });
   const call = reply.content.find((block) => block.type === "tool_use" && block.name === STUDY_TOOL.name);
   const raw = (call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"))) as Record<string, unknown> | null;
   if (!raw) throw new Error("the ad study returned nothing readable");

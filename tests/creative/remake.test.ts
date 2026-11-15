@@ -169,7 +169,7 @@ describe("the layout", () => {
 
   it("samples frames across the span and at every beat start", () => {
     const times = sampleTimes(span.beats, span.end);
-    expect(times.length).toBeLessThanOrEqual(12); // Naive's image limit per request
+    expect(times.length).toBeLessThanOrEqual(12); // image limit per request
     expect(times[0]).toBeGreaterThanOrEqual(0);
     expect(times[times.length - 1]).toBeLessThan(span.end);
     for (const beat of span.beats) expect(times.some((t) => Math.abs(t - beat.start - 0.25) < 0.4)).toBe(true);
@@ -402,12 +402,12 @@ describe("the script and publishing for remakes", () => {
 describe("a remake's calls when a provider is busy", () => {
   it("wait out busy answers, and give up on anything else at once", async () => {
     let calls = 0;
-    const flaky = { fileUrl: async () => (++calls < 3 ? Promise.reject(new ApiError("naive", 429, "rate_limited", "the service is at capacity")) : { url: "https://x" }) };
+    const flaky = { fileUrl: async () => (++calls < 3 ? Promise.reject(new ApiError("anthropic", 429, "rate_limited", "the service is at capacity")) : { url: "https://x" }) };
     expect(await patient(flaky, [1, 1, 1]).fileUrl()).toEqual({ url: "https://x" });
     expect(calls).toBe(3);
-    const broken = { fileUrl: async () => Promise.reject(new ApiError("naive", 400, "invalid", "bad request")) };
+    const broken = { fileUrl: async () => Promise.reject(new ApiError("anthropic", 400, "invalid", "bad request")) };
     await expect(patient(broken, [1, 1]).fileUrl()).rejects.toThrow(/bad request/);
-    const busy = { fileUrl: async () => Promise.reject(new ApiError("naive", 429, "rate_limited", "the service is at capacity")) };
+    const busy = { fileUrl: async () => Promise.reject(new ApiError("anthropic", 429, "rate_limited", "the service is at capacity")) };
     await expect(patient(busy, [1, 1]).fileUrl()).rejects.toThrow(/capacity/);
   });
 });

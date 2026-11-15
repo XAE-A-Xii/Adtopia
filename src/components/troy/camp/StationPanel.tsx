@@ -12,20 +12,34 @@ import { EventLog, Reason } from "./EventLog";
 import { type CampActions, Pip } from "./Camp";
 import { money, platformName, remakeLine, when } from "./format";
 import { InternalBadge, ReferenceList, RoleBadge } from "./References";
-import { CampMap, Chip, crispIfTiny, Emblem, greekName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, STATE_COLOR, STATE_WORD, Steps } from "./ui";
+import { CampMap, Chip, crispIfTiny, Emblem, crewName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, STATE_COLOR, STATE_WORD, Steps } from "./ui";
 
 /** What a brief's video is judged on once posted, as the War tent says it. */
 const METRIC_WORDS: Record<string, string> = { views: "views", shares: "shares", saves: "saves", link_clicks: "link clicks", sign_ups: "sign-ups", purchases: "purchases" };
 
-/** What each station does, in a sentence, for someone seeing the camp for the first time. */
+/** What each step does, in a sentence or two, for someone seeing the HQ for the first time. */
 const ABOUT: Record<StationId, string> = {
-  scouts: "Scouts ride out to the brand's website, its rivals, TikTok, Reels, Shorts, ad libraries and Reddit, and bring back what they find.",
-  oracle: "The oracle watches the best short videos in the category and writes down why they work: structure, pacing, hooks.",
-  tent: "The strategist turns the research into a brief and one concept per video: a hook, an angle and every shot.",
-  workshop: "Each editor makes one video: first frames are painted, shots are filmed, and an inspector checks every frame.",
-  theatre: "Finished videos play here. Approve the ones you want, then send them out.",
-  agora: "The herald posts each approved video to the brand's own accounts, now or one a day.",
+  scouts:
+    "Gathers everything about the brand: its website, competitors, search terms, the top TikToks and short videos in its niche, competitor ads, and what AI assistants say about it. It is all saved as one research pack. Uses Monid's data scrapers.",
+  oracle:
+    "Studies the best-performing videos frame by frame (the hook, pacing, shot types, captions and on-screen text) to learn what format works in this niche. ElevenLabs transcribes the audio, Claude reads the frames. Optional: when it is off, research goes straight to strategy.",
+  tent: "The director turns the research into a plan: the creative brief, search keywords and a few video concepts with their format. The script room then writes each concept's script and hook. Runs on Claude Haiku.",
+  workshop: "Turns each script into a finished video, in eight steps: first frame, frame check, render, shot check, product screens, continuity check, voice-over and the cut.",
+  theatre: "Your review: the finished videos play here. Approve the ones you want, or send one back for another take.",
+  agora: "Posts each approved video to the brand's own accounts through Postiz, now or one a day, then follows how each one does against the niche's top videos.",
 };
+
+/** Production's eight steps for every video, as the workshop runs them. */
+const PRODUCTION_STEPS: Array<[string, string]> = [
+  ["First frame", "A still of how each shot opens: the presenter, the setting, the framing. Shot 1's frame is the identity the later shots are given, so the same person and place carry through."],
+  ["Frame check", "Each frame is checked before paying for video: the right person, no garbled text, true to the script. If not, it is remade (up to 2 tries)."],
+  ["Render", "The frame is animated into a clip, the presenter speaking the line in it, so talking-head videos need no separate voice."],
+  ["Shot check", "Four frames from each clip are scored out of 10. A failing shot is rendered again with a corrected prompt (up to 3 renders)."],
+  ["Product screens", "While clips render, Claude writes realistic screens of the brand's site or app and captures them as short clips for cutaways."],
+  ["Continuity check", "One frame from each shot is compared: does the person or the room change between shots? The ones that don't match are rendered again (once)."],
+  ["Voice-over", "Only for formats without anyone on camera (a voice-over demo, a text story): the narration, paced to the video."],
+  ["The cut", "One editing pass: dead air trimmed, shots and screens joined, the voice-over and captions added, a poster image saved."],
+];
 
 export function StationPanel({
   id,
@@ -69,8 +83,8 @@ export function StationPanel({
   const here = plan.agents.filter((a) => a.station === id);
   // Scouts who already brought their findings back have gone home: count them instead of listing.
   // The agora's army is shown a company at a time: its first hoplite, and the first company's archer.
-  const army = here.filter((a) => /^(hoplite|archer):/.test(a.id));
-  const agents = here.filter((a) => !a.returning && (!/^(hoplite|archer):/.test(a.id) || a.id.endsWith(":0")));
+  // The plan still keeps the old expedition's companies for the numbers; they are not in the HQ.
+  const agents = here.filter((a) => !a.returning && !/^(hoplite|archer):/.test(a.id));
   const away = here.filter((a) => a.away).length;
   const back = here.filter((a) => a.returning === "scroll").length;
   const empty = here.filter((a) => a.returning === "empty").length;
@@ -94,7 +108,7 @@ export function StationPanel({
       aria-label={`${station.name}: ${station.role}`}
       className={`${styles.box} ${styles.rise} absolute z-20 flex flex-col ${wide ? "bottom-4 right-4 top-[76px] w-[420px]" : "inset-x-3 bottom-3 h-[62vh]"}`}
     >
-      <header className="relative border-b-2 border-[rgba(43,29,20,0.12)] px-5 pb-3 pt-4">
+      <header className="relative border-b-2 border-[rgba(200,196,255,0.12)] px-5 pb-3 pt-4">
         <div className="flex items-start gap-3">
           <div className={`${styles.parchment} grid size-[64px] shrink-0 place-items-center`}>
             <Emblem baker={baker} id={id} size={56} />
@@ -124,7 +138,7 @@ export function StationPanel({
 
         <div className="mb-5">
           <p className="mb-2 text-[12px] leading-relaxed text-[var(--ink-soft)]">{ABOUT[id]}</p>
-          <div className="bg-[rgba(43,29,20,0.04)] px-2 pt-2">
+          <div className="bg-[rgba(200,196,255,0.04)] px-2 pt-2">
             <CampMap stations={plan.stations} here={id} onPick={onStation} />
           </div>
         </div>
@@ -135,7 +149,7 @@ export function StationPanel({
           title="Agents"
           aside={
             <span className="text-[11px] text-[var(--ink-faint)]">
-              {[away && `${away} out on runs`, back && `${back} back with findings`, empty && `${empty} came back empty`, army.length && `an army of ${army.length}, one of each company shown`].filter(Boolean).join(" · ") || "Click one to follow them"}
+              {[away && `${away} out on runs`, back && `${back} back with findings`, empty && `${empty} came back empty`].filter(Boolean).join(" · ") || "Click one to follow them"}
             </span>
           }
         >
@@ -166,9 +180,9 @@ export function StationPanel({
         )}
       </div>
 
-      <footer className="border-t-2 border-[rgba(43,29,20,0.12)] px-5 py-3 text-[12px] text-[var(--ink-soft)]">
+      <footer className="border-t-2 border-[rgba(200,196,255,0.12)] px-5 py-3 text-[12px] text-[var(--ink-soft)]">
         {demo ? (
-          <span>{demo.recorded ? "A recorded campaign, replayed: nothing is spent." : "Demo camp: made-up data, nothing is spent."}</span>
+          <span>{demo.recorded ? "A recorded campaign, replayed: nothing is spent." : "Demo HQ: made-up data, nothing is spent."}</span>
         ) : (
           <a href={`/brands/${encodeURIComponent(view.brand.id)}`} className={`${styles.link} ${styles.pixel}`}>
             Open the full workspace ↗
@@ -183,11 +197,11 @@ function AgentTile({ agent, baker, onClick }: { agent: AgentPlan; baker: Baker |
   const tone = agent.state === "working" ? "var(--crimson)" : agent.state === "done" ? "var(--olive)" : agent.state === "failed" ? "var(--crimson-dark)" : "var(--ink-faint)";
   return (
     <li>
-      <button type="button" onClick={onClick} className={`${styles.boxSoft} group block w-full px-1 pb-2 pt-1 text-center transition-transform hover:-translate-y-0.5`} aria-label={`${greekName(agent.id)}, ${agent.role}: ${agent.task}`}>
-        <span className="block bg-[rgba(234,214,173,0.35)]">
+      <button type="button" onClick={onClick} className={`${styles.boxSoft} group block w-full px-1 pb-2 pt-1 text-center transition-transform hover:-translate-y-0.5`} aria-label={`${crewName(agent.id)}, ${agent.role}: ${agent.task}`}>
+        <span className="block bg-[rgba(200,196,255,0.06)]">
           <Portrait baker={baker} look={agent.look} act={agent.away ? "march" : agent.act} size={72} />
         </span>
-        <span className={`${styles.pixel} mt-1 block truncate text-[12px]`}>{greekName(agent.id)}</span>
+        <span className={`${styles.pixel} mt-1 block truncate text-[12px]`}>{crewName(agent.id)}</span>
         <span className="flex items-center justify-center gap-1 text-[10px] text-[var(--ink-soft)]">
           <span className={`inline-block size-[6px] ${agent.state === "working" ? styles.blink : ""}`} style={{ background: tone }} aria-hidden="true" />
           {agent.away ? "Out on a run" : agent.role}
@@ -203,7 +217,7 @@ function Progress({ value, color }: { value: number; color: string }) {
   return (
     <div className="mt-3 flex gap-[3px]" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)}>
       {Array.from({ length: segments }, (_, i) => (
-        <span key={i} className="h-[6px] flex-1" style={{ background: i < filled ? color : "rgba(43,29,20,0.1)" }} />
+        <span key={i} className="h-[6px] flex-1" style={{ background: i < filled ? color : "rgba(200,196,255,0.1)" }} />
       ))}
     </div>
   );
@@ -257,7 +271,7 @@ function Scouts({ view, actions }: { view: BrandView; actions: CampActions }) {
               return (
                 <li
                   key={run.key}
-                  className="flex items-center gap-2 bg-[rgba(43,29,20,0.04)] py-1.5 pl-2.5 pr-2"
+                  className="flex items-center gap-2 bg-[rgba(200,196,255,0.04)] py-1.5 pl-2.5 pr-2"
                   style={{ boxShadow: `inset 3px 0 0 ${land.color}` }}
                   title={run.error ?? `${land.name}: ${land.what}, through ${run.provider}${run.cost ? ` · ${money(run.cost)}` : ""}`}
                 >
@@ -321,10 +335,10 @@ function Oracle({ view, state, actions }: { view: BrandView; state: string; acti
             {campaign.spend.style > 0 && <p className="mt-2 text-[12px] text-[var(--ink-faint)]">Cost so far {money(campaign.spend.style)}</p>}
           </Section>
         )}
-        {study && !study.product?.fromKit && state === "working" && <KitNudge actions={actions}>The oracle works best with your real screens and logo.</KitNudge>}
+        {study && !study.product?.fromKit && state === "working" && <KitNudge actions={actions}>The viral study works best with your real screens and logo.</KitNudge>}
         <Section title={`Viral references${studied ? ` · ${studied} broken down` : ""}`}>
           {references.length === 0 ? (
-            <p className="text-[13px] text-[var(--ink-soft)]">The oracle ranks the videos the scouts found by how far they outran their accounts, then breaks the best down beat by beat. They show up here as soon as they&apos;re picked.</p>
+            <p className="text-[13px] text-[var(--ink-soft)]">The viral study ranks the videos the research found by how far they outran their accounts, then breaks the best down frame by frame. They show up here as soon as they&apos;re picked.</p>
           ) : (
             <ReferenceList references={references} onScreen={onScreen} />
           )}
@@ -453,11 +467,11 @@ function Tent({ view, focus }: { view: BrandView; focus: string | null }) {
   const engine = Boolean(view.campaign?.study || view.campaign?.references?.length);
   if (!strategy) {
     return (
-      <Section title="Battle plan">
+      <Section title="The plan">
         <p className="text-[13px] text-[var(--ink-soft)]">
           {engine
-            ? "The creative director reads the oracle's breakdowns and picks which viral video each of ours remakes, and how. Then the script room writes every video line by line, and a critic scores each script."
-            : "The strategist writes the brand brief, the search plan and every concept once the research is in."}
+            ? "The director reads the viral study's breakdowns and picks which viral video each of ours remakes, and how. Then the script room writes every video's script and hook, and a critic scores each one."
+            : "The director writes the creative brief, the search keywords and every concept once the research is in."}
         </p>
       </Section>
     );
@@ -484,12 +498,12 @@ function Tent({ view, focus }: { view: BrandView; focus: string | null }) {
               const concept = concepts.find((c) => c.brief?.title === brief.title);
               const review = concept?.script?.review;
               return (
-                <li key={`${brief.title}-${i}`} className="flex gap-2.5 bg-[rgba(43,29,20,0.035)] px-3 py-2.5 text-[13px]">
+                <li key={`${brief.title}-${i}`} className="flex gap-2.5 bg-[rgba(200,196,255,0.035)] px-3 py-2.5 text-[13px]">
                   <span className={`${styles.pixel} grid size-6 shrink-0 place-items-center bg-[var(--ink)] text-[12px] text-[var(--paper)]`}>{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold leading-snug">{brief.title}</p>
                     <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[var(--ink-soft)]">
-                      <span className={`${styles.pixel} bg-[rgba(43,29,20,0.07)] px-1.5 text-[11px] leading-[16px]`}>{brief.format.replace(/_/g, " ")}</span>
+                      <span className={`${styles.pixel} bg-[rgba(200,196,255,0.07)] px-1.5 text-[11px] leading-[16px]`}>{brief.format.replace(/_/g, " ")}</span>
                       {brief.role && <RoleBadge role={brief.role} />}
                       {brief.metric && <span>judged on {METRIC_WORDS[brief.metric] ?? brief.metric.replace(/_/g, " ")}</span>}
                     </p>
@@ -529,7 +543,7 @@ function Tent({ view, focus }: { view: BrandView; focus: string | null }) {
       <Section title={`Concepts · ${strategy.campaign.concepts.length}`}>
         <ol className="space-y-2">
           {strategy.campaign.concepts.map((concept, i) => (
-            <li key={i} className="flex gap-3 bg-[rgba(43,29,20,0.04)] px-3 py-2.5">
+            <li key={i} className="flex gap-3 bg-[rgba(200,196,255,0.04)] px-3 py-2.5">
               <span className={`${styles.pixel} grid size-7 shrink-0 place-items-center bg-[var(--ink)] text-[13px] text-[var(--paper)]`}>{i + 1}</span>
               <span className="min-w-0 text-[13px]">
                 <span className="block font-semibold leading-snug">{concept.title}</span>
@@ -561,14 +575,26 @@ function Workshop({ view, busy, actions }: { view: BrandView; busy: string | nul
   if (!campaign) return null;
   const creatives = campaign.creatives.slice().sort((a, b) => a.idx - b.idx);
   return (
+    <>
+    <Section title="How each video is made">
+      <ol className="space-y-1.5 text-[12px] leading-snug">
+        {PRODUCTION_STEPS.map(([name, what], i) => (
+          <li key={name} className="flex gap-2">
+            <span className={`${styles.pixel} grid size-[16px] shrink-0 place-items-center bg-[var(--crimson)] text-[11px] text-[var(--paper)]`}>{i + 1}</span>
+            <span>
+              <span className={`${styles.pixel} text-[var(--ink)]`}>{name}</span> <span className="text-[var(--ink-soft)]">{what}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </Section>
     <Section title={`Videos · ${creatives.filter((c) => c.status === "ready").length}/${creatives.length || campaign.options.concepts}`}>
-      {campaign.naiveOut && <p className="mb-3 bg-[rgba(201,143,58,0.12)] px-3 py-2 text-[12px]">Naive is out of credits, so new shots render on Kling through Monid.</p>}
       {creatives.length === 0 ? (
-        <p className="text-[13px] text-[var(--ink-soft)]">The desks are set up; each editor starts when the strategist hands over the concepts.</p>
+        <p className="text-[13px] text-[var(--ink-soft)]">The editing desks are set up; each editor starts when the script room hands over a script.</p>
       ) : (
         <ul className="space-y-4">
           {creatives.map((creative) => (
-            <li key={creative.id} className="bg-[rgba(43,29,20,0.04)] px-3 py-3 text-[13px]">
+            <li key={creative.id} className="bg-[rgba(200,196,255,0.04)] px-3 py-3 text-[13px]">
               <div className="mb-2 flex items-baseline gap-2">
                 <span className="min-w-0 flex-1 truncate font-semibold">{creative.concept?.title ?? `Video ${creative.idx + 1}`}</span>
                 {creative.internal && <InternalBadge cleared={creative.cleared} />}
@@ -604,11 +630,12 @@ function Workshop({ view, busy, actions }: { view: BrandView; busy: string | nul
         </ul>
       )}
     </Section>
+    </>
   );
 }
 
 function Theatre({ view, busy, actions, demo, focus }: { view: BrandView; busy: string | null; actions: CampActions; demo: boolean; focus: string | null }) {
-  const accounts = useAccounts(demo ? null : view.brand.id, view.brand.connected);
+  const accounts = useAccounts(demo ? null : view.brand.id);
   const campaign = view.campaign;
   const finished = (campaign?.creatives ?? []).filter((c) => c.status === "ready").sort((a, b) => a.idx - b.idx);
   // Real-creator mode: a brief cast to a creator, waiting for your OK to send its outreach. A brief
@@ -672,15 +699,11 @@ function Theatre({ view, busy, actions, demo, focus }: { view: BrandView; busy: 
 
 type AccountsState = { accounts: SocialAccountView[] | null; error: string | null };
 
-/** The brand's connected accounts, read live from Naive when the theatre opens (none before it is activated). */
-function useAccounts(brandId: string | null, activated: boolean): AccountsState {
+/** The brand's connected accounts, read live from Postiz when the theatre opens. */
+function useAccounts(brandId: string | null): AccountsState {
   const [state, setState] = useState<AccountsState>({ accounts: null, error: null });
   useEffect(() => {
     if (!brandId) return;
-    if (!activated) {
-      setState({ accounts: [], error: null });
-      return;
-    }
     let alive = true;
     socialAccounts(brandId).then(
       (result) => alive && setState(result),
@@ -689,7 +712,7 @@ function useAccounts(brandId: string | null, activated: boolean): AccountsState 
     return () => {
       alive = false;
     };
-  }, [brandId, activated]);
+  }, [brandId]);
   return state;
 }
 
@@ -708,10 +731,10 @@ function Accounts({ state, busy, connect }: { state: AccountsState; busy: string
       ) : accounts === null ? (
         "Checking the brand's accounts…"
       ) : accounts.length === 0 ? (
-        <>Posting goes to the brand&apos;s own accounts, labeled AI-generated. Connect them once: {link("connect accounts")}.</>
+        <>Posting goes through Postiz to the brand&apos;s own accounts, labeled AI-generated. Connect them once: {link("connect accounts")}.</>
       ) : (
         <>
-          Posting to {accounts.map((a) => `${platformName(a.platform)} ${a.name}`).join(", ")}, labeled AI-generated. {link("Add accounts")}
+          Posting through Postiz to {accounts.map((a) => `${platformName(a.platform)} ${a.name}`).join(", ")}, labeled AI-generated. {link("Add accounts")}
         </>
       )}
     </p>
@@ -864,8 +887,8 @@ function VideoCard({ creative, busy, actions }: { creative: CreativeView; busy: 
         ) : creative.videoUrl ? (
           <video src={`${creative.videoUrl}#t=0.5`} muted playsInline preload="metadata" className="size-full object-cover" />
         ) : null}
-        <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-[rgba(43,29,20,0.12)] opacity-90 transition-opacity group-hover:opacity-100">
-          <span className="grid size-10 place-items-center bg-[var(--paper)] text-[var(--ink)] shadow-[0_3px_0_rgba(43,29,20,0.3)]">
+        <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-[rgba(200,196,255,0.12)] opacity-90 transition-opacity group-hover:opacity-100">
+          <span className="grid size-10 place-items-center bg-[var(--paper)] text-[var(--ink)] shadow-[0_3px_0_rgba(200,196,255,0.3)]">
             <Icon name="play" size={16} />
           </span>
         </span>
@@ -894,8 +917,8 @@ function VideoCard({ creative, busy, actions }: { creative: CreativeView; busy: 
 export { crispIfTiny };
 
 /**
- * The expedition, in numbers: each video's company and how its posts do against the category's top
- * videos, which is how each attack on the rival's city ends.
+ * How the posts are doing: each video's numbers against the niche's top videos, as the crowds at the
+ * platforms' screens along the street show it.
  */
 function Battle({ battle, category }: { battle: BattlePlan; category: string | null }) {
   if (battle.phase === "none") return null;
@@ -903,12 +926,12 @@ function Battle({ battle, category }: { battle: BattlePlan; category: string | n
   const rival = battle.rival?.name ?? "the rival";
   const lean = battle.score?.ratio ? Math.max(0.06, Math.min(0.94, 0.5 + Math.log2(battle.score.ratio) * 0.45)) : 0.5;
   return (
-    <Section title="The battle" aside={battle.rival ? <span className="text-[11px] text-[var(--ink-faint)]">against {rival}{battle.rival.ads ? `, ${battle.rival.ads} live ads` : ""}</span> : undefined}>
+    <Section title="How the posts are doing" aside={battle.rival ? <span className="text-[11px] text-[var(--ink-faint)]">rival: {rival}{battle.rival.ads ? `, ${battle.rival.ads} live ads` : ""}</span> : undefined}>
       <p className="text-[12px] leading-relaxed text-[var(--ink-soft)]">
-        A company for each video sails from the quay below the agora to the city of {rival} and lands once its video is posted. It routs the legion facing it if the video beats the top videos
-        {category ? ` in ${category}` : ""} the scouts found by likes per view, holds its ground if level, and falls back to the quay if behind.
+        Each posted video plays on its platform&apos;s screen along the street, and is scored against the top videos{category ? ` in ${category}` : ""} the research found, by likes per view: crowds gather
+        and fireworks go up when it is ahead; the screen dims when it falls behind.
       </p>
-      <div className="mt-3 bg-[rgba(43,29,20,0.04)] p-2.5">
+      <div className="mt-3 bg-[rgba(200,196,255,0.04)] p-2.5">
         <p className="flex items-center justify-between text-[11px]">
           <span className={`${styles.pixel} text-[var(--olive)]`}>Your videos {battle.score ? pct(battle.score.engagement) : "–"}</span>
           <span className={`${styles.pixel} text-[var(--crimson)]`}>Top videos {battle.benchmark ? pct(battle.benchmark.engagement) : "–"}</span>
@@ -933,7 +956,7 @@ function Battle({ battle, category }: { battle: BattlePlan; category: string | n
               <span className={`${styles.pixel} shrink-0 text-[11px]`} style={{ color: company.ratio === null ? "var(--ink-faint)" : ahead ? "var(--olive)" : "var(--crimson)" }}>
                 {company.ratio !== null
                   ? `${ahead ? "▲" : "▼"} ${Math.abs(Math.round((company.ratio - 1) * 100))}%${company.views ? ` · ${pct((company.likes ?? 0) / company.views)}` : ""}`
-                  : { formed: "mustered", approved: "cleared to sail", sent: "under sail", engaged: "landed", failed: "post failed" }[company.state]}
+                  : { formed: "waiting", approved: "approved", sent: "posting", engaged: "live", failed: "post failed" }[company.state]}
               </span>
             </li>
           );
@@ -959,7 +982,7 @@ function Agora({ view, actions }: { view: BrandView; actions: CampActions }) {
       )}
       <Section title={`Posts · ${posts.length}`}>
         {posts.length === 0 ? (
-          <p className="text-[13px] text-[var(--ink-soft)]">Approve videos in the theatre, then send them out. The herald posts each one to the brand&apos;s own accounts.</p>
+          <p className="text-[13px] text-[var(--ink-soft)]">Approve videos at Review, then send them out. Postiz posts each one to the brand&apos;s own accounts.</p>
         ) : (
           <ul className="space-y-3">
             {posts.map((post) => {
@@ -968,7 +991,7 @@ function Agora({ view, actions }: { view: BrandView; actions: CampActions }) {
               const numbers = postNumbers(post);
               const step = post.status === "posted" || post.status === "scheduled" ? 3 : post.status === "processing" ? 2 : post.status === "failed" ? 2 : 1;
               return (
-                <li key={post.id} className="flex gap-3 bg-[rgba(43,29,20,0.04)] p-2.5 text-[13px]">
+                <li key={post.id} className="flex gap-3 bg-[rgba(200,196,255,0.04)] p-2.5 text-[13px]">
                   {creative?.posterUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={creative.posterUrl} alt="" onLoad={crispIfTiny} className="aspect-[9/16] w-[38px] shrink-0 self-start bg-[var(--ink)] object-cover" />

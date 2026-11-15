@@ -1,6 +1,6 @@
 import { logEvent, now as nowIso, parse, store } from "./db";
-import { type CampaignOptions, type CampaignStatus, defaultOptions, startCampaign } from "./pipeline";
-import { VEO_USD_PER_SECOND } from "./views";
+import { type CampaignOptions, type CampaignStatus, defaultOptions, lastPreferences, startCampaign } from "./pipeline";
+import { KLING_USD_PER_SECOND } from "./views";
 
 // The always-on loop ("Autopilot" on the brand page). For each brand that opts in, the worker starts
 // the brand's next campaign once the last one is finished, its videos have gone out, the cadence has
@@ -15,13 +15,11 @@ const DAY_MS = 24 * 3600 * 1000;
 export const WINDOW_MS = 7 * DAY_MS;
 
 /**
- * Untracked spend per video, in USD. Model calls through Naive's proxy (script writer and critic,
- * QC, the first-frame gate, the screen designer, the reference breakdowns), text-to-speech and the
- * site capture are billed to the organization but never reported back per call. At Sonnet 5.5 list
- * prices ($2 in, $10 out per million tokens) a typical video's share is about $1 (scripts ~$0.25,
- * QC and frame checks ~$0.40, up to four screens ~$0.20 each) plus ~$1 per campaign for six
- * reference breakdowns; $2 per video, counted on at least the planned number of videos, is an
- * over-estimate on purpose. Frames are recorded already, so they are counted twice: fine.
+ * Untracked spend per video, in USD. Model calls via Anthropic (script writer and critic,
+ * QC, the first-frame gate, the screen designer, the reference breakdowns), text-to-speech and
+ * frames count toward the campaign estimate: at Sonnet list prices ($2 in, $10 out per million
+ * tokens) a typical video's share is about $1 plus ~$1 per campaign for reference breakdowns;
+ * $2 per video is an intentional over-estimate.
  */
 export const UNTRACKED_USD_PER_VIDEO = 2;
 
@@ -39,8 +37,11 @@ export const RENDERS_PER_SHOT = 2;
 export const CAMPAIGN_OVERHEAD_USD = 1;
 
 /** Known video model prices per second of output. */
-const USD_PER_SECOND: Record<string, number> = { "google/veo-3.1": VEO_USD_PER_SECOND };
-/** A model we have no measured price for is assumed to cost more than Veo, never less. */
+const USD_PER_SECOND: Record<string, number> = {
+  "fal-ai/kling-video/v3/pro/image-to-video": KLING_USD_PER_SECOND,
+  "fal-ai/kling-video/v3/pro/text-to-video": KLING_USD_PER_SECOND,
+};
+/** A model we have no measured price for is assumed to cost more than Kling, never less. */
 export const UNKNOWN_MODEL_USD_PER_SECOND = 0.5;
 
 export const usdPerSecond = (model: string) => USD_PER_SECOND[model] ?? UNKNOWN_MODEL_USD_PER_SECOND;
@@ -317,7 +318,8 @@ export async function advanceLoop(now = new Date()) {
     try {
       const { loop, decision } = await decide(brandId, now);
       if (decision.start) {
-        const campaignId = await startCampaign(brandId, defaultOptions());
+        // The next campaign keeps what the customer asked for last time.
+        const campaignId = await startCampaign(brandId, { ...defaultOptions(), preferences: await lastPreferences(brandId) });
         const n = (await store().find("campaigns", { brand_id: brandId })).length;
         await recordDecision(brandId, decision);
         await logEvent({ brandId, campaignId, message: `Autopilot started campaign ${n}. ${decision.reason}` });

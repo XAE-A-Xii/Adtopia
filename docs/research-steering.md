@@ -5,7 +5,7 @@ with 100K likes sells far more. The research agents should look for the highest 
 customer, use reach as one good sign among others, and plan campaigns the way performance teams
 do: some videos to get eyes on the product, others to convert.
 
-Until now Nomen ranked references almost only on reach: views per follower, engagement and raw
+Until now Adtopia ranked references almost only on reach: views per follower, engagement and raw
 views. This doc covers what public signals predict conversion, what Monid can actually give us,
 and the steering built on that.
 
@@ -53,7 +53,7 @@ thresholds as rules of thumb.
    account's data: no library publishes them. They belong in measurement, below, not in research.
    ([Motion](https://motionapp.com/blog/key-creative-performance-metrics))
 8. **Saves and buying-intent comments** ("link?", "where can I buy", "price?") are widely used as
-   intent signals, but I found no study tying save rate to purchases. Nomen uses saves per like as
+   intent signals, but I found no study tying save rate to purchases. Adtopia uses saves per like as
    a heuristic, judged against the niche (below), and leaves comment text as a follow-up.
    ([Creatorflow on intent comments](https://creatorflow.so/blog/instagram-sales-signals-high-intent-comments/))
 
@@ -161,7 +161,7 @@ breakdown's `role` is `convert` for ads, for candidates whose evidence says conv
 the model reads as built to sell that actually ask for the click; otherwise `reach`. It also keeps
 `origin` and the candidate's `conversion` score and signals.
 
-### The director plans a funnel mix (`strategy.ts`, `naive/agents/director.md`)
+### The director plans a funnel mix (`strategy.ts`, `DIRECTOR_PROMPT`)
 
 - Every brief has `role` (reach or convert) and `metric` (views, shares or saves; link_clicks,
   sign_ups or purchases). Both are required by the schema.
@@ -171,8 +171,7 @@ the model reads as built to sell that actually ask for the click; otherwise `rea
   read "unknown (paid ad)". Convert briefs remake converters and keep their selling beats; reach
   briefs remake reach proof with a soft ask. References should rebuild cleanly and run 45 s or
   less when the evidence is close.
-- `director.md` changes reach Naive only after `npm run naive:plan` and an approved apply. The
-  per-campaign message and the schema carry the same rules now.
+- The per-campaign message and the schema carry the conversion and funnel rules.
 
 ### The script room keeps the selling beats (`script.ts`)
 
@@ -183,7 +182,7 @@ that asks; the critic scores `does_its_job`.
 
 ## Cloneability: references the footage clone can reproduce
 
-A follow-up: the agents should find videos that went viral and converted *and* that Nomen
+A follow-up: the agents should find videos that went viral and converted *and* that Adtopia
 can remake one-to-one, with face videos (the hardest, and the most return) done best. The remake
 now clones the reference's own footage: a lookalike AI persona performs the original's exact
 motion (Kling 3.0 Motion Control: one person, single continuous takes), the original audio is
@@ -262,11 +261,9 @@ on camera +2.5"), shown to the screen, the director and the camp.
   on TikTok (`tiktok_face_*`) and the first on Reels (`reels_face_0`); a face query that repeats a
   conversion query is skipped. Fallback: "<category> storytime", "<category> testimonial".
 - **Scout**: sees each video's `clones` guess and must spend at least one follow-up on face UGC.
-- **Director** (`strategyMessage`, `naive/agents/director.md`): sees `cloneability` and
+- **Director** (`strategyMessage`, `DIRECTOR_PROMPT` in `strategy.ts`): sees `cloneability` and
   `hardest_to_clone` per reference; face-to-camera UGC is the core format; prefer references at
-  6 or more; a brief that remakes one below 6 says why in `why`. The director.md change reaches
-  Naive only after `npm run naive:plan` and an approved apply; the per-campaign message carries
-  the same rules now.
+  6 or more; a brief that remakes one below 6 says why in `why`.
 - **Camp**: the Oracle shows "clones N/10" under "converts N/10" (red when below the gate), the
   hardest part, and every signal under "more".
 
@@ -283,7 +280,7 @@ Research can only guess which videos sell. To learn it:
 1. **A tracked link per video**: a unique short link or UTM (`utm_content=<creative id>`) in the
    bio or link-in-bio page, a per-video promo code, or an attributed deep link for apps.
 2. **Collect** link clicks from the shortener and sign-ups or purchases by `utm_content` from the
-   brand's analytics (or a Nomen pixel or webhook), plus platform stats (views, shares, saves,
+   brand's analytics (or a Adtopia pixel or webhook), plus platform stats (views, shares, saves,
    profile visits, hook and hold rate where the platform gives them).
 3. **Judge each video on its own metric** (`brief.metric`) and its cost per result, and feed that
    into `pastResults` with the role.

@@ -83,10 +83,10 @@ describe.skipIf(!ffmpeg)("production's files", () => {
 
     const [creative] = await listCreatives(campaignId);
     const shots = JSON.parse(creative.shots_json);
-    Object.assign(shots[0], { status: "passed", local_path: `${id}/shot1-r1.mp4`, renders: 1, provider: "naive" });
+    Object.assign(shots[0], { status: "passed", local_path: `${id}/shot1-r1.mp4`, renders: 1, provider: "fal" });
     await sqliteStore().update("creatives", { id }, { shots_json: JSON.stringify(shots), status: "producing" });
 
-    const ctx: ProductionContext = { campaignId, brandId, naive: null, monid: null, naiveOut: () => false, markNaiveOut: async () => undefined, strategy: { brand: {} } as never };
+    const ctx: ProductionContext = { campaignId, brandId, claude: null, fal: null, monid: null, strategy: { brand: {} } as never };
     const [row] = await listCreatives(campaignId);
     await advanceCreative(ctx, row);
 
@@ -107,21 +107,20 @@ describe.skipIf(!ffmpeg)("production's files", () => {
     vi.stubGlobal("fetch", async () => new Response(bytes));
     try {
       useStore(storeWith(remoteFiles(join(root, "plate-machine-1"))));
-      const naive = {
-        generateImage: async () => ({ model: "fake", files: [{ id: "fil_plate", content_type: "image/png" }], cost_micro_usd: 30_000 }),
-        fileUrl: async () => ({ url: "https://files.example/plate.png", expires_at: "" }),
+      const fal = {
+        run: async () => ({ images: [{ url: "https://files.example/plate.png" }] }),
       };
-      const ctx = { campaignId: "cmp_x", brandId: "brd_x", naive, monid: null, naiveOut: () => false, markNaiveOut: async () => undefined, strategy: {} } as unknown as ProductionContext;
+      const ctx = { campaignId: "cmp_x", brandId: "brd_x", claude: null, fal, monid: null, strategy: {} } as unknown as ProductionContext;
       const concept = { title: "Filmed", setting: "", plan: { format: "filmed_screen" } } as never;
-      expect(await ensurePlate(ctx, "crv_plate", concept)).toEqual({ pending: false, cost_micro: 30_000 });
+      expect(await ensurePlate(ctx, "crv_plate", concept)).toEqual({ pending: false, cost_micro: 150_000 });
       const record = JSON.parse(await readFile(join(kept, "crv_plate", "plate.json"), "utf8"));
       expect(record).toMatchObject({ status: "ready", tries: 1, plate: { path: "crv_plate/plate.png" } });
       expect(existsSync(join(kept, "crv_plate", "plate.png"))).toBe(true);
 
       // The next tick, elsewhere: the record is read back by key and the photo is not made again.
       useStore({ ...sqliteStore(), files: remoteFiles(join(root, "plate-machine-2")) });
-      const refuse = { generateImage: async () => Promise.reject(new Error("should not render again")), fileUrl: naive.fileUrl };
-      expect(await ensurePlate({ ...ctx, naive: refuse } as never, "crv_plate", concept)).toEqual({ pending: false, cost_micro: 30_000 });
+      const refuse = { run: async () => Promise.reject(new Error("should not render again")) };
+      expect(await ensurePlate({ ...ctx, fal: refuse } as never, "crv_plate", concept)).toEqual({ pending: false, cost_micro: 150_000 });
     } finally {
       vi.unstubAllGlobals();
     }

@@ -14,7 +14,7 @@ describe("what changes hands", () => {
 
   it("hands the oracle the research, with the bar to clear and the rivals", () => {
     const x = exchangeOf("scouts", "oracle", campaignAt(tl.research[1] + 0.1));
-    expect(x.title).toBe("Scouts → Oracle");
+    expect(x.title).toBe("Research → Viral study");
     expect(x.lines[0]).toMatch(/^Research: \d+ top videos, \d+ running ads/);
     expect(x.lines.some((l) => /^The bar to clear: the top videos' median [\d.]+% likes per view\.$/.test(l))).toBe(true);
   });
@@ -35,7 +35,7 @@ describe("what changes hands", () => {
   });
 
   it("says something even without a campaign", () => {
-    expect(exchangeOf("scouts", "oracle", null).lines).toEqual(["Scouts hand their work to Oracle."]);
+    expect(exchangeOf("scouts", "oracle", null).lines).toEqual(["Research hands its work to Viral study."]);
   });
 });
 
@@ -55,8 +55,8 @@ describe("a dispatch line, made scannable", () => {
   });
 
   it("makes a list of what a line lists", () => {
-    const dropped = summarizeEvent("Relevance screen: 7 of 24 top-ranked videos could be remade for Naïve (dropped: Duolingo meme; DDLC fanfic drama, unrelated; a mom clip.)");
-    expect(dropped.lead).toBe("7 of 24 top-ranked videos could be remade for Naïve");
+    const dropped = summarizeEvent("Relevance screen: 7 of 24 top-ranked videos could be remade for Acme (dropped: Duolingo meme; DDLC fanfic drama, unrelated; a mom clip.)");
+    expect(dropped.lead).toBe("7 of 24 top-ranked videos could be remade for Acme");
     expect(dropped.list).toEqual({ label: "Dropped", items: ["Duolingo meme", "DDLC fanfic drama, unrelated", "a mom clip"] });
     const plan = summarizeEvent("Research plan: AI agent company platform; competitors CrewAI, Lindy; searching agents, automation");
     expect(plan.lead).toBe("AI agent company platform");

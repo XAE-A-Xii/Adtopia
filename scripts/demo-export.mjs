@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Records a finished Nomen campaign as a demo the camp can replay. See HELP below and docs/troy.md.
+// Records a finished Adtopia campaign as a demo the camp can replay. See HELP below and docs/troy.md.
 
 import { execFile } from "node:child_process";
 import { createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -12,11 +12,11 @@ import { promisify } from "node:util";
 const require = createRequire(import.meta.url);
 const run = promisify(execFile);
 
-const HELP = `Records a finished Nomen campaign as a demo the camp can replay.
+const HELP = `Records a finished Adtopia campaign as a demo the camp can replay.
 
   npm run demo:export -- <website or brand id> [options]
 
-It reads the campaign from a running Nomen through the same HTTP API the camp uses, copies the
+It reads the campaign from a running Adtopia through the same HTTP API the camp uses, copies the
 finished videos, and writes public/demo/<id>/ with an entry in public/demo/index.json. Commit
 those files and deploy: /demo then replays this campaign when its website is typed (and when any
 other website is typed, if it is the newest recording).
@@ -25,7 +25,7 @@ A site behind its password (SITE_PASSWORD) needs it in the environment, never on
 line: NOMEN_SITE_PASSWORD=… npm run demo:export -- yourbrand.com --from https://your.site
 
 Options
-  --from <url>   the running Nomen to read from (default http://localhost:3000)
+  --from <url>   the running Adtopia to read from (default http://localhost:3000)
   --out <dir>    where recordings live (default public/demo)
   --id <slug>    the recording's folder name (default: from the domain, like monid-ai)
   --db <path>    the core's database, for the campaign's full event log
@@ -82,7 +82,7 @@ async function api(path) {
   try {
     response = await fetch(from + path, { headers: cookie ? { cookie } : {} });
   } catch (error) {
-    fail(`Couldn't reach ${from} (${error.cause?.code ?? error.message}). Start Nomen (npm run dev) or pass --from.`);
+    fail(`Couldn't reach ${from} (${error.cause?.code ?? error.message}). Start Adtopia (npm run dev) or pass --from.`);
   }
   if (response.status === 401) fail(`${from} asks for its site password: set NOMEN_SITE_PASSWORD in the environment and run again.`);
   if (!response.ok) fail(`${from}${path} answered HTTP ${response.status}.`);
@@ -389,7 +389,7 @@ writeFileSync(join(dir, "script.json"), `${JSON.stringify(script, null, 2)}\n`);
 
 const indexFile = join(outRoot, "index.json");
 const index = existsSync(indexFile) ? JSON.parse(readFileSync(indexFile, "utf8")) : { version: 1, scripts: [] };
-// Other names the recording answers to (like naive.ai for usenaive.ai) stay with it.
+// Other names the recording answers to stay with it.
 const aliases = (index.scripts ?? []).find((s) => s.id === id)?.aliases;
 index.scripts = [{ id, domain: view.brand.domain, name: view.brand.name, ...(aliases?.length ? { aliases } : {}) }, ...(index.scripts ?? []).filter((s) => s.id !== id && s.domain !== view.brand.domain)];
 writeFileSync(indexFile, `${JSON.stringify(index, null, 2)}\n`);

@@ -64,7 +64,7 @@ export function HomeView({ initialBrands, summary }: { initialBrands: BrandListI
         <Badge tone="accent">Research → strategy → video and static ads → posting</Badge>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl">Paste a website. Get a campaign.</h1>
         <p className="mx-auto mt-4 max-w-2xl text-base text-zinc-400">
-          Nomen researches the brand, its competitors and what is winning on TikTok, Reels and in AI answers, then writes and produces original UGC-style video ads, checks every
+          Adtopia researches the brand, its competitors and what is winning on TikTok, Reels and in AI answers, then writes and produces original UGC-style video ads, checks every
           shot, and posts the ones you approve to the brand&apos;s own accounts.
         </p>
         <form onSubmit={start} className="mx-auto mt-8 flex max-w-xl flex-col gap-3 sm:flex-row">

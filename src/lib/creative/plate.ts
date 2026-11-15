@@ -3,10 +3,10 @@
 // screen into the display, keys the green out of the photo and lays the photo back on top, so the
 // bezel covers the screen's edges and the room around it is a real room.
 //
-//   platePrompt ─ Naive image model ─► plate-try1.png
+//   platePrompt ─ fal image model ─► plate-try1.png
 //     └─ ffmpeg ─ raw RGB ─► findScreenQuad: the largest green region, its corners, sanity checks
 //          └─ a clean display: plate.png + plate.json
-//          └─ not one: a new image under a new key (PLATE_TRIES in all), then give up: the edit
+//          └─ not one: a new image (PLATE_TRIES in all), then give up: the edit
 //             shows the screens full frame instead
 //
 // One plate per video, cached in the video's media folder, so a re-edit never pays for it again.
@@ -16,8 +16,8 @@ import { copyFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { FAL, FAL_USD, type FalClient, falImageUrl } from "../fal";
 import { download, ffmpegPath, probe } from "../media";
-import type { NaiveClient } from "../naive";
 import { lookOnly } from "./plan";
 import type { FilmedPlate, Point, Quad } from "./types";
 
@@ -262,12 +262,10 @@ export async function decodeRgb(path: string): Promise<{ rgb: Buffer; width: num
   return { rgb: stdout as unknown as Buffer, width, height };
 }
 
-const EXTENSIONS: Record<string, string> = { "image/png": ".png", "image/jpeg": ".jpg", "image/jpg": ".jpg", "image/webp": ".webp" };
-
 export type PlateOptions = {
   /** The video's media folder: plate-tryN.* and plate.png go here. */
   dir: string;
-  /** Idempotency key prefix, unique per video; try n uses `${key}-plate-${n}`. */
+  /** Kept for caller stability; each try runs a fresh fal image render. */
   key: string;
   /** The room around the monitor (the brief's setting), if the director gave one. */
   setting?: string;
@@ -281,21 +279,21 @@ export type PlateOptions = {
  * (busy, rate limits, out of credits) are thrown with the record updated so far; the caller keeps
  * it and decides when to try again.
  */
-export async function makePlate(naive: Pick<NaiveClient, "generateImage" | "fileUrl">, record: PlateRecord, options: PlateOptions): Promise<PlateRecord> {
+export async function makePlate(fal: Pick<FalClient, "run">, record: PlateRecord, options: PlateOptions): Promise<PlateRecord> {
   const fetchTo = options.fetchTo ?? download;
   const prompt = platePrompt(options.setting);
   while (record.status === "pending" && record.tries < PLATE_TRIES) {
     const n = record.tries + 1;
-    const result = await naive.generateImage({ prompt, aspect_ratio: "9:16" }, `${options.key}-plate-${n}`);
+    const out = await fal.run(FAL.frame, { prompt, aspect_ratio: "9:16", output_format: "png", num_images: 1 });
     record.tries = n;
-    record.cost_micro += result.cost_micro_usd ?? 0;
-    const file = result.files[0];
-    if (!file) {
+    record.cost_micro += Math.round(FAL_USD.frame * 1_000_000);
+    const url = falImageUrl(out);
+    if (!url) {
       record.notes.push(`image ${n}: the image model returned no file`);
       continue;
     }
-    const raw = join(options.dir, `plate-try${n}${EXTENSIONS[file.content_type] ?? ".png"}`);
-    await fetchTo((await naive.fileUrl(file.id)).url, raw);
+    const raw = join(options.dir, `plate-try${n}.png`);
+    await fetchTo(url, raw);
     let found: QuadResult;
     let size = { width: 0, height: 0 };
     try {

@@ -1,15 +1,13 @@
-import { randomUUID } from "node:crypto";
 import { mkdir, open } from "node:fs/promises";
 import { join } from "node:path";
 import { ApiError } from "../http";
-import { download, probe } from "../media";
-import type { Computer, NaiveClient } from "../naive";
+import { probe } from "../media";
 import { ChromeSession, findChrome } from "./screens";
 import type { ProductVisual } from "./types";
 
-// Product screenshots for the edit: a browser that presents as a phone (a local headless Chrome,
-// or a throwaway Naive computer), a screenshot of the homepage and up to four pages that show what
-// the product is (pricing, features, how it works, docs), saved locally as ProductVisuals.
+// Product screenshots for the edit: a local headless Chrome that presents as a phone, capturing
+// a screenshot of the homepage and up to four pages that show what the product is (pricing,
+// features, how it works, docs), saved locally as ProductVisuals.
 
 /** What a capture needs from a browser. */
 type PageBrowser = {
@@ -18,9 +16,6 @@ type PageBrowser = {
   screenshot: (path: string) => Promise<void>;
   links: () => Promise<Array<{ href: string; text: string }>>;
 };
-
-/** The NaiveClient methods a capture uses (a NaiveClient satisfies it). */
-export type CaptureClient = Pick<NaiveClient, "createComputer" | "getComputer" | "browserAction" | "fileUrl" | "closeBrowser" | "deleteComputer" | "pauseComputer">;
 
 export type CaptureInput = {
   /** "monid.ai", "www.monid.ai" or "https://monid.ai/". */
@@ -35,7 +30,7 @@ export type CaptureInput = {
   viewport?: { width: number; height: number };
   /** Stop starting new pages after this long (default 110 s). */
   budgetMs?: number;
-  /** Poll interval while the computer boots (default 1.5 s). */
+  /** Unused; kept for backwards-compatible callers. */
   pollMs?: number;
   /** ProductVisual ids are this plus a number (default "s": s1, s2, ...). */
   idPrefix?: string;
@@ -44,63 +39,10 @@ export type CaptureInput = {
 export const PHONE_VIEWPORT = { width: 430, height: 932 };
 
 /**
- * Screenshots of the brand's own site as a phone sees it. Individual pages may fail; the computer
- * is always closed and destroyed (or paused if that fails). Throws ApiError only when no browser
- * could be started at all.
+ * Remote managed-browser capture has been removed; use `captureSiteVisualsLocal` with local Chrome.
  */
-export async function captureSiteVisuals(naive: CaptureClient, input: CaptureInput): Promise<ProductVisual[]> {
-  const started = Date.now();
-  const left = () => (input.budgetMs ?? 110_000) - (Date.now() - started);
-  const bare = hostOf(input.domain).replace(/^www\./, "");
-  const viewport = input.viewport ?? PHONE_VIEWPORT;
-  await mkdir(input.dir, { recursive: true });
-
-  const computer = await naive.createComputer(
-    {
-      name: `nomen-capture-${bare}`.slice(0, 200),
-      vcpu: 1,
-      memory_mb: 1024,
-      // Live-tested 2026-11-07: os "mobile", block_ads or solve_captchas leave the managed browser
-      // "unavailable" (409); a phone-width viewport alone renders the mobile layout.
-      browser: { allowed_domains: [bare, `*.${bare}`], viewport },
-    },
-    `nomen-capture-${bare}-${randomUUID()}`,
-  );
-  try {
-    await waitUntilRunning(naive, computer, Math.min(45_000, Math.max(5_000, left())), input.pollMs ?? 1500);
-    let step = 0;
-    // Idempotency-Keys never expire and a reused one replays the old answer, so every goto gets its own.
-    const key = () => `nomen-capture-${computer.id}-${++step}`;
-    const browser: PageBrowser = {
-      // The browser can answer "unavailable" for a few seconds after the computer reports running.
-      goto: async (url) => {
-        for (let attempt = 0; ; attempt++) {
-          try {
-            const landed = await naive.browserAction(computer.id, { action: "goto", url }, key());
-            return { url: landed.url || url };
-          } catch (error) {
-            if (!(error instanceof ApiError && error.status === 409) || attempt >= 4 || left() < 15_000) throw error;
-            await new Promise((resolve) => setTimeout(resolve, input.pollMs ?? 1500));
-          }
-        }
-      },
-      title: () =>
-        naive
-          .browserAction(computer.id, { action: "extract", selector: "title" })
-          .then((result) => result.text ?? "")
-          .catch(() => ""),
-      screenshot: async (path) => {
-        const shot = await naive.browserAction(computer.id, { action: "screenshot" });
-        if (!shot.file_id) throw new Error("no screenshot");
-        await download((await naive.fileUrl(shot.file_id)).url, path);
-      },
-      links: async () => (await naive.browserAction(computer.id, { action: "links", limit: 200 })).links ?? [],
-    };
-    return await capturePages(browser, input, left);
-  } finally {
-    await naive.closeBrowser(computer.id).catch(() => null);
-    await naive.deleteComputer(computer.id).catch(() => naive.pauseComputer(computer.id).catch(() => null));
-  }
+export async function captureSiteVisuals(_input: CaptureInput): Promise<ProductVisual[]> {
+  throw new ApiError("anthropic", 501, "not_configured", "Remote browser capture is not available; install local Chrome/Chromium for site screenshots.");
 }
 
 /** A phone's user agent, for sites that pick their mobile layout by it rather than by width. */
@@ -212,19 +154,6 @@ async function capturePages(browser: PageBrowser, input: CaptureInput, left: () 
   // Nothing captured at all is a failure worth reporting, not an empty success.
   if (visuals.length === 0 && lastError) throw lastError instanceof Error ? lastError : new Error(String(lastError));
   return visuals;
-}
-
-async function waitUntilRunning(naive: CaptureClient, computer: Computer, timeoutMs: number, pollMs: number) {
-  const deadline = Date.now() + timeoutMs;
-  let current = computer;
-  while (current.status !== "running") {
-    if (current.status === "failed" || current.status === "destroyed" || current.status === "paused") {
-      throw new ApiError("naive", 409, "computer_unavailable", `capture computer ${computer.id} is ${current.status}`);
-    }
-    if (Date.now() > deadline) throw new ApiError("naive", 504, "computer_timeout", `capture computer ${computer.id} did not start in time`);
-    await new Promise((resolve) => setTimeout(resolve, pollMs));
-    current = await naive.getComputer(computer.id);
-  }
 }
 
 // ---------- choosing pages ----------

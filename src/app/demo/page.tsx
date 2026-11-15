@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TroyExperience } from "@/components/troy/TroyExperience";
 
 export const metadata: Metadata = {
-  title: "Nomen demo: send in the horse",
+  title: "Adtopia demo: enter the HQ",
   description: "A finished campaign replayed from the website to posted videos, in about two minutes. Nothing is spent.",
 };
 

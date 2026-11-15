@@ -1,26 +1,28 @@
-import { readFile, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { claudeCostMicro, hasClaude } from "./claude";
+import { type ClaudeClient, claudeClient, claudeCostMicro } from "./claude";
 import { logEvent, newId, now, parse, save, store } from "./db";
+import { FalClient, hasFal } from "./fal";
 import { ApiError } from "./http";
 import { MonidClient } from "./monid";
-import { NaiveClient } from "./naive";
-import { advanceCreative, type CreativeRow, insertCreative, type ShotState } from "./production";
+import { advanceCreative, type CreativeRow, insertCreative, type ProductionContext, type ShotState } from "./production";
 import { scratchDir } from "./media";
+import { brainrotConcept, pickBit, riffOf, siteOf, writeBrainrot } from "./creative/brainrot";
 import { canCaptureLocally, captureSiteVisuals, captureSiteVisualsLocal } from "./creative/capture";
 import { planProduction } from "./creative/plan";
 import { getBrandKit } from "./creative/brandkit";
 import { analyzeProduct } from "./creative/product";
 import { cloneOf } from "./creative/cloneability";
-import { breakdownAll, canonicalUrl, orderBreakdowns, pickForBreakdown, scoreCandidates } from "./creative/references";
+import { breakdownAll, canonicalUrl, orderBreakdowns, pickAvoidingTaken, scoreCandidates } from "./creative/references";
 import { applyRelevance, screenRelevance } from "./creative/relevance";
 import { scout, scoutSpecs } from "./creative/scout";
 import { targetSeconds, writeScript } from "./creative/script";
 import type { ProductBrief, ProductVisual, ReferenceBreakdown, ReferenceCandidate } from "./creative/types";
 import { compactResearch, fallbackPlan, phaseASpecs, phaseCSpecs, planResearch, type ResearchPack, type ResearchPlan, type RunSpec, type Video } from "./research";
 import { ensureRuns, listRuns, progressRuns, requeueFailedRuns } from "./runs";
+import { cleanPreferences } from "./preferences";
 import { getBool, getInt, getSetting } from "./settings";
-import { type Concept, conceptFrom, normalizeStrategy, type PastResult, STRATEGY_SCHEMA, type Strategy, strategyMessage } from "./strategy";
+import { type Concept, conceptFrom, DIRECTOR_PROMPT, normalizeStrategy, type PastResult, STRATEGY_SCHEMA, type Strategy, strategyMessage } from "./strategy";
 
 // The campaign state machine. The worker calls advanceCampaign() every few seconds; every step is
 // idempotent, so a restart picks up exactly where it stopped. Rows live in the store (src/lib/store):
@@ -35,7 +37,8 @@ export type CampaignStatus = "running" | "review" | "publishing" | "live" | "fai
  * concepts is the number of videos; 0 makes a static-ads-only campaign. statics starts a static ad pack when research is done.
  * production: "ai" renders every video; "creators" casts each brief to a real creator instead (casting-job.ts).
  */
-export type CampaignOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; learnStyle: boolean; statics?: boolean; production?: "ai" | "creators" };
+/** `preferences`: what the customer asked for when the campaign started (see src/lib/preferences.ts). */
+export type CampaignOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; learnStyle: boolean; statics?: boolean; production?: "ai" | "creators"; preferences?: string };
 
 export type BrandRow = { id: string; name: string; domain: string; url: string; profile_json: string | null; identity_id: string | null; social_activated: number; created_at: string };
 
@@ -102,6 +105,9 @@ export async function createBrand(input: string) {
 
 export async function startCampaign(brandId: string, options: CampaignOptions = defaultOptions()) {
   const id = newId("cmp");
+  const preferences = cleanPreferences(options.preferences);
+  options = { ...options, preferences };
+  if (!preferences) delete options.preferences;
   await store().insert("campaigns", {
     id,
     brand_id: brandId,
@@ -118,6 +124,7 @@ export async function startCampaign(brandId: string, options: CampaignOptions = 
     campaignId: id,
     message: options.concepts > 0 ? `Campaign started: ${options.concepts} videos, ${options.shotsPerConcept} shots each, ${options.videoModel}${options.statics ? ", plus static ads" : ""}` : "Campaign started: research and static ads, no videos",
   });
+  if (preferences) await logEvent({ brandId, campaignId: id, message: `The customer asked for: ${preferences}` });
   return id;
 }
 
@@ -129,13 +136,17 @@ export function clients() {
       return null;
     }
   };
-  return { naive: build(() => new NaiveClient()), monid: build(() => new MonidClient()) };
+  return {
+    claude: build(() => claudeClient()),
+    fal: hasFal() ? new FalClient() : null,
+    monid: build(() => new MonidClient()),
+  };
 }
 
 /**
  * How many times in a row a step may hit a busy or failing provider before the campaign fails: about
  * half an hour for planning steps, about three hours for production, whose shots already back off
- * one by one and only need the campaign to keep waiting (a Naive capacity crunch ran past 40 min).
+ * one by one and only need the campaign to keep waiting.
  */
 const RETRY_LIMIT = 12;
 const PRODUCTION_RETRY_LIMIT = 40;
@@ -178,7 +189,7 @@ export async function advanceCampaign(id: string) {
 // ---------- research ----------
 
 async function stepResearch(campaign: CampaignRow) {
-  const { monid, naive } = clients();
+  const { claude, monid } = clients();
   if (!monid) throw new Error("Research runs on Monid: add a Monid API key in Settings, then retry.");
   const brand = (await getBrand(campaign.brand_id))!;
   await ensureRuns(campaign.id, phaseASpecs(brand.domain));
@@ -190,8 +201,8 @@ async function stepResearch(campaign: CampaignRow) {
   if (!campaign.plan_json) {
     const partial = compactResearch(brand.domain, forCompact, null);
     await save("brands", brand.id, { name: partial.brand.name || brand.name, profile_json: JSON.stringify(partial.brand) });
-    const plan: ResearchPlan = naive
-      ? await planResearch(naive, { domain: brand.domain, brand: partial.brand, siteExcerpt: partial.site_excerpt, similar: partial.similar_sites })
+    const plan: ResearchPlan = claude
+      ? await planResearch(claude, { domain: brand.domain, brand: partial.brand, siteExcerpt: partial.site_excerpt, similar: partial.similar_sites })
       : fallbackPlan(brand.domain, partial.brand, partial.similar_sites);
     await save("campaigns", campaign.id, { plan_json: JSON.stringify(plan) });
     await ensureRuns(campaign.id, phaseCSpecs(plan));
@@ -209,9 +220,9 @@ async function stepResearch(campaign: CampaignRow) {
     const firstWave = compactResearch(brand.domain, forCompact, plan);
     const searched = [plan.brand_name, ...plan.content_queries, ...plan.competitors.map((c) => c.name)];
     let report = { notes: "", searches: [] as Array<{ platform: string; query: string; why: string }> };
-    if (naive && firstWave.videos.length) {
+    if (claude && firstWave.videos.length) {
       try {
-        report = await scout(naive, { plan, videos: firstWave.videos, brand: { name: firstWave.brand.name, description: firstWave.brand.description }, alreadySearched: searched });
+        report = await scout(claude, { plan, videos: firstWave.videos, brand: { name: firstWave.brand.name, description: firstWave.brand.description }, alreadySearched: searched });
       } catch (error) {
         if (error instanceof ApiError && error.retryable) throw error;
       }
@@ -233,7 +244,7 @@ async function stepResearch(campaign: CampaignRow) {
   if (done === 0) throw new Error("Every research source failed. Check the website address and your Monid balance, then retry.");
   const options = parse<CampaignOptions>(campaign.options_json, defaultOptions());
   const videos = options.concepts > 0;
-  await save("campaigns", campaign.id, videos ? { research_json: JSON.stringify(pack), stage: options.learnStyle && naive ? "style" : "strategy" } : { research_json: JSON.stringify(pack), stage: "review", status: "review" });
+  await save("campaigns", campaign.id, videos ? { research_json: JSON.stringify(pack), stage: options.learnStyle && claude ? "style" : "strategy" } : { research_json: JSON.stringify(pack), stage: "review", status: "review" });
   await logEvent({
     brandId: brand.id,
     campaignId: campaign.id,
@@ -270,6 +281,11 @@ export type CreativeState = {
   failures?: Array<{ url: string; error: string }>;
   /** Reference URLs whose breakdown failed for a passing reason, retried once on the next tick. */
   retry?: string[];
+  /**
+   * Picked references another brand remade recently (only when the niche left too few fresh ones):
+   * the director must give them a different angle so the two brands' ads don't look alike.
+   */
+  shared?: string[];
 };
 
 /** A researched video's lane, from the search that found it. */
@@ -279,12 +295,12 @@ export const originOf = (video: Pick<Video, "source">): ReferenceCandidate["orig
 export const creativeState = (campaign: Pick<CampaignRow, "style_json">) => parse<CreativeState | null>(campaign.style_json, null);
 
 async function stepStyle(campaign: CampaignRow) {
-  const { naive } = clients();
+  const { claude, fal } = clients();
   const brand = (await getBrand(campaign.brand_id))!;
   const log = (message: string, level: "info" | "warn" = "info") => logEvent({ brandId: brand.id, campaignId: campaign.id, level, message });
-  if (!naive) {
+  if (!claude) {
     await save("campaigns", campaign.id, { stage: "strategy" });
-    return log("Skipped the reference study: no Naive key.", "warn");
+    return log("Skipped the reference study: no Anthropic API key.", "warn");
   }
   const pack = parse<ResearchPack | null>(campaign.research_json, null);
   if (!pack) throw new Error("Research is missing; start a new campaign.");
@@ -300,7 +316,7 @@ async function stepStyle(campaign: CampaignRow) {
   if (!state.product) {
     const kit = getBrandKit(brand.id);
     const hasKit = kit.assets.length > 0 || kit.repo !== null;
-    state.product = await analyzeProduct(naive, pack, work, hasKit ? kit : null);
+    state.product = await analyzeProduct(claude, pack, work, hasKit ? kit : null);
     await persist();
     const fromKit = state.product.visuals.filter((v) => v.source.startsWith("brandkit:")).length;
     return log(
@@ -312,10 +328,7 @@ async function stepStyle(campaign: CampaignRow) {
     if (state.product.kind !== "physical") {
       const dir = join(scratchDir(), `visuals-${campaign.id}`);
       try {
-        // A local Chrome when there is one (free); otherwise a throwaway Naive computer.
-        const local = canCaptureLocally();
-        if (!local && !naive.hasKey) throw new Error("no Chrome here and no Naive key for a cloud browser");
-        const shots = local ? await captureSiteVisualsLocal({ domain: brand.domain, dir }) : await captureSiteVisuals(naive, { domain: brand.domain, dir });
+        const shots = canCaptureLocally() ? await captureSiteVisualsLocal({ domain: brand.domain, dir }) : await captureSiteVisuals({ domain: brand.domain, dir });
         // Production cuts to these on later ticks (on a serverless host, maybe another machine): keep them.
         const kept = await Promise.all(shots.map((shot, i) => keepVisual(`visuals-${campaign.id}`, { ...shot, id: `s${i + 1}` })));
         state.product.visuals.push(...kept);
@@ -339,7 +352,7 @@ async function stepStyle(campaign: CampaignRow) {
     if (!state.screened && options.learnStyle && ranked.length) {
       const plan = parse<ResearchPlan | null>(campaign.plan_json, null);
       try {
-        state.screened = await screenRelevance(naive, ranked, { product: state.product, scoutNotes: plan?.scout_notes });
+        state.screened = await screenRelevance(claude, ranked, { product: state.product, scoutNotes: plan?.scout_notes });
       } catch (error) {
         if (error instanceof ApiError && error.retryable && campaign.attempts < 3) throw error;
         state.screened = [];
@@ -354,7 +367,15 @@ async function stepStyle(campaign: CampaignRow) {
     // A second pass only retries the breakdowns that failed for a passing reason (a busy provider).
     // Never remake a video this brand already remade in an earlier campaign.
     const remade = await remadeReferences(brand.id, campaign.id);
-    const picks = state.retry?.length ? ranked.filter((c) => state.retry!.includes(c.url)) : options.learnStyle ? pickForBreakdown(candidates, 6, { keepOrder: Boolean(state.screened?.length), exclude: remade }) : [];
+    // Nor one another brand remade lately: two companies in one niche would get the same ad.
+    const taken = state.retry?.length || !options.learnStyle ? [] : await takenByOtherBrands(brand.id);
+    const choice = options.learnStyle && !state.retry?.length ? pickAvoidingTaken(candidates, 6, { keepOrder: Boolean(state.screened?.length), exclude: remade, taken }) : null;
+    const picks = state.retry?.length ? ranked.filter((c) => state.retry!.includes(c.url)) : (choice?.picks ?? []);
+    if (choice) {
+      state.shared = choice.shared;
+      if (choice.shared.length) await log(`Few fresh references in this niche: reusing ${choice.shared.length} that another brand remade lately; the director will give ${choice.shared.length === 1 ? "it" : "them"} a different angle`);
+      else if (choice.avoided) await log(`Skipped ${choice.avoided} viral ${choice.avoided === 1 ? "video" : "videos"} another brand remade lately, so this brand's ads don't look like theirs`);
+    }
     if (picks.length && !state.retry?.length) {
       // The shortlist shows (the camp's references) while the breakdowns run, which takes minutes.
       state.picked = picks.map((p) => p.url);
@@ -364,7 +385,7 @@ async function stepStyle(campaign: CampaignRow) {
       await log(`Breaking down ${picks.length} outlier videos beat by beat (transcript, cuts, frames): ${picks.map((p) => `@${p.author} ${p.score.why}, clones ${cloneOf(p)}/10`).join("; ")}${skipped ? ` (skipped ${skipped} this brand already remade)` : ""}`);
     }
     const result = picks.length
-      ? await breakdownAll(naive, picks, { workDir: work, brand: { name: state.product.name, one_liner: state.product.one_liner, kind: state.product.kind } })
+      ? await breakdownAll({ message: claude.message, fal: fal ?? undefined }, picks, { workDir: work, brand: { name: state.product.name, one_liner: state.product.one_liner, kind: state.product.kind } })
       : { breakdowns: [] as ReferenceBreakdown[], failures: [] };
     const firstPass = !state.retry?.length;
     // The director reads them in this order: the ones the footage clone can reproduce first, then by fit.
@@ -420,13 +441,12 @@ export function referencesMarkdown(state: CreativeState) {
 
 // ---------- strategy ----------
 
-let strategistId: string | null = null;
-/** The director's model, as naive.config.ts gives it to the nomen-director agent. */
+/** The director's model. */
 const DIRECTOR_MODEL = "anthropic/claude-sonnet-5.5";
 
 async function stepStrategy(campaign: CampaignRow) {
-  const { naive } = clients();
-  if (!naive) throw new Error("The strategist runs on Naive: add a Naive API key in Settings, then retry.");
+  const { claude, fal } = clients();
+  if (!claude) throw new Error("The strategist runs on Anthropic: add an Anthropic API key in Settings, then retry.");
   const brand = (await getBrand(campaign.brand_id))!;
   const options = parse<CampaignOptions>(campaign.options_json, defaultOptions());
   const pack = parse<ResearchPack | null>(campaign.research_json, null);
@@ -434,14 +454,15 @@ async function stepStrategy(campaign: CampaignRow) {
   const state = creativeState(campaign);
   const product = state?.product ?? (await import("./creative/product")).fallbackBrief(pack);
   const breakdowns = state?.breakdowns ?? [];
+  const shared = state?.shared ?? [];
 
   // The director's briefs are in: the script room writes each video, then production starts.
-  if (campaign.strategy_json) return scriptRoom(campaign, naive, product, breakdowns);
-  // remake (persona portraits, presenter renders) and filmed_screen (a photo of a monitor) still make images on Naive.
-  const naiveOnly: Partial<Record<string, string>> = naive.hasKey ? {} : { remake: "talking_head_broll", filmed_screen: "voiceover_demo" };
+  if (campaign.strategy_json) return scriptRoom(campaign, claude, product, breakdowns);
+  // remake (persona portraits, twin frames) and filmed_screen (a photo of a monitor) make images on fal.
+  const falOnly: Partial<Record<string, string>> = fal ? {} : { remake: "talking_head_broll", filmed_screen: "voiceover_demo" };
   const keep = async (output: unknown) => {
     const strategy = normalizeStrategy(output, options, { referenceIds: breakdowns.map((b) => b.id), visualIds: product.visuals.map((v) => v.id) });
-    for (const brief of strategy.campaign.briefs ?? []) brief.format = (naiveOnly[brief.format] as typeof brief.format | undefined) ?? brief.format;
+    for (const brief of strategy.campaign.briefs ?? []) brief.format = (falOnly[brief.format] as typeof brief.format | undefined) ?? brief.format;
     if (!strategy.campaign.briefs?.length) throw new Error("The creative director returned no video briefs.");
     await save("campaigns", campaign.id, { strategy_json: JSON.stringify(strategy) });
     await logEvent({
@@ -451,77 +472,42 @@ async function stepStrategy(campaign: CampaignRow) {
     });
   };
 
-  if (hasClaude()) {
-    // The director on the brand's own Anthropic key: one streamed call with the agent's own prompt,
-    // its answer as a tool call. ponytail: a tick that dies mid-call asks again (about $0.20).
-    await logEvent({ brandId: brand.id, campaignId: campaign.id, message: `The creative director is choosing which ${breakdowns.length ? "reference videos to transplant" : "patterns to use"} for ${options.concepts} videos` });
-    const system = await readFile(join(process.cwd(), "naive/agents/director.md"), "utf8");
-    const reply = await naive.messageStream({
-      model: DIRECTOR_MODEL,
-      max_tokens: 32_000,
-      system,
-      messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns }, options, await pastResults(brand.id, campaign.id))}\n\n${Object.keys(naiveOnly).length ? `\n\nThis deployment cannot make the ${Object.keys(naiveOnly).join(" or ")} formats: choose from the others.` : ""}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
-      tools: [{ name: "submit_strategy", description: "Return the brand brief, the search plan and one video brief per video.", input_schema: STRATEGY_SCHEMA }],
-    });
-    await save("campaigns", campaign.id, { strategy_spend_micro: claudeCostMicro(DIRECTOR_MODEL, reply.usage) });
-    const output = reply.content.find((block) => block.type === "tool_use" && block.name === "submit_strategy")?.input;
-    if (!output) throw new ApiError("anthropic", 502, "no_strategy", "the creative director answered without a structured plan");
-    return keep(output);
-  }
-
-  if (!campaign.strategy_session_id) {
-    if (!strategistId) {
-      const agent = await naive.findAgent(getSetting("strategist_agent"));
-      if (!agent) throw new Error(`Naive has no agent named ${getSetting("strategist_agent")}. Run npm run naive:apply once to create it.`);
-      strategistId = agent.id;
-    }
-    const session = await naive.createSession(
-      {
-        agent_id: strategistId,
-        message: strategyMessage(pack, { product, breakdowns }, options, await pastResults(brand.id, campaign.id)),
-        output_schema: STRATEGY_SCHEMA,
-        structured_output_required: true,
-        budget_micro_usd: 4_000_000,
-        metadata: { nomen_campaign: campaign.id, nomen_brand: brand.id },
-      },
-      campaign.strategy_idem ?? `${campaign.id}-strategy`,
-    );
-    await save("campaigns", campaign.id, { strategy_session_id: session.id });
-    await logEvent({ brandId: brand.id, campaignId: campaign.id, message: `The creative director is choosing which ${breakdowns.length ? "reference videos to transplant" : "patterns to use"} for ${options.concepts} videos` });
-    return;
-  }
-
-  const session = await naive.getSession(campaign.strategy_session_id);
-  await save("campaigns", campaign.id, { strategy_spend_micro: session.consumed_micro_usd ?? 0 });
-  if (session.status === "queued" || session.status === "running") return;
-  if (session.structured_output && (session.status === "idle" || session.status === "completed")) return keep(session.structured_output);
-  if (session.status === "idle" && campaign.strategy_nudges < 2 && session.stop_reason !== "budget_paused") {
-    await naive.sendMessage(
-      session.id,
-      "Finish now: return the complete structured output matching the schema, with every video brief filled in.",
-      `${campaign.strategy_idem}-nudge${campaign.strategy_nudges + 1}`,
-    );
-    await save("campaigns", campaign.id, { strategy_nudges: campaign.strategy_nudges + 1 });
-    return;
-  }
-  throw new Error(`The strategist stopped (${[session.status, session.stop_reason, session.stop_code].filter(Boolean).join(", ")}) without a usable plan.`);
+  await logEvent({ brandId: brand.id, campaignId: campaign.id, message: `The creative director is choosing which ${breakdowns.length ? "reference videos to transplant" : "patterns to use"} for ${options.concepts} videos` });
+  const reply = await claude.messageStream({
+    model: DIRECTOR_MODEL,
+    max_tokens: 32_000,
+    system: DIRECTOR_PROMPT,
+    messages: [{ role: "user", content: `${strategyMessage(pack, { product, breakdowns, shared }, options, await pastResults(brand.id, campaign.id))}\n\n${Object.keys(falOnly).length ? `\n\nThis deployment cannot make the ${Object.keys(falOnly).join(" or ")} formats: choose from the others.` : ""}\n\nAnswer by calling submit_strategy once, with every video brief filled in.` }],
+    tools: [{ name: "submit_strategy", description: "Return the brand brief, the search plan and one video brief per video.", input_schema: STRATEGY_SCHEMA }],
+  });
+  await save("campaigns", campaign.id, { strategy_spend_micro: claudeCostMicro(DIRECTOR_MODEL, reply.usage) });
+  const output = reply.content.find((block) => block.type === "tool_use" && block.name === "submit_strategy")?.input;
+  if (!output) throw new ApiError("anthropic", 502, "no_strategy", "the creative director answered without a structured plan");
+  return keep(output);
 }
 
 /**
  * The script room: every brief gets a writer and a critic in parallel. Finished concepts are saved
  * as they land, so a restart only rewrites the ones that were missing.
  */
-async function scriptRoom(campaign: CampaignRow, naive: NaiveClient, product: ProductBrief, breakdowns: ReferenceBreakdown[]) {
+async function scriptRoom(campaign: CampaignRow, claude: Pick<ClaudeClient, "message">, product: ProductBrief, breakdowns: ReferenceBreakdown[]) {
+  const { preferences } = parse<Partial<CampaignOptions>>(campaign.options_json, {});
   const strategy = parse<Strategy>(campaign.strategy_json, null as unknown as Strategy);
   const briefs = strategy.campaign.briefs ?? [];
   const done = strategy.campaign.concepts ?? [];
   const pending = briefs.filter((brief) => !done.some((concept) => concept.brief?.title === brief.title));
   const round = (strategy.campaign.script_rounds ?? 0) + 1;
   strategy.campaign.script_rounds = round;
+  const site = pending.some((brief) => brief.format === "brainrot") ? siteOf((await store().find<{ url: string }>("brands", { id: campaign.brand_id }, { limit: 1 }))[0]?.url) || product.name : "";
   const results = await Promise.allSettled(
     pending.map(async (brief) => {
+      // Brainrot ads riff on the director's reference in one of Adtopia's brainrot formats.
+      if (brief.format === "brainrot") {
+        const riff = breakdowns.find((b) => b.id === brief.reference_id);
+        return brainrotConcept(brief, await writeBrainrot({ product, site, bit: pickBit(brief, product.name), brief, riff: riff ? riffOf(riff) : null }));
+      }
       const reference = breakdowns.find((b) => b.id === brief.reference_id) ?? breakdowns[0];
-      const script = await writeScript(naive, { product, brief, reference: reference ?? emptyReference(), targetSeconds: reference ? targetSeconds(reference, brief.format) : 18 });
+      const script = await writeScript(claude, { product, brief, reference: reference ?? emptyReference(), targetSeconds: reference ? targetSeconds(reference, brief.format) : 18, preferences });
       const plan = planProduction(script, brief, product, reference?.delivery ?? "", reference?.beats ?? []);
       return conceptFrom(brief, script, plan, reference, product);
     }),
@@ -607,19 +593,43 @@ async function pastResults(brandId: string, currentCampaignId: string): Promise<
  */
 export async function remadeReferences(brandId: string, exceptCampaignId: string): Promise<string[]> {
   const campaigns = await store().find<{ id: string }>("campaigns", { brand_id: brandId, id: { ne: exceptCampaignId } });
-  const rows = campaigns.length ? await store().find<{ concept_json: string }>("creatives", { campaign_id: { in: campaigns.map((c) => c.id) }, status: { ne: "failed" } }) : [];
+  return referencesRemadeIn(campaigns.map((c) => c.id));
+}
+
+/** Days a reference stays taken once another brand remade it. */
+export const TAKEN_DAYS = 60;
+
+/**
+ * The reference videos other brands remade in the last TAKEN_DAYS days. Two brands that find the
+ * same viral video are in the same niche; if both remade it, their ads would look alike. Only the
+ * links leave this function: nothing about the other brand reaches this brand's agents.
+ */
+export async function takenByOtherBrands(brandId: string, now = new Date()): Promise<string[]> {
+  const since = new Date(now.getTime() - TAKEN_DAYS * 86_400_000).toISOString();
+  const campaigns = await store().find<{ id: string }>("campaigns", { brand_id: { ne: brandId }, created_at: { gte: since } });
+  return referencesRemadeIn(campaigns.map((c) => c.id));
+}
+
+async function referencesRemadeIn(campaignIds: string[]): Promise<string[]> {
+  const rows = campaignIds.length ? await store().find<{ concept_json: string }>("creatives", { campaign_id: { in: campaignIds }, status: { ne: "failed" } }) : [];
   const urls = rows.map((row) => parse<Partial<Concept>>(row.concept_json, {}).reference?.url).filter((url): url is string => Boolean(url));
   return [...new Set(urls)];
+}
+
+/** What the customer asked for in the brand's latest campaign, for the next one (autopilot, "new campaign"). */
+export async function lastPreferences(brandId: string): Promise<string | undefined> {
+  const [latest] = await store().find<{ options_json: string }>("campaigns", { brand_id: brandId }, { order: [["created_at", "desc"]], limit: 1 });
+  return latest ? cleanPreferences(parse<Partial<CampaignOptions>>(latest.options_json, {}).preferences) : undefined;
 }
 
 // ---------- production ----------
 
 async function stepProduction(campaign: CampaignRow) {
-  const { naive, monid } = clients();
+  const { claude, fal, monid } = clients();
   // Real-creator mode: each brief is cast to a creator and approved by the client-taste agent.
   if (parse<Partial<CampaignOptions>>(campaign.options_json, {}).production === "creators") {
     const { stepCastingStage } = await import("./casting-job");
-    const cast = await stepCastingStage(campaign, { naive, monid });
+    const cast = await stepCastingStage(campaign, { claude, monid });
     if (cast.settled) {
       await save("campaigns", campaign.id, { stage: "review", status: "review" });
       await logEvent({ brandId: campaign.brand_id, campaignId: campaign.id, message: `${cast.ready} of ${cast.total} briefs have an approved creator; their outreach waits for you` });
@@ -628,12 +638,11 @@ async function stepProduction(campaign: CampaignRow) {
   }
   const strategy = parse<Strategy | null>(campaign.strategy_json, null);
   if (!strategy) throw new Error("The campaign has no strategy yet.");
-  // Read once per tick; flipped (and saved) the moment Naive runs out.
-  let naiveOut = Boolean(campaign.naive_out);
-  const ctx = {
+  const ctx: ProductionContext = {
     campaignId: campaign.id,
     brandId: campaign.brand_id,
-    naive,
+    claude,
+    fal,
     monid,
     strategy,
     product: creativeState(campaign)?.product,
@@ -641,13 +650,6 @@ async function stepProduction(campaign: CampaignRow) {
       const kit = getBrandKit(campaign.brand_id);
       return kit.assets.length || kit.repo ? kit : null;
     })(),
-    naiveOut: () => naiveOut,
-    markNaiveOut: async () => {
-      if (naiveOut) return;
-      naiveOut = true;
-      await save("campaigns", campaign.id, { naive_out: 1 });
-      await logEvent({ brandId: campaign.brand_id, campaignId: campaign.id, level: "warn", message: "Naive is out of credits: new renders switch to Kling 3.0 on Monid. Top up Naive to switch back." });
-    },
   };
   const active = (await listCreatives(campaign.id)).filter((creative) => !creative.rejected);
   await Promise.all(active.filter((c) => c.status === "queued" || c.status === "producing").map((creative) => advanceCreative(ctx, creative)));
@@ -684,13 +686,11 @@ export async function regenerateCreative(creativeId: string, note?: string) {
   return id;
 }
 
-/** Stops a campaign where it is. A running strategist session is cancelled so it stops spending. */
+/** Stops a campaign where it is. */
 export async function stopCampaign(id: string) {
   const campaign = await getCampaign(id);
   if (!campaign) throw new Error("No such campaign");
   await save("campaigns", id, { status: "stopped", error: "Stopped by you" });
-  const { naive } = clients();
-  if (naive && campaign.stage === "strategy" && campaign.strategy_session_id) await naive.cancelSession(campaign.strategy_session_id).catch(() => undefined);
   await logEvent({ brandId: campaign.brand_id, campaignId: id, level: "warn", message: `Stopped at ${campaign.stage}` });
 }
 
@@ -698,7 +698,6 @@ export async function retryCampaign(id: string) {
   const campaign = await getCampaign(id);
   if (!campaign) throw new Error("No such campaign");
   if (campaign.stage === "research") await requeueFailedRuns(id, ["A", "C", "D"]);
-  if (campaign.stage === "strategy" && campaign.strategy_session_id) await save("campaigns", id, { strategy_session_id: null, strategy_idem: `${id}-strategy-${Date.now()}`, strategy_nudges: 0 });
   if (campaign.stage === "production") {
     for (const creative of (await listCreatives(id)).filter((c) => c.status === "failed" && !c.rejected)) await regenerateCreative(creative.id);
   }
@@ -710,17 +709,15 @@ export async function recomputeSpend(campaignId: string) {
   const campaign = await getCampaign(campaignId);
   if (!campaign) return;
   const research = (await listRuns(campaignId, ["A", "C", "D", "S"])).reduce((sum, run) => sum + (run.cost_micro ?? 0), 0);
-  let naiveVideo = 0;
   let monidVideo = 0;
   for (const creative of await listCreatives(campaignId)) {
     for (const shot of parse<ShotState[]>(creative.shots_json, [])) {
-      naiveVideo += shot.naive_cost;
-      // ponytail: fal renders count with Monid's, the other render provider; a separate fal column when it matters.
+      // fal renders count alongside Monid's render spend.
       monidVideo += shot.monid_cost + (shot.fal_cost ?? 0);
     }
   }
   await save("campaigns", campaignId, {
-    naive_spend_micro: campaign.style_spend_micro + campaign.strategy_spend_micro + naiveVideo,
+    naive_spend_micro: campaign.style_spend_micro + campaign.strategy_spend_micro,
     monid_spend_micro: research + monidVideo,
   });
 }

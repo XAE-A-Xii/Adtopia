@@ -2,6 +2,8 @@ import { HORSE_ISLAND, island, sandbar, sea, town } from "./grounds";
 import { ballista, catapult, romanFort } from "./models/battle";
 import { doorPose, horseBody, horseLeaves, horsePlank } from "./models/horse";
 import { adBillboards, answerShrine, brandGate, crystalSpire, instagramGallery, lookalikeHuts, rankBeacon, redditForum, tiktokPhone, youtubeScreen } from "./models/lands";
+import { antennaMast, approvalScreen, barrel, billboard, broadcastMast, commandTable, cyberPlant, dashboard, dataBin, driveStack, editStation, filmSet, formatTable, heater, holoTable, hoverCar, loungeRow, mapScreen, neonSign, planningCorner, platformSign, renderFarm, shootRig, storefront, streetLamp, uplink } from "./models/cyber";
+import { chargingRail, entranceBody, entranceGround, entranceLight, entranceShutter, motorbike, roomModel } from "./models/hq";
 import { amphora, banner, campfire, easel, editDesk, hitchingRail, mapTable, mount, oliveTree, pavilion, PLATFORM_FLAGS, podium, reels, screenFrame, scrollBasket, shrine, signpost, tier, tvOnTripod, watchtower } from "./models/props";
 import { amphitheatre, aqueduct, cypress, fountain, gatehouse, honourColumn, horreum, house, pharos, pine, rocks, ruin, standard, temple, tower, wall } from "./models/rome";
 import { beacon as firetower, bollard, cargo, crane, hullModel, type Plank, rigModel } from "./models/ships";
@@ -76,6 +78,8 @@ export type Job =
   | { k: "horse-plank"; s: number }
   | { k: "soldier"; look: number; act: Act; dir: number; f: number }
   | { k: "island"; id: StationId }
+  /** The underground HQ: its floor, back walls, stairs and the street above, with every station's shadows. */
+  | { k: "room" }
   | { k: "bar"; i: number }
   /** A road of the wider world (see worldTrails). */
   | { k: "road"; i: number }
@@ -127,6 +131,8 @@ export function jobKey(job: Job): string {
       return `s${job.look}.${job.act}.${job.dir}.${job.f}`;
     case "island":
       return `i.${job.id}`;
+    case "room":
+      return "room";
     case "bar":
       return `b${job.i}`;
     case "road":
@@ -170,60 +176,101 @@ export function propModel(id: PropId, v = 0): Model {
   const m = new Model();
   switch (id) {
     case "tower":
-      watchtower(m);
+      antennaMast(m);
       break;
     case "basket":
-      scrollBasket(m, v / 7);
+      dataBin(m, v / 7);
       break;
     case "signpost":
-      signpost(m);
+      neonSign(m);
       break;
     case "shrine":
-      shrine(m);
-      // The television inside; v = 0 is off, 1..4 are frames of whatever it is studying.
-      m.with(translate(0, 0, 3), () => tvOnTripod(m, v > 0 ? 1 : 0, (v % 4) / 4));
+      // The viral study's format table: v = frame (0..3) + 4 while the holograms play what it studies.
+      formatTable(m, v % 4, v >= 4);
       break;
     case "pavilion":
-      pavilion(m);
+      planningCorner(m);
       break;
     case "maptable":
-      mapTable(m);
+      holoTable(m, v);
       break;
     case "desk":
       // v = state * 4 + phase (state: 0 idle, 1 rendering, 2 done, 3 failed).
-      editDesk(m, Math.floor(v / 4), (v % 4) / 4);
+      editStation(m, Math.floor(v / 4), (v % 4) / 4);
       break;
     case "easel":
-      easel(m, v / 4);
+      shootRig(m, v / 4);
       break;
     case "reels":
-      reels(m, v);
+      driveStack(m, v);
       break;
     case "tier":
-      tier(m, v);
+      loungeRow(m, v);
       break;
     case "screen":
-      screenFrame(m);
+      approvalScreen(m);
       break;
     case "podium":
-      podium(m);
+      uplink(m, v);
       break;
     case "banner": {
       const flag = PLATFORM_FLAGS[Math.floor(v / 4) % PLATFORM_FLAGS.length];
-      banner(m, flag.colors, (v % 4) / 4);
+      platformSign(m, flag.colors, (v % 4) / 4);
       break;
     }
     case "olive":
-      oliveTree(m, v);
+      cyberPlant(m, v);
       break;
     case "amphora":
-      amphora(m);
+      barrel(m);
       break;
     case "campfire":
-      campfire(m, v);
+      heater(m, v);
       break;
+    case "mapscreen":
+      mapScreen(m, v);
+      break;
+    case "filmset":
+      filmSet(m, v);
+      break;
+    case "renderfarm":
+      renderFarm(m, v);
+      break;
+    case "dashboard":
+      dashboard(m, v);
+      break;
+    case "mast":
+      broadcastMast(m, v);
+      break;
+    case "billboard":
+      billboard(m);
+      break;
+    case "streetlamp":
+      // v >= 8 stands on the far kerb, its arm out over the road the other way.
+      if (v >= 8) m.with(rotZ(Math.PI), () => streetLamp(m, v % 8));
+      else streetLamp(m, v);
+      break;
+    case "car":
+      // v < 4 drives along +x, v >= 4 the other way.
+      m.with(rotZ(v >= 4 ? Math.PI : 0), () => hoverCar(m, v % 4));
+      break;
+    case "hub": {
+      // v = blink + 2 * (six base-6 digits, one per station in pipeline order).
+      const states: number[] = [];
+      let code = Math.floor(v / 2);
+      for (let i = 0; i < 6; i++) {
+        states.push(code % 6);
+        code = Math.floor(code / 6);
+      }
+      commandTable(m, states, v % 2 === 1);
+      break;
+    }
     case "rail":
-      hitchingRail(m);
+      chargingRail(m);
+      break;
+    case "bikerack":
+      // The same rail turned to run along the kerb (x), on the road side, the bikes behind it (+y).
+      m.with(rotZ(-Math.PI / 2), () => chargingRail(m));
       break;
     case "catapult":
       catapult(m, v);
@@ -297,37 +344,44 @@ export function propModel(id: PropId, v = 0): Model {
       ruin(m);
       break;
     case "phone":
-      tiktokPhone(m);
+      storefront(m, "phone");
       break;
     case "gallery":
-      instagramGallery(m);
+      storefront(m, "gallery");
       break;
     case "bigscreen":
-      youtubeScreen(m);
+      storefront(m, "bigscreen");
       break;
     case "billboards":
-      adBillboards(m);
+      storefront(m, "billboards");
       break;
     case "forum":
-      redditForum(m);
+      storefront(m, "forum");
       break;
     case "orbshrine":
-      answerShrine(m);
+      storefront(m, "orbshrine");
       break;
     case "crystal":
-      crystalSpire(m);
+      storefront(m, "crystal");
       break;
     case "beacon":
-      rankBeacon(m);
+      storefront(m, "beacon");
       break;
     case "huts":
-      lookalikeHuts(m);
+      storefront(m, "huts");
       break;
     case "gate":
-      brandGate(m);
+      storefront(m, "gate");
       break;
   }
   return m;
+}
+
+/** Everything standing on a station, placed around its centre. */
+function placedProps(id: StationId): Model {
+  const all = new Model();
+  for (const placement of PROPS[id]) all.with(translate(placement.x, placement.y, 0), () => all.include(propModel(placement.prop, placement.v ?? 0)));
+  return all;
 }
 
 /** Everything standing on a station's island, placed, for the island's shadows. */
@@ -388,12 +442,12 @@ function riderModel(lookIndex: number, dir: number, f: number, carry: number, co
   const m = new Model();
   const still = f < 0;
   m.with(rotZ(dir * (Math.PI / 4)), () => {
-    mount(m, f, coat);
-    const bob = still ? 0 : Math.sin((f / RIDER_FRAMES) * Math.PI * 4) * 0.35;
+    motorbike(m, f, coat);
+    const bob = still ? 0 : Math.sin((f / RIDER_FRAMES) * Math.PI * 4) * 0.15;
     m.with(mul(translate(-0.6, 0, bob), rotZ(0)), () => {
       // Out on a run the hands are on the reins; coming back they hold the scroll case.
       const pose = carry ? { armL: 0.9, armR: 0.7, hold: "case" as const } : { armL: 0.75, armR: 0.75, hold: "none" as const };
-      soldierInto(m, { ...STANDING, facing: 0, sit: 11.4, ride: true, ...pose, shield: false, lean: still ? 0.05 : 0.25 }, lookFor(lookIndex));
+      soldierInto(m, { ...STANDING, facing: 0, sit: 7.6, ride: true, ...pose, shield: false, lean: still ? 0.1 : 0.4 }, lookFor(lookIndex));
     });
   });
   return m;
@@ -401,7 +455,7 @@ function riderModel(lookIndex: number, dir: number, f: number, carry: number, co
 
 function steedModel(dir: number, coat: number) {
   const m = new Model();
-  m.with(rotZ(dir * (Math.PI / 4)), () => mount(m, -1, coat));
+  m.with(rotZ(dir * (Math.PI / 4)), () => motorbike(m, -1, coat));
   return m;
 }
 
@@ -473,29 +527,31 @@ function withOptions(model: Model, options: BakeOptions = {}) {
 
 export function bakeJob(job: Job): Sprite {
   switch (job.k) {
+    // The HQ's street door stands where the Trojan horse did: the street it stands on, the
+    // building, its roll-up shutter (the doors) and the light spilling out (the plank).
     case "horse-island":
-      // The island with the horse's shadow on it; the horse itself is its own layer above.
-      return bake([], { ground: island(HORSE_ISLAND), shadowCasters: horseBody({ silhouettes: false }).prims });
+      return bake(entranceGround().prims, { shadowCasters: entranceBody().prims });
     case "horse-body":
-      return withOptions(horseBody());
-    case "horse-leaves": {
-      const t = (job.s / LEAF_STEPS) * 0.4;
-      return withOptions(horseLeaves(doorPose(t).doors), { holdouts: horseBody({ silhouettes: false }).prims });
-    }
+      return withOptions(entranceBody());
+    case "horse-leaves":
+      return withOptions(entranceShutter(job.s / LEAF_STEPS), { holdouts: entranceBody().prims });
     case "horse-plank": {
-      const t = PLANK_FROM + (job.s / PLANK_STEPS) * (1 - PLANK_FROM);
-      const pose = doorPose(t);
-      return withOptions(horsePlank(pose.extend, pose.tip), {
-        ground: island(HORSE_ISLAND),
-        shadowOnly: true,
-        holdouts: horseBody({ silhouettes: false }).prims,
-      });
+      return withOptions(entranceLight(job.s / PLANK_STEPS));
     }
     case "soldier":
       return withOptions(soldierModel(poseFor(job.act, job.dir, job.f), lookFor(job.look)), { frame: SOLDIER_FRAME });
     case "island": {
       const index = STATIONS.findIndex((s) => s.id === job.id);
       return bake([], { ground: island(stationIsland(STATIONS[index], index)), shadowCasters: stationCasters(job.id) });
+    }
+    case "room": {
+      const casters: Prim[] = [];
+      for (const s of STATIONS) {
+        const holder = new Model();
+        holder.with(translate(s.x, s.y, s.z), () => holder.include(placedProps(s.id)));
+        casters.push(...holder.prims);
+      }
+      return bake(roomModel().prims, { shadowCasters: casters, edges: true, outline: true });
     }
     case "bar": {
       const bar = sandbars()[job.i];

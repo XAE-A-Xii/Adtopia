@@ -894,7 +894,7 @@
                 "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter at the left edge in a plain black hoodie in front of the chalkboard, gesturing animatedly with one hand, looking up and off-camera with a smug grin.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"We gave an agent a $3 balance and one skill file, and we saw, wow,\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
                 "seconds": 6,
                 "status": "passed",
-                "provider": "naive",
+                "provider": "fal",
                 "renders": 2,
                 "qc_rounds": 2,
                 "submit_errors": 0,
@@ -922,7 +922,6 @@
                   ],
                   "fix_prompt": ""
                 },
-                "naive_cost": 4828000,
                 "monid_cost": 0,
                 "error": null,
                 "previous_frame_file_id": null,
@@ -930,7 +929,8 @@
                 "frame_rekeys": 1,
                 "frame_inflight_since": null,
                 "frame_gated": true,
-                "frame_fix": "The hoodie has a visible graphic print on the chest (partly hidden letters, roughly ). The brief asked for a plain black hoodie with no logo, and the print reads as partial text. The backpack in the right corner has a small label or patch with illegible, garbled text. The clasped hands look slightly awkward. The fingers overlap in a tangled, bunched way, which could distort when animated."
+                "frame_fix": "The hoodie has a visible graphic print on the chest (partly hidden letters, roughly ). The brief asked for a plain black hoodie with no logo, and the print reads as partial text. The backpack in the right corner has a small label or patch with illegible, garbled text. The clasped hands look slightly awkward. The fingers overlap in a tangled, bunched way, which could distort when animated.",
+                "fal_cost": 4828000
               },
               {
                 "n": 2,
@@ -938,7 +938,7 @@
                 "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter centered and closer, leaning in with a smug look, pointing sideways with one hand and swinging the other arm.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"it found 12 candidates ranked by fit and price. Then it just ran one. No sign-up. We killed the subscriptions, and so this was worth it.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
                 "seconds": 8,
                 "status": "passed",
-                "provider": "naive",
+                "provider": "fal",
                 "renders": 2,
                 "qc_rounds": 2,
                 "submit_errors": 0,
@@ -965,13 +965,13 @@
                   ],
                   "fix_prompt": ""
                 },
-                "naive_cost": 6480000,
                 "monid_cost": 0,
                 "error": null,
                 "previous_frame_file_id": null,
                 "frame_checks": 0,
                 "frame_inflight_since": null,
-                "frame_gated": true
+                "frame_gated": true,
+                "fal_cost": 6480000
               },
               {
                 "n": 3,
@@ -979,7 +979,7 @@
                 "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"Every tool was a sign-up, an API key, a subscription, and we were like, \"Again?\" Honestly, to give you the truth, the setup was literally one line.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
                 "seconds": 8,
                 "status": "passed",
-                "provider": "naive",
+                "provider": "fal",
                 "renders": 2,
                 "qc_rounds": 2,
                 "submit_errors": 0,
@@ -1006,13 +1006,13 @@
                   ],
                   "fix_prompt": ""
                 },
-                "naive_cost": 6480000,
                 "monid_cost": 0,
                 "error": null,
                 "previous_frame_file_id": null,
                 "frame_checks": 0,
                 "frame_inflight_since": null,
-                "frame_gated": true
+                "frame_gated": true,
+                "fal_cost": 6480000
               },
               {
                 "n": 4,
@@ -1020,7 +1020,7 @@
                 "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter small at the bottom left, casual open hands, deadpan.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"Balance: $3.000. One call, $0.0013.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
                 "seconds": 4,
                 "status": "passed",
-                "provider": "naive",
+                "provider": "fal",
                 "renders": 2,
                 "qc_rounds": 2,
                 "submit_errors": 0,
@@ -1047,13 +1047,13 @@
                   ],
                   "fix_prompt": ""
                 },
-                "naive_cost": 3280000,
                 "monid_cost": 0,
                 "error": null,
                 "previous_frame_file_id": null,
                 "frame_checks": 0,
                 "frame_inflight_since": null,
-                "frame_gated": true
+                "frame_gated": true,
+                "fal_cost": 3280000
               },
               {
                 "n": 5,
@@ -1061,7 +1061,7 @@
                 "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter centered in a medium shot, hands at his sides, relaxed, talking straight to camera. Then Small pixelated presenter pops out of a pipe with both fists raised, playful.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"And we were like, \"Okay, pay per call.\" Vendor errors and unmatched lookups settle at zero. Start with $1 free. So let's go.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
                 "seconds": 8,
                 "status": "passed",
-                "provider": "naive",
+                "provider": "fal",
                 "renders": 2,
                 "qc_rounds": 2,
                 "submit_errors": 0,
@@ -1088,13 +1088,13 @@
                   ],
                   "fix_prompt": ""
                 },
-                "naive_cost": 6480000,
                 "monid_cost": 0,
                 "error": null,
                 "previous_frame_file_id": null,
                 "frame_checks": 0,
                 "frame_inflight_since": null,
-                "frame_gated": true
+                "frame_gated": true,
+                "fal_cost": 6480000
               }
             ],
             "qc_score": 7,
@@ -2004,7 +2004,7 @@
               "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter at the left edge in a plain black hoodie in front of the chalkboard, gesturing animatedly with one hand, looking up and off-camera with a smug grin.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"We gave an agent a $3 balance and one skill file, and we saw, wow,\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
               "seconds": 6,
               "status": "passed",
-              "provider": "naive",
+              "provider": "fal",
               "renders": 2,
               "qc_rounds": 2,
               "submit_errors": 0,
@@ -2032,7 +2032,6 @@
                 ],
                 "fix_prompt": ""
               },
-              "naive_cost": 4828000,
               "monid_cost": 0,
               "error": null,
               "previous_frame_file_id": null,
@@ -2040,7 +2039,8 @@
               "frame_rekeys": 1,
               "frame_inflight_since": null,
               "frame_gated": true,
-              "frame_fix": "The hoodie has a visible graphic print on the chest (partly hidden letters, roughly ). The brief asked for a plain black hoodie with no logo, and the print reads as partial text. The backpack in the right corner has a small label or patch with illegible, garbled text. The clasped hands look slightly awkward. The fingers overlap in a tangled, bunched way, which could distort when animated."
+              "frame_fix": "The hoodie has a visible graphic print on the chest (partly hidden letters, roughly ). The brief asked for a plain black hoodie with no logo, and the print reads as partial text. The backpack in the right corner has a small label or patch with illegible, garbled text. The clasped hands look slightly awkward. The fingers overlap in a tangled, bunched way, which could distort when animated.",
+              "fal_cost": 4828000
             },
             {
               "n": 2,
@@ -2048,7 +2048,7 @@
               "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter centered and closer, leaning in with a smug look, pointing sideways with one hand and swinging the other arm.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"it found 12 candidates ranked by fit and price. Then it just ran one. No sign-up. We killed the subscriptions, and so this was worth it.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
               "seconds": 8,
               "status": "passed",
-              "provider": "naive",
+              "provider": "fal",
               "renders": 2,
               "qc_rounds": 2,
               "submit_errors": 0,
@@ -2075,13 +2075,13 @@
                 ],
                 "fix_prompt": ""
               },
-              "naive_cost": 6480000,
               "monid_cost": 0,
               "error": null,
               "previous_frame_file_id": null,
               "frame_checks": 0,
               "frame_inflight_since": null,
-              "frame_gated": true
+              "frame_gated": true,
+              "fal_cost": 6480000
             },
             {
               "n": 3,
@@ -2089,7 +2089,7 @@
               "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"Every tool was a sign-up, an API key, a subscription, and we were like, \"Again?\" Honestly, to give you the truth, the setup was literally one line.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
               "seconds": 8,
               "status": "passed",
-              "provider": "naive",
+              "provider": "fal",
               "renders": 2,
               "qc_rounds": 2,
               "submit_errors": 0,
@@ -2116,13 +2116,13 @@
                 ],
                 "fix_prompt": ""
               },
-              "naive_cost": 6480000,
               "monid_cost": 0,
               "error": null,
               "previous_frame_file_id": null,
               "frame_checks": 0,
               "frame_inflight_since": null,
-              "frame_gated": true
+              "frame_gated": true,
+              "fal_cost": 6480000
             },
             {
               "n": 4,
@@ -2130,7 +2130,7 @@
               "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter small at the bottom left, casual open hands, deadpan.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"Balance: $3.000. One call, $0.0013.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
               "seconds": 4,
               "status": "passed",
-              "provider": "naive",
+              "provider": "fal",
               "renders": 2,
               "qc_rounds": 2,
               "submit_errors": 0,
@@ -2157,13 +2157,13 @@
                 ],
                 "fix_prompt": ""
               },
-              "naive_cost": 3280000,
               "monid_cost": 0,
               "error": null,
               "previous_frame_file_id": null,
               "frame_checks": 0,
               "frame_inflight_since": null,
-              "frame_gated": true
+              "frame_gated": true,
+              "fal_cost": 3280000
             },
             {
               "n": 5,
@@ -2171,7 +2171,7 @@
               "prompt": "Vertical 9:16 smartphone video, UGC style. The phone is propped up on a stable surface at eye level, about an arm and a half away, and stays still apart from a very slight natural shake. Chest-up framing with the face centered and a little headroom. Never an arm's-length selfie: no arm or hand reaching toward the lens. Man, 20s, dark tousled hair, plain black hoodie, playful self-aware smug energy, animated hands, quick delivery, Not a copy of the original presenter, in Virtual green classroom chalkboard with a wooden wainscot and a backpack in the corner, evenly lit, studio-bright daytime look. A single full-frame shot of the presenter only: no split screen, no inset, no subtitles or captions, no on-screen graphics, cards or text of any kind. Presenter centered in a medium shot, hands at his sides, relaxed, talking straight to camera. Then Small pixelated presenter pops out of a pipe with both fists raised, playful.. He says, in a natural, conversational voice with this delivery: He uses short run-on sentences and rhetorical \"we were like\" quotes. He uses few filler words, mostly \"literally\", \"honestly\" and \"and so\". He looks at the camera, sometimes off to the side. His hands are always busy: pointing, miming, covering his ears. His energy is playful and self-aware.: \"And we were like, \"Okay, pay per call.\" Vendor errors and unmatched lookups settle at zero. Start with $1 free. So let's go.\" The voice is the same in every shot of this video: same person, same pitch, same energy. Speak at a relaxed, natural pace with normal pauses; the words must be fully said before the clip ends. Keep the action small and natural: talking to camera, a slight smile, a small nod, a raised eyebrow, leaning back. No pointing, no thumbs-up, no gestures toward the lens, no fast head turns, hands low and relaxed or out of frame. Eyes on the lens while talking. Audio: voice close to the microphone, quiet room tone, no music. Photorealistic, natural skin texture with pores, natural teeth and eyes, realistic hands. No on-screen text, no captions, no logos, no readable screens or monitors facing the camera; any laptop is closed or seen from behind.",
               "seconds": 8,
               "status": "passed",
-              "provider": "naive",
+              "provider": "fal",
               "renders": 2,
               "qc_rounds": 2,
               "submit_errors": 0,
@@ -2198,13 +2198,13 @@
                 ],
                 "fix_prompt": ""
               },
-              "naive_cost": 6480000,
               "monid_cost": 0,
               "error": null,
               "previous_frame_file_id": null,
               "frame_checks": 0,
               "frame_inflight_since": null,
-              "frame_gated": true
+              "frame_gated": true,
+              "fal_cost": 6480000
             }
           ],
           "qc_score": 7,
@@ -2971,7 +2971,7 @@
     }
   ],
   "spend": {
-    "naive": 27.708547,
+    "ai": 27.708547,
     "monid": 0.07302,
     "style": 0,
     "strategy": 0.160547

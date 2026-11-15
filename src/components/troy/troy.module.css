@@ -1,17 +1,20 @@
 /* Troy: the landing and the camp. Light, paper-coloured, with pixel-stepped borders. */
 
 .root {
-  --ink: #2b1d14;
-  --ink-soft: #6b5442;
-  --ink-faint: #a08a74;
-  --paper: #fffaf0;
-  --page: #f6f4ef;
-  --sand: #ead6ad;
-  --crimson: #b73a31;
-  --crimson-dark: #8f2726;
-  --bronze: #c98f3a;
-  --teal: #2d7b98;
-  --olive: #647247;
+  /* The HQ's night palette: light ink on dark panels, neon for state. */
+  --ink: #ecebff;
+  --ink-soft: #aaa7d8;
+  --ink-faint: #706d9e;
+  --paper: #1c2044;
+  --page: #151a35;
+  --sand: #292447;
+  --crimson: #f05ccd;
+  --crimson-dark: #b33397;
+  --bronze: #f5b86a;
+  --teal: #52d9ed;
+  --olive: #4dc3a0;
+  /* Pixel frames round the panels. */
+  --line: #51406d;
   --px: 3px;
   position: fixed;
   inset: 0;
@@ -19,9 +22,25 @@
   overflow: hidden;
   /* Not even focus or scrollIntoView may scroll the camp: a panel's heading taking focus would shift it. */
   overflow: clip;
-  background: var(--page);
+  /*
+   * Off the model, the night city's backdrop: an isometric grid like the floor's, fading out, with
+   * a haze of pink and aqua light, pixel stars and the bands of a far skyline at the bottom.
+   */
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 38%, rgba(255, 70, 210, 0.11), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 85% 75%, rgba(40, 230, 255, 0.09), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 12% 80%, rgba(50, 110, 255, 0.1), transparent 70%),
+    linear-gradient(to top, rgba(41, 36, 71, 0.95) 0, rgba(41, 36, 71, 0.95) 3%, transparent 3%, transparent 4%, rgba(41, 36, 71, 0.6) 4%, rgba(41, 36, 71, 0.6) 6%, transparent 6%),
+    radial-gradient(1px 1px at 13% 17%, rgba(204, 247, 252, 0.8), transparent 1.5px),
+    radial-gradient(1px 1px at 71% 9%, rgba(255, 200, 241, 0.8), transparent 1.5px),
+    radial-gradient(1px 1px at 37% 6%, rgba(204, 247, 252, 0.6), transparent 1.5px),
+    radial-gradient(1px 1px at 89% 31%, rgba(194, 214, 255, 0.7), transparent 1.5px),
+    radial-gradient(1px 1px at 6% 52%, rgba(255, 200, 241, 0.6), transparent 1.5px),
+    repeating-linear-gradient(26.565deg, rgba(120, 104, 200, 0.07) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-26.565deg, rgba(120, 104, 200, 0.07) 0 1px, transparent 1px 22px),
+    var(--page);
   color: var(--ink);
-  color-scheme: light;
+  color-scheme: dark;
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -33,6 +52,8 @@
   height: 100%;
   image-rendering: pixelated;
   touch-action: none;
+  /* Richer colour over the whole scene: the neon and the room's blues and violets pop more. */
+  filter: saturate(1.35) contrast(1.04);
 }
 
 .pixel {
@@ -45,21 +66,21 @@
 .box {
   background: var(--paper);
   box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    0 calc(var(--px) * 3) 0 0 rgba(43, 29, 20, 0.14);
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line),
+    0 calc(var(--px) * 3) 0 0 rgba(0, 0, 0, 0.14);
 }
 
 .boxSoft {
   background: var(--paper);
   box-shadow:
-    0 -2px 0 0 rgba(43, 29, 20, 0.85),
-    0 2px 0 0 rgba(43, 29, 20, 0.85),
-    -2px 0 0 0 rgba(43, 29, 20, 0.85),
-    2px 0 0 0 rgba(43, 29, 20, 0.85),
-    0 6px 0 0 rgba(43, 29, 20, 0.1);
+    0 -2px 0 0 rgba(0, 0, 0, 0.85),
+    0 2px 0 0 rgba(0, 0, 0, 0.85),
+    -2px 0 0 0 rgba(0, 0, 0, 0.85),
+    2px 0 0 0 rgba(0, 0, 0, 0.85),
+    0 6px 0 0 rgba(0, 0, 0, 0.1);
 }
 
 .button {
@@ -72,10 +93,10 @@
   background: var(--crimson);
   cursor: pointer;
   box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line),
     inset 0 calc(var(--px) * -1) 0 0 var(--crimson-dark),
     inset 0 var(--px) 0 0 rgba(255, 255, 255, 0.18);
   transition:
@@ -100,11 +121,11 @@
 .buttonInk {
   background: var(--ink);
   box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--ink),
-    0 var(--px) 0 0 var(--ink),
-    calc(var(--px) * -1) 0 0 0 var(--ink),
-    var(--px) 0 0 0 var(--ink),
-    inset 0 calc(var(--px) * -1) 0 0 #140d08,
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line),
+    inset 0 calc(var(--px) * -1) 0 0 #0d0f22,
     inset 0 var(--px) 0 0 rgba(255, 255, 255, 0.14);
 }
 
@@ -112,16 +133,16 @@
   color: var(--ink);
   background: var(--paper);
   box-shadow:
-    0 -2px 0 0 var(--ink),
-    0 2px 0 0 var(--ink),
-    -2px 0 0 0 var(--ink),
-    2px 0 0 0 var(--ink),
-    inset 0 -2px 0 0 rgba(43, 29, 20, 0.12);
+    0 -2px 0 0 var(--line),
+    0 2px 0 0 var(--line),
+    -2px 0 0 0 var(--line),
+    2px 0 0 0 var(--line),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.12);
 }
 
 .buttonQuiet:hover:not(:disabled) {
   filter: none;
-  background: #f4ead6;
+  background: #262b55;
 }
 
 .button:focus-visible,
@@ -129,6 +150,259 @@
 .link:focus-visible {
   outline: var(--px) solid var(--teal);
   outline-offset: calc(var(--px) * 2);
+}
+
+/* The guide's keys: the same on every step (a key that can't go further just does nothing). */
+.guideKey[aria-disabled="true"] {
+  cursor: default;
+}
+
+/* The guide's fold key: dark, its arrow in aqua, as big as the others. */
+.guideFold {
+  color: var(--teal);
+  background: var(--paper);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line);
+}
+
+.guideFold:hover {
+  color: var(--paper);
+  background: var(--teal);
+}
+
+/* The folded guide's pull-cord: a thin neon cord from the top of the screen, a tab on its end. */
+.cord {
+  display: block;
+  width: 2px;
+  height: 22px;
+  background: linear-gradient(var(--line), var(--teal));
+  animation: cordSway 3.2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.cordTab {
+  margin-top: -1px;
+  padding: 3px 10px 4px;
+  border: 0;
+  color: var(--paper);
+  font-size: 12px;
+  background: var(--teal);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--line),
+    0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line),
+    var(--px) 0 0 0 var(--line);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease;
+}
+
+.cordTab:hover {
+  transform: translateY(3px);
+  filter: drop-shadow(0 0 6px rgba(82, 217, 237, 0.7));
+}
+
+.cordTab:active {
+  transform: translateY(6px);
+}
+
+@keyframes cordSway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cord {
+    animation: none;
+  }
+}
+
+/*
+ * The console: the landing's input and its key, cyberpunk style. Panels with cut corners (drawn as
+ * a border-coloured shape with a slightly smaller panel inside, both clipped); glows go on the
+ * wrappers, outside the clipping.
+ */
+.console {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.consoleSlot {
+  flex: 1;
+  min-width: 0;
+  transition: filter 160ms ease;
+}
+
+.consoleField {
+  --cut: 11px;
+  height: 100%;
+  padding: 2px;
+  background: var(--line);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  transition: background 160ms ease;
+}
+
+.consoleInner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 14px;
+  background: linear-gradient(180deg, #232859, var(--paper));
+  clip-path: polygon(calc(var(--cut) - 1px) 0, 100% 0, 100% calc(100% - var(--cut) + 1px), calc(100% - var(--cut) + 1px) 100%, 0 100%, 0 calc(var(--cut) - 1px));
+}
+
+.consolePrompt {
+  color: var(--ink-faint);
+  font-size: 17px;
+  transition: color 160ms ease;
+}
+
+.consoleInner .input {
+  caret-color: var(--teal);
+}
+
+.consoleInner .input:focus-visible {
+  outline: none;
+}
+
+/* Focus lights the field alone: its border turns aqua and glows, the prompt blinks. */
+.consoleSlot:focus-within {
+  filter: drop-shadow(0 0 6px rgba(82, 217, 237, 0.55));
+}
+
+.consoleSlot:focus-within .consoleField {
+  background: var(--teal);
+}
+
+.consoleSlot:focus-within .consolePrompt {
+  color: var(--teal);
+  animation: promptBlink 1.1s steps(1, end) infinite;
+}
+
+@keyframes promptBlink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* The key: neon pink, the opposite corners cut. */
+.consoleKeySlot {
+  display: flex;
+  transition:
+    filter 160ms ease,
+    transform 80ms ease;
+}
+
+.consoleKey {
+  --cut: 11px;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 20px;
+  border: 0;
+  color: var(--paper);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  background: var(--crimson);
+  box-shadow:
+    inset 0 -3px 0 0 var(--crimson-dark),
+    inset 0 3px 0 0 rgba(255, 255, 255, 0.28);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+/* A band of light that sweeps across the key on hover. */
+.consoleKey::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.5) 48%, rgba(82, 217, 237, 0.35) 52%, transparent 70%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.consoleArrow {
+  display: inline-block;
+  transition: transform 160ms ease;
+}
+
+.consoleKeySlot:hover:not(:has(.consoleKey:disabled)) {
+  filter: drop-shadow(0 0 9px rgba(240, 92, 205, 0.7));
+}
+
+.consoleKey:hover:not(:disabled) {
+  background: #f78ade;
+}
+
+.consoleKey:hover:not(:disabled)::after {
+  animation: keySweep 650ms ease-out;
+}
+
+/* A glitch on the words: a red and an aqua ghost either side. */
+.consoleKey:hover:not(:disabled) .consoleKeyText {
+  text-shadow:
+    -1px 0 0 rgba(82, 217, 237, 0.95),
+    1px 0 0 rgba(255, 90, 110, 0.95);
+}
+
+.consoleKey:hover:not(:disabled) .consoleArrow {
+  transform: translateX(4px);
+}
+
+/* Pressed: the key sinks and dims, its glow tightens. */
+.consoleKeySlot:has(.consoleKey:active:not(:disabled)) {
+  transform: translateY(2px);
+  filter: drop-shadow(0 0 4px rgba(240, 92, 205, 0.6));
+}
+
+.consoleKey:active:not(:disabled) {
+  background: var(--crimson-dark);
+  color: var(--ink);
+  box-shadow: inset 0 3px 0 0 rgba(0, 0, 0, 0.3);
+}
+
+.consoleKey:focus-visible {
+  outline: none;
+}
+
+.consoleKeySlot:has(.consoleKey:focus-visible) {
+  filter: drop-shadow(0 0 0 var(--teal)) drop-shadow(0 0 6px rgba(82, 217, 237, 0.8));
+}
+
+.consoleKey:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+@keyframes keySweep {
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consoleKey:hover:not(:disabled)::after,
+  .consoleSlot:focus-within .consolePrompt {
+    animation: none;
+  }
 }
 
 .input {
@@ -154,6 +428,32 @@
 
 .enter {
   animation: enter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* The greeter's speech bubble: up and to the left of its head (the anchor), the tail's tip on it. */
+.greeterBubble {
+  /* See-through, box and tail alike, so the HQ's sign shows behind it. */
+  --paper: rgba(28, 32, 68, 0.6);
+  width: min(280px, calc(100vw - 32px));
+  transform: translate(calc(-100% + 2px), calc(-100% - 20px));
+}
+
+/* The tail hangs from the box's bottom right: its right edge on the border's outer edge (3 px out). */
+.greeterTail {
+  position: absolute;
+  top: 100%;
+  right: calc(var(--px) * -1);
+}
+
+/* Too narrow for the bubble beside the greeter: straight above its head, the tail in the middle. */
+@media (max-width: 639px) {
+  .greeterBubble {
+    transform: translate(-50%, calc(-100% - 20px));
+  }
+
+  .greeterTail {
+    right: calc(50% - 18px);
+  }
 }
 
 .leave {
@@ -241,7 +541,7 @@
 
 /* The screening room: one finished video at full height over the camp. */
 .overlay {
-  background: rgba(43, 29, 20, 0.74);
+  background: rgba(0, 0, 0, 0.74);
   animation: fadeIn 180ms ease both;
 }
 
@@ -279,7 +579,7 @@
     linear-gradient(rgba(255, 250, 240, 0.55), rgba(255, 250, 240, 0.55)),
     var(--sand);
   box-shadow:
-    inset 0 0 0 2px rgba(43, 29, 20, 0.16),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.16),
     inset 0 -4px 0 0 rgba(160, 120, 70, 0.14);
 }
 
@@ -325,7 +625,7 @@
     0 3px 0 0 var(--ink),
     -3px 0 0 0 var(--ink),
     3px 0 0 0 var(--ink),
-    0 7px 0 0 rgba(43, 29, 20, 0.16);
+    0 7px 0 0 rgba(0, 0, 0, 0.16);
   animation: emote 6.5s steps(1, end) both;
 }
 

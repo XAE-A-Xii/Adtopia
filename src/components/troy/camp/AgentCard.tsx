@@ -9,7 +9,7 @@ import { LAND, landRuns, scoutLand, STATION, type StationId } from "../scenes/la
 import styles from "../troy.module.css";
 import type { Engine } from "./Camp";
 import { money, platformName, when } from "./format";
-import { CampMap, Chip, crispIfTiny, greekName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, Steps } from "./ui";
+import { CampMap, Chip, crispIfTiny, crewName, Icon, type IconName, Parchment, Portrait, quote, Section, Stat, Steps } from "./ui";
 
 const STATE: Record<AgentPlan["state"], { word: string; tone: "crimson" | "faint" | "olive" | "teal" }> = {
   working: { word: "Working", tone: "crimson" },
@@ -67,7 +67,7 @@ export function AgentCard({
   // The plan says what the agent is for; the camp shows whether they are busy with it right now.
   const state = agent.state === "idle" && info?.where === "moving" ? { word: "On the move", tone: "teal" as const } : STATE[agent.state];
   const baker = engine.current?.baker ?? null;
-  const name = greekName(agent.id);
+  const name = crewName(agent.id);
   const moving = info?.where === "moving";
   const gone = info?.where === "home";
 
@@ -76,7 +76,7 @@ export function AgentCard({
       aria-label={`${name}, ${agent.role}`}
       className={`${styles.box} ${styles.rise} absolute z-20 flex flex-col ${wide ? "bottom-4 right-4 top-[76px] w-[420px]" : "inset-x-3 bottom-3 h-[62vh]"}`}
     >
-      <header className="relative flex gap-4 border-b-2 border-[rgba(43,29,20,0.12)] px-5 pb-4 pt-4">
+      <header className="relative flex gap-4 border-b-2 border-[rgba(200,196,255,0.12)] px-5 pb-4 pt-4">
         <div className={`${styles.parchment} shrink-0 self-start`}>
           <Portrait baker={baker} look={agent.look} act={moving && !info?.mounted ? (agent.returning === "scroll" && !gone ? "carry" : "march") : agent.act} mounted={info?.mounted} moving={moving} carry={agent.returning === "scroll" ? 1 : 0} coat={info?.coat} size={wide ? 104 : 84} />
         </div>
@@ -113,7 +113,7 @@ export function AgentCard({
         <Dossier agent={agent} info={info} view={view} plan={plan} />
       </div>
 
-      <footer className="flex items-center gap-3 border-t-2 border-[rgba(43,29,20,0.12)] px-5 py-3">
+      <footer className="flex items-center gap-3 border-t-2 border-[rgba(200,196,255,0.12)] px-5 py-3">
         <button type="button" onClick={onFollow} aria-pressed={following} disabled={!info?.visible} className={`${styles.button} ${following ? styles.buttonInk : styles.buttonQuiet} ${styles.pixel} h-8 px-3 text-[12px]`}>
           <Icon name="eye" size={12} /> {following ? "Following" : "Follow"}
         </button>
@@ -136,7 +136,7 @@ function mission(agent: AgentPlan, view: BrandView) {
   const kinds = new Map<string, number>();
   for (const run of runs) kinds.set(runLabel(run.key), (kinds.get(runLabel(run.key)) ?? 0) + 1);
   const what = runs.length ? list([...kinds].map(([label, n]) => `“${label}”${n > 1 ? ` (${n})` : ""}`)) : land.what.toLowerCase();
-  return `Ride to ${land.name}, fetch ${what}${providers.length ? ` through ${list(providers)}` : ""} and bring it all back to camp in a scroll case.`;
+  return `Ride to ${land.name}, fetch ${what}${providers.length ? ` through ${list(providers)}` : ""} and bring it all back to the HQ as a data package.`;
 }
 
 /** "a", "a and b", "a, b and c". */
@@ -174,7 +174,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
               {cost ? ` · ${money(cost)}` : ""}
             </p>
             {runs.length > 0 && (
-              <ul className="mt-2.5 space-y-1 border-t border-dashed border-[rgba(43,29,20,0.18)] pt-2.5">
+              <ul className="mt-2.5 space-y-1 border-t border-dashed border-[rgba(200,196,255,0.18)] pt-2.5">
                 {runs.map((run) => (
                   <li key={run.key} className="flex items-center gap-2 text-[12px]">
                     <Icon name={SOURCE_ICON[run.status] ?? "hourglass"} size={12} color={SOURCE_COLOR[run.status] ?? "var(--ink-faint)"} />
@@ -185,7 +185,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
               </ul>
             )}
             <div className="mt-3">
-              <Steps steps={["In camp", "Riding out", `At ${land.name}`, "Riding back", trip === "empty" ? "Came back empty" : "In the basket"]} current={step} failed={trip === "empty"} />
+              <Steps steps={["In the HQ", "Riding out", `At ${land.name}`, "Riding back", trip === "empty" ? "Came back empty" : "In the intake bin"]} current={step} failed={trip === "empty"} />
             </div>
             {errors.map((run) => (
               <p key={run.key} className="mt-2 text-[12px] text-[var(--crimson-dark)]">
@@ -206,7 +206,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
     const creative = company ? creatives.find((c) => c.id === company.creativeId) : null;
     const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
     return (
-      <Section title={company ? `Company ${company.idx + 1}` : "The battle"} aside={battle.rival ? <span className="text-[11px] text-[var(--ink-faint)]">against {battle.rival.name}</span> : undefined}>
+      <Section title={company ? `Video ${company.idx + 1}` : "How the posts are doing"} aside={battle.rival ? <span className="text-[11px] text-[var(--ink-faint)]">rival: {battle.rival.name}</span> : undefined}>
         {company ? (
           <Parchment>
             <div className="flex gap-3">
@@ -222,12 +222,12 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
                   {company.ratio !== null && company.views
                     ? `${pct((company.likes ?? 0) / company.views)} likes per view against ${pct(battle.benchmark!.engagement)} for the top videos: ${company.ratio >= 1 ? "ahead" : "behind"} by ${Math.abs(Math.round((company.ratio - 1) * 100))}%.`
                     : company.state === "engaged"
-                      ? "Posted. The company lands in the rival's city and forms up on the quay until the numbers come in."
+                      ? "Posted: it plays on its platform's screen along the street until the numbers come in."
                       : company.state === "sent"
-                        ? "Its post is going out: the company is aboard its ship, sailing for the rival's city."
+                        ? "Its post is going out to the platforms."
                         : company.state === "failed"
-                          ? "Its post failed, so the company stays on the quay at home."
-                          : "Mustered on the quay below the agora beside its ship, waiting for the video to be approved and sent."}
+                          ? "Its post failed."
+                          : "Waiting for the video to be approved and posted."}
                 </p>
                 {company.views !== null && (
                   <p className="mt-1.5 text-[11px] text-[var(--ink-faint)]">
@@ -265,11 +265,11 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
   if (agent.id === "courier") {
     return (
       <Section title="Dispatches" aside={<span className="text-[11px] text-[var(--ink-faint)]">{info?.deliveries ?? 0} delivered</span>}>
-        <div className="bg-[rgba(43,29,20,0.04)] px-2 pt-2">
+        <div className="bg-[rgba(200,196,255,0.04)] px-2 pt-2">
           <CampMap stations={plan.stations} route={info?.errand ?? null} here={info?.errand?.to ?? null} />
         </div>
         <p className="mt-2 text-[12px] leading-snug text-[var(--ink-soft)]">
-          {info?.errand ? `Carrying finished work from the ${STATION[info.errand.from].name.toLowerCase()} to the ${STATION[info.errand.to].name.toLowerCase()}.` : "Each time a station finishes its part, the courier rides it to the next one."}
+          {info?.errand ? `Carrying finished work from the ${STATION[info.errand.from].name.toLowerCase()} to the ${STATION[info.errand.to].name.toLowerCase()}.` : "Each time a station finishes its part, the courier carries it to the next one."}
         </p>
       </Section>
     );
@@ -284,7 +284,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
             <Icon name="eye" size={16} color="var(--teal)" />
             <span className={`${styles.pixel} text-[15px]`}>{style ? `${style.samples.length || "Top"} videos studied` : agent.state === "working" ? "Watching now" : "Not started"}</span>
           </p>
-          <p className="mt-1 text-[12px] leading-snug text-[var(--ink-soft)]">Structure, pacing and hooks of the best short videos in the category, written down for the strategist.</p>
+          <p className="mt-1 text-[12px] leading-snug text-[var(--ink-soft)]">The hook, pacing, shot types, captions and on-screen text of the best videos in the niche, frame by frame, written down for the director.</p>
           {style?.slug && <p className="mt-2 text-[11px] text-[var(--ink-faint)]">Saved as {style.slug}{style.version ? `@${style.version}` : ""}</p>}
         </Parchment>
       </Section>
@@ -293,9 +293,9 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
 
   if (agent.id === "general" || agent.id === "scribe") {
     const strategy = campaign.strategy;
-    if (!strategy) return <Note>The battle plan is written once the research is in.</Note>;
+    if (!strategy) return <Note>The plan is written once the research is in.</Note>;
     return agent.id === "general" ? (
-      <Section title="The battle plan">
+      <Section title="The plan">
         <Parchment>
           <p className={`${styles.pixel} text-[16px] leading-snug`}>{strategy.campaign.name}</p>
           <p className="mt-1 text-[12px] leading-relaxed text-[var(--ink-soft)]">{strategy.campaign.objective}</p>
@@ -332,7 +332,7 @@ function Dossier({ agent, info, view, plan }: { agent: AgentPlan; info: AgentInf
         <Section title={`Desk ${slot + 1}`}>
           <Parchment>
             <p className={`${styles.pixel} text-[15px]`}>{planned?.title ?? "No concept yet"}</p>
-            <p className="mt-1 text-[12px] text-[var(--ink-soft)]">{planned ? quote(planned.hook) : "The war tent hands each desk a concept when the strategy is done."}</p>
+            <p className="mt-1 text-[12px] text-[var(--ink-soft)]">{planned ? quote(planned.hook) : "The strategy table hands each desk a concept when the strategy is done."}</p>
           </Parchment>
         </Section>
       );
@@ -550,7 +550,7 @@ export function Basket({ view, highlight = [] }: { view: BrandView; highlight?: 
     <Section title="The basket" aside={<span className="text-[11px] text-[var(--ink-faint)]">{done}/{runs.length} in</span>}>
       <div className="flex flex-wrap gap-1">
         {runs.map((run) => {
-          const color = run.status === "done" ? "var(--bronze)" : run.status === "failed" ? "var(--crimson-dark)" : run.status === "running" ? "var(--ink-soft)" : "rgba(43,29,20,0.18)";
+          const color = run.status === "done" ? "var(--bronze)" : run.status === "failed" ? "var(--crimson-dark)" : run.status === "running" ? "var(--ink-soft)" : "rgba(200,196,255,0.18)";
           return (
             <span key={run.key} title={`${runLabel(run.key)}: ${run.status}`} className={`grid size-6 place-items-center ${highlight.includes(run.key) ? "outline outline-2 outline-[var(--ink)]" : ""}`}>
               <Icon name={run.status === "failed" ? "cross" : run.status === "running" ? "horse" : "scroll"} size={14} color={color} />
@@ -564,7 +564,7 @@ export function Basket({ view, highlight = [] }: { view: BrandView; highlight?: 
 
 function Bar({ value, color }: { value: number; color: string }) {
   return (
-    <span className="mt-1 block h-[4px] bg-[rgba(43,29,20,0.08)]">
+    <span className="mt-1 block h-[4px] bg-[rgba(200,196,255,0.08)]">
       <span className="block h-full" style={{ width: `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`, background: color }} />
     </span>
   );

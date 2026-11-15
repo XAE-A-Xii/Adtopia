@@ -83,7 +83,7 @@ export function ReferenceCard({ reference: r, onScreen }: { reference: Reference
         <span aria-hidden="true" className="absolute inset-0 grid place-items-center">
           <span className="grid size-6 place-items-center bg-[rgba(255,250,240,0.85)] text-[10px] text-[var(--ink)]">▶</span>
         </span>
-        {r.duration ? <span className="absolute bottom-0 right-0 bg-[rgba(43,29,20,0.8)] px-1 text-[10px] tabular-nums text-[var(--paper)]">{clock(r.duration)}</span> : null}
+        {r.duration ? <span className="absolute bottom-0 right-0 bg-[rgba(200,196,255,0.8)] px-1 text-[10px] tabular-nums text-[var(--paper)]">{clock(r.duration)}</span> : null}
         {r.status === "studying" && <span className={`${styles.spinner} absolute left-1 top-1`} aria-hidden="true" />}
       </a>
       <div className="min-w-0 flex-1">

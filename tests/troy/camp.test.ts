@@ -79,8 +79,7 @@ function view(campaign: Record<string, unknown>): BrandView {
       stage: "research",
       stageIndex: 0,
       error: null,
-      naiveOut: false,
-      options: { concepts: 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "google/veo-3.1", learnStyle: true },
+      options: { concepts: 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: true },
       estimateUsd: null,
       plan: null,
       research: null,
@@ -89,7 +88,7 @@ function view(campaign: Record<string, unknown>): BrandView {
       runs: [],
       creatives: [],
       posts: [],
-      spend: { naive: 0, monid: 0, style: 0, strategy: 0 },
+      spend: { ai: 0, monid: 0, style: 0, strategy: 0 },
       createdAt: "2026-11-07T10:00:00Z",
       ...campaign,
     },
@@ -98,9 +97,10 @@ function view(campaign: Record<string, unknown>): BrandView {
   } as unknown as BrandView;
 }
 
-function atPost(stage: StageType, agent: AgentState, station: { x: number; y: number }) {
+function atPost(stage: StageType, agent: AgentState, station: { x: number; y: number; z?: number }) {
   const e = agent.entity;
-  return stage.has(e) && Math.hypot(e.x - (station.x + agent.plan.x), e.y - (station.y + agent.plan.y)) < 0.6 && Math.abs(e.z - agent.plan.z) < 0.4;
+  // Posts are relative to the station, and a station stands on its own floor (the deck or the ground).
+  return stage.has(e) && Math.hypot(e.x - (station.x + agent.plan.x), e.y - (station.y + agent.plan.y)) < 0.6 && Math.abs(e.z - (station.z ?? 0) - agent.plan.z) < 0.4;
 }
 
 describe("the march into the camp", () => {
@@ -118,18 +118,18 @@ describe("the march into the camp", () => {
       const station = STATION[agent.plan.station as keyof typeof STATION];
       expect(atPost(stage, agent, station), `${agent.plan.id} at its post`).toBe(true);
     }
-    // The lookout climbed the ladder to the platform.
-    expect(internals.agents.get("lookout")!.entity.z).toBeGreaterThan(25);
+    // The signal watcher sits at the map desk on the upper floor.
+    expect(internals.agents.get("lookout")!.entity.z).toBe(STATION.scouts.z);
   });
 
-  it("has the first soldier out call the brand's men out of the horse", () => {
+  it("has the first agent out call the brand's team down into the HQ", () => {
     const { camp, run: tick } = world(true);
     const said: string[] = [];
     camp.events.onSay = (line) => said.push(line.text);
-    camp.brandName = "Naïve";
+    camp.brandName = "Monid";
     camp.apply(derive(view({ runs: [run("brand", "pending", "A")] })));
     tick(3);
-    expect(said[0]).toBe("Men of Naïve, out of the horse! Let's roll out!");
+    expect(said[0]).toBe("Team Monid, down to the HQ! Let's roll out!");
   });
 
   it("places everyone at once when the camp is opened directly", async () => {
@@ -256,7 +256,7 @@ describe("looking at one agent", () => {
     tick(1.5);
     const riding = camp.info("scout:site")!;
     expect(riding.trip).toBe("out");
-    expect(riding.doing).toMatch(/stable|Saddling|Galloping/);
+    expect(riding.doing).toMatch(/bike bay|Saddling|Riding up/);
     tick(8);
     expect(camp.info("scout:site")).toMatchObject({ trip: "there", where: "afield", visible: true, land: "site" });
     expect(camp.info("scout:site")!.doing).toMatch(/Gathering at The brand's site/);
@@ -341,70 +341,18 @@ describe("the expedition", () => {
     return w;
   }
 
-  it("musters on the quay, sails when the posts go out, and ends each attack the way its video does", async () => {
-    const { ROME, ROME_LINES, STATION } = await import("@/components/troy/scenes/layout");
+  it("keeps the battle's books for the publishing panel, but sends no army out of the HQ's door", () => {
     const { stage, camp, internals, run: tick } = mustered();
-    expect(army(internals)).toHaveLength(2 * 7);
-    for (const agent of army(internals)) expect(atPost(stage, agent, STATION.agora), `${agent.plan.id} mustered on the quay`).toBe(true);
-
-    // The posts go out: the companies go aboard and their ships put to sea.
-    camp.apply(derive(at("review", "publishing", { creatives: [creative(0, true), creative(1, true)], posts: [post(0, "pending"), post(1, "pending")] })));
+    const plan = derive(at("review", "publishing", { creatives: [creative(0, true), creative(1, true)], posts: [post(0, "pending"), post(1, "pending")] }));
+    // The plan still musters a company per video (the agora's panel reads it)...
+    expect(plan.battle.companies).toHaveLength(2);
+    expect(plan.agents.some((a) => a.army)).toBe(true);
+    camp.apply(plan);
     tick(20);
-    for (const agent of army(internals)) expect(agent.where, `${agent.plan.id} away with the fleet`).toBe("expedition");
-    expect(scene(camp).ships.filter((s) => s.state !== "moored")).toHaveLength(2);
-
-    // Out, with numbers: video 0 (10% likes per view against 6%) routs the legion facing it;
-    // video 1 (4%) is thrown back to the quay. Then it is over: nobody fights on.
-    camp.apply(derive(at("live", "live", { creatives: [creative(0, true), creative(1, true)], posts: [post(0, "posted", { views: 1000, likes: 100 }), post(1, "posted", { views: 1000, likes: 40 })] })));
-    tick(70);
-    expect(scene(camp).runs.map((r) => r.outcome)).toEqual(["won", "repulsed"]);
-    const e = internals.agents.get("hoplite:0:0")!.entity;
-    expect(e.x - ROME.x).toBeGreaterThan(ROME_LINES.landing);
-    expect(act(internals, "hoplite:0:0")).toBe("cheer");
-    expect(act(internals, "hoplite:1:0")).toBe("stand");
-    expect(army(internals).every((a) => act(internals, a.plan.id) !== "fight")).toBe(true);
-    // Not every video won: the gate stays the legion's.
-    expect(camp.expedition.taken).toBe(false);
-    expect(scene(camp).romans.some((r) => !r.gone)).toBe(true);
-  });
-
-  it("takes the city when every video beats the top videos, and hands it back when the demo starts over", () => {
-    const { camp, internals, run: tick } = mustered();
-    camp.apply(derive(at("live", "live", { creatives: [creative(0, true), creative(1, true)], posts: [post(0, "posted", { views: 1000, likes: 100 }), post(1, "posted", { views: 1000, likes: 90 })] })));
-    tick(90);
-    expect(camp.expedition.taken).toBe(true);
-    // The whole legion ran for the gate; the Greeks' banners fly over it.
-    expect(scene(camp).romans.every((r) => r.gone)).toBe(true);
-    expect(scene(camp).standards.every((b) => b.job?.k === "prop" && b.job.v >= 4)).toBe(true);
-
-    // Back to the start: the army re-embarks, sails home and marches into the horse; the legion
-    // comes back out of its gate.
-    camp.apply(derive(at("production", "running", { creatives: [] })));
-    tick(150);
-    expect(camp.expedition.taken).toBe(false);
-    expect(scene(camp).romans.every((r) => !r.gone && !r.routed && !r.back)).toBe(true);
-    expect(scene(camp).ships.every((s) => s.state === "moored")).toBe(true);
+    // ...but none of them comes out, and nothing of the harbour, the sea or the city is drawn.
     expect(army(internals)).toHaveLength(0);
-  });
-
-  it("knocks legionaries flat with arrows during the attack, and they get up again", () => {
-    // Every arrow finds its man.
-    const random = vi.spyOn(Math, "random").mockReturnValue(0.1);
-    try {
-      const { camp, run: tick } = mustered();
-      camp.apply(derive(at("live", "live", { creatives: [creative(0, true), creative(1, true)], posts: [post(0, "posted", { views: 1000, likes: 62 }), post(1, "posted", { views: 1000, likes: 61 })] })));
-      const romans = scene(camp).romans;
-      let knocked = 0;
-      for (let s = 0; s < 70; s++) {
-        tick(1);
-        knocked = Math.max(knocked, romans.filter((r) => r.down > 0).length);
-      }
-      expect(knocked).toBeGreaterThan(0);
-      // Level with the top videos: both companies hold, and everyone is on his feet.
-      expect(scene(camp).runs.map((r) => r.outcome)).toEqual(["held", "held"]);
-      expect(romans.every((r) => r.down <= 0 && r.entity.job?.act !== "fallen")).toBe(true);
-    } finally {
-      random.mockRestore();
-    }
+    expect(scene(camp).ships.length).toBeGreaterThan(0);
+    const hidden = stage.entities.filter((e) => e.hidden);
+    expect(hidden.length).toBeGreaterThan(0);
   });
 });

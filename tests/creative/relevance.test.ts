@@ -30,13 +30,13 @@ describe("the relevance screen", () => {
   const ranked = [candidate("meme", 50), candidate("news", 45), candidate("composio", 30, { origin: "competitor" }), candidate("agent-tips", 25), candidate("claude-skills", 20)];
 
   it("maps the model's verdicts back to candidates", async () => {
-    const naive = {
+    const claude = {
       message: async () => ({
         stop_reason: "tool_use",
         content: [{ type: "tool_use", name: "relevance_screen", input: { videos: [{ n: 1, relevance: 1, reason: "emoji loop" }, { n: 3, relevance: 9, reason: "competitor creator" }, { n: 9, relevance: 9, reason: "no such video" }] } }],
       }),
     };
-    expect(await screenRelevance(naive, ranked, { product })).toEqual([
+    expect(await screenRelevance(claude, ranked, { product })).toEqual([
       { url: "meme", relevance: 1, reason: "emoji loop" },
       { url: "composio", relevance: 9, reason: "competitor creator" },
     ]);
@@ -66,13 +66,13 @@ describe("the relevance screen", () => {
     expect(pool.map((c) => c.url)).toEqual([...reach.slice(0, 22).map((c) => c.url), "review", "long-running-ad"]);
 
     let sent = "";
-    const naive = {
+    const claude = {
       message: async (request: { system?: string; messages: Array<{ content: unknown }> }) => {
         sent = `${request.system}\n${String(request.messages[0].content)}`;
         return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "relevance_screen", input: { videos: [{ n: 24, relevance: 9, reason: "competitor ad" }] } }] };
       },
     };
-    expect(await screenRelevance(naive, ranked, { product })).toEqual([{ url: "long-running-ad", relevance: 9, reason: "competitor ad" }]);
+    expect(await screenRelevance(claude, ranked, { product })).toEqual([{ url: "long-running-ad", relevance: 9, reason: "competitor ad" }]);
     expect(sent).toContain('"sells":"7/10: Meta ad, ran 94 days, still running"');
     expect(sent).toContain("from: ad is a paid ad");
   });
@@ -88,13 +88,13 @@ describe("the relevance screen", () => {
 
   it("shows the screen each candidate's cloneability and asks it to favour one person talking to camera", async () => {
     let sent = "";
-    const naive = {
+    const claude = {
       message: async (request: { system?: string; messages: Array<{ content: unknown }> }) => {
         sent = `${request.system}\n${String(request.messages[0].content)}`;
         return { stop_reason: "tool_use", content: [{ type: "tool_use", name: "relevance_screen", input: { videos: [] } }] };
       },
     };
-    await screenRelevance(naive, [candidate("story", 30, { caption: "storytime: my agent bill" })], { product });
+    await screenRelevance(claude, [candidate("story", 30, { caption: "storytime: my agent bill" })], { product });
     expect(sent).toContain('"clones":"7/10 guessed from the caption and length: not watched yet: 5 to start, caption names a face-to-camera format (\\"storytime\\") +2"');
     expect(sent).toMatch(/one person, in continuous takes/);
     expect(sent).toMatch(/talking-head testimonial, 'I tried X', storytime, a POV reaction, green-screen commentary/);

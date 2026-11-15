@@ -169,11 +169,11 @@ export type Timeline = {
 // the research is done once the last of them is home with the case.
 
 /**
- * Seconds a source stays out, by its land's row on the map: the ride there and a moment's
- * gathering. The rows at the ends of the high road are the longest rides; the ride home takes
- * about as long again.
+ * Seconds a source stays out, by its shop's place along the street: the ride up the stairs and
+ * along the road, and a moment's gathering. The shops farthest down the street are the longest
+ * rides; the ride home takes about as long again.
  */
-const STAY_BY_ROW = [9.2, 8, 8.2, 9.4, 10.8];
+const STAY_BY_ROW = [8, 8.2, 8.4, 8.7, 9, 9.3, 9.6, 10, 10.4, 10.8];
 const stay = (key: string) => STAY_BY_ROW[LAND[landFor(key)].row];
 const firstStart = (i: number) => 0.6 + i * 0.25;
 /** Seconds the planned sweep's scouts take to march out of the horse to the stable. */
@@ -407,7 +407,7 @@ export function replay(script: DemoScript, state: DemoState): BrandView {
             return {
               n: shot.n,
               status,
-              provider: working ? (shot.provider ?? "naive") : null,
+              provider: working ? (shot.provider ?? "fal") : null,
               renders: working ? Math.max(1, shot.renders) : 0,
               frameUrl: null,
               qc: status === "passed" ? (shot.qc ?? { score: c.qcScore ?? 8, pass: true, issues: [], fix_prompt: "" }) : null,
@@ -478,7 +478,7 @@ export function replay(script: DemoScript, state: DemoState): BrandView {
   const totalCost = videos.reduce((n, c) => n + c.cost, 0);
   const rendered = videos.length ? videos.reduce((n, c) => n + (totalCost ? c.cost : 1) * (progress.get(c.idx) ?? 0), 0) / (totalCost || videos.length) : 0;
   const spend = {
-    naive: Math.round(script.spend.naive * rendered * 100) / 100,
+    ai: Math.round(script.spend.ai * rendered * 100) / 100,
     monid: Math.round(script.spend.monid * between(0, tl.research[1], t) * 100) / 100,
     style: tl.style && t >= tl.style[1] ? script.spend.style : 0,
     strategy: t >= tl.strategy[1] ? script.spend.strategy : 0,
@@ -501,7 +501,6 @@ export function replay(script: DemoScript, state: DemoState): BrandView {
       stage: finalStage,
       stageIndex: stageOrder.indexOf(finalStage),
       error: null,
-      naiveOut: false,
       options: script.options,
       estimateUsd: script.estimateUsd,
       plan: t >= planAt ? script.plan : null,
@@ -665,7 +664,7 @@ export async function loadDemoScript(site: string | null): Promise<DemoScript> {
   try {
     const index = await fetch("/demo/index.json", { cache: "no-cache" });
     if (!index.ok) return SAMPLE;
-    // A recording answers to its domain and to any other name it lists (naive.ai for usenaive.ai).
+    // A recording answers to its domain and to any aliases it lists.
     const list = ((await index.json()) as { scripts?: Array<{ id: string; domain: string; aliases?: string[] }> }).scripts ?? [];
     const checked = site ? normalizeSite(site) : null;
     const wanted = checked && "domain" in checked ? checked.domain : null;

@@ -1,8 +1,11 @@
 import { CLONE_EASY, cloneLine } from "./creative/cloneability";
+import type { BrainrotScript } from "./creative/brainrot";
 import type { ResearchPack } from "./research";
 import type { CreativeBrief, FunnelRole, ProductBrief, ProductionPlan, ReferenceBreakdown, Script, SuccessMetric, VideoFormat } from "./creative/types";
+import { canonicalUrl } from "./creative/references";
+import { preferencesSection } from "./preferences";
 
-// The strategist's contract: the JSON Schema Naive enforces on the session, and the types it fills.
+// The strategist's contract: the JSON Schema enforced on the director output, and the types it fills.
 
 export type Shot = { seconds: number; frame_prompt: string; video_prompt: string; dialogue: string; pose?: string };
 
@@ -28,6 +31,8 @@ export type Concept = {
   brief?: CreativeBrief;
   script?: Script;
   plan?: ProductionPlan;
+  /** Brainrot videos: the bit (characters, shots, voice, stamps, sound) instead of a script and plan. */
+  brainrot?: BrainrotScript;
   reference?: { id: string; url: string; author: string; views: number; followers: number | null; outlier: number | null; format: string; hook_mechanic: string };
   /** For internal review only (one-to-one remakes): publishing refuses it unless `cleared` is set. */
   internal?: boolean;
@@ -54,7 +59,7 @@ export type Strategy = {
   };
 };
 
-export const FORMATS: VideoFormat[] = ["talking_head_broll", "split_screen", "presenter_inset", "voiceover_demo", "filmed_screen", "text_story", "remake"];
+export const FORMATS: VideoFormat[] = ["talking_head_broll", "split_screen", "presenter_inset", "voiceover_demo", "filmed_screen", "text_story", "remake", "code_ad", "brainrot"];
 
 export const PLATFORMS = ["tiktok", "instagram", "youtube", "x", "facebook", "linkedin", "threads"] as const;
 
@@ -146,7 +151,8 @@ export const STRATEGY_SCHEMA = {
   },
 } as const;
 
-export type StrategyOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string };
+/** `preferences`: what the customer asked for when the campaign started (see src/lib/preferences.ts). */
+export type StrategyOptions = { concepts: number; shotsPerConcept: number; secondsPerShot: number; videoModel: string; preferences?: string };
 
 /** The first message of a strategist session: the brief, the research and the house rules for this run. */
 export type PastResult = {
@@ -164,7 +170,8 @@ export type PastResult = {
 };
 
 /** What the director sees of a reference: its numbers, mechanics and beats, not its raw transcript. */
-export function referenceDigest(breakdowns: ReferenceBreakdown[]) {
+export function referenceDigest(breakdowns: ReferenceBreakdown[], shared: Iterable<string> = []) {
+  const sharedKeys = new Set([...shared].map(canonicalUrl));
   return breakdowns.map((ref) => ({
     id: ref.id,
     url: ref.url,
@@ -188,12 +195,14 @@ export function referenceDigest(breakdowns: ReferenceBreakdown[]) {
     delivery: ref.delivery,
     why_it_works: ref.why_it_works,
     fit_for_this_brand: ref.fit,
+    // Another brand remade it lately (a narrow niche): this brand's take must not look like theirs.
+    ...(sharedKeys.has(canonicalUrl(ref.url)) ? { already_remade_by_another_brand: true } : {}),
   }));
 }
 
 export function strategyMessage(
   pack: ResearchPack,
-  creative: { product: ProductBrief; breakdowns: ReferenceBreakdown[] },
+  creative: { product: ProductBrief; breakdowns: ReferenceBreakdown[]; shared?: string[] },
   options: StrategyOptions,
   past: PastResult[] = [],
 ) {
@@ -208,23 +217,26 @@ export function strategyMessage(
     reddit: pack.reddit.slice(0, 8),
     aeo: pack.aeo,
   };
-  const { product, breakdowns } = creative;
+  const { product, breakdowns, shared = [] } = creative;
+  const preferences = preferencesSection(options.preferences);
   return [
     `Build the campaign for ${product.name || pack.brand.name || pack.domain}.`,
     `Deliver exactly ${options.concepts} video briefs. Each brief remakes one of the proven reference videos below for this product, as closely as possible: the same hook, beats, wording, timing, shots and on-screen text, with an AI presenter of the same kind in the same kind of setting, and only the product-specific parts changed. Pick the references with the best mix of proof and fit for this product. Give the briefs different styles, not just different references: mix the lanes (a competitor's winning format, a niche breakout, a famous viral hook, a long-running ad) and the formats, so the campaign tests several ways to win.`,
     `Plan the campaign as a funnel mix, the way performance teams do: the customer pays for sales, not views. A video with 2 million likes can sell less than one with 100 thousand. Give every brief a role and the metric it is judged on: reach videos get the product seen and shared (judged on views, shares or saves) and remake references whose proof is reach (views far above the account's followers, or raw virality for a famous benchmark like Cluely or MrBeast); convert videos make viewers click, sign up or buy (judged on link clicks, sign-ups or purchases) and remake references whose proof is that they sell (role "convert": an ad an advertiser kept paying for, many saves per like, a review, demo or testimonial that asks for the sale), keeping their selling beats (problem, proof, objection, offer, call to action) with this product's real facts and offer. ${options.concepts >= 2 ? `With ${options.concepts} videos, include at least one of each role.` : "With one video, pick the role the evidence supports best."} Each video will get its own tracked link, so a convert video's call to action must be one concrete step.`,
     `Remakes are one-to-one, made from the reference's own footage: a lookalike AI presenter performs the original's exact motion (it needs one person, in continuous takes), the original audio is re-voiced with this product's words, and its graphics and captions are replaced in place. cloneability (0-10) says how faithfully that works for each reference, with the reasons, and hardest_to_clone names its hardest part. Face-to-camera UGC (one person talking to the lens: a talking-head testimonial, "I tried X", storytime, a POV reaction, green-screen commentary) is the format with the most return and the hardest to get right, and it is what the clone is built for: favour it, and vary the styles within it (the hook, the selling structure, the lane, the setting). Prefer references with cloneability ${CLONE_EASY} or more. Several people, a moving camera, crowds or real locations, hands working a product in close-up, songs or dialogue, and screens (a website walkthrough filmed off a monitor, a screen recording) are what it cannot reproduce: our product laid over someone else's screen looks fake, so prefer a person talking to the lens over any screen-led format. When you pick a reference below ${CLONE_EASY}, say in its brief's why what makes it worth the risk. When the evidence is close, take the shorter one: every second is rendered (about $0.40 a second with a presenter), so 45 seconds or less.`,
     breakdowns.length
-      ? `Reference videos, broken down beat by beat from their transcripts and frames, the most cloneable first. role and conversion_evidence say what each is proof of; how_it_sells quotes its selling beats; cloneability says how faithfully it can be remade:\n<references>\n${JSON.stringify(referenceDigest(breakdowns))}\n</references>`
+      ? `Reference videos, broken down beat by beat from their transcripts and frames, the most cloneable first. role and conversion_evidence say what each is proof of; how_it_sells quotes its selling beats; cloneability says how faithfully it can be remade:\n<references>\n${JSON.stringify(referenceDigest(breakdowns, shared))}\n</references>`
       : "No reference videos could be broken down for this run. Base each brief on the strongest patterns in the research and set reference_id to an empty string.",
+    `Make every video unmistakably this product's, not the category's. Other companies sell something similar and remake the same viral formats, so a hook any competitor could say word for word is a wasted video. Build each brief's angle and hook on what only this product has: its aha moment, its own proof, its offer, a feature or detail from the product brief that a rival could not claim. Keep the reference's structure and pacing; change the angle. A reference marked already_remade_by_another_brand was remade by another company lately: if you use it, its hook wording, setting and angle must be clearly different from a straight remake, and say how in the brief's why.`,
+    ...(preferences ? [preferences] : []),
     `The product brief (the only source of claims):\n<product>\n${JSON.stringify({ ...product, visuals: undefined })}\n</product>`,
     product.visuals.length
       ? `Real product visuals that can be on screen (refer to them by id):\n<visuals>\n${JSON.stringify(product.visuals.map(({ id, kind, caption, source }) => ({ id, kind, caption, source })))}\n</visuals>`
       : "There are no product visuals for this brand: choose formats where the creator carries the video (talking_head_broll with creator beats only), or filmed_screen, whose screens are built from the product brief.",
-    `Formats: talking_head_broll (a creator talks to camera; the edit cuts to the product while they keep talking), split_screen (creator on top, product underneath), presenter_inset (product graphics full screen with the presenter in a small rounded window, the look of most viral dev-tool tutorials), voiceover_demo (no face: product on screen, a voice-over and captions), filmed_screen (no face: looks like a phone filming a computer monitor while a voice walks through it; use it when the reference is a filmed screen or screen-recorded walkthrough), text_story (no face: product on screen with large text), remake (a one-to-one remake of the reference itself: its footage, framing, cuts, timing, music, graphic placement and caption look are kept, with the brand's recurring presenter in place of the person, Kling 3.0 voicing them, and only the product facts in its words changed; internal only, never posted unless a person clears it; about $0.17 per second of the reference's full length plus about $0.30). Match the reference's format where you can. Videos with a face cost about $0.40 per second to render; faceless formats cost almost nothing, so use them when the reference is faceless or the product is software that shows well on screen.`,
+    `Formats: talking_head_broll (a creator talks to camera; the edit cuts to the product while they keep talking), split_screen (creator on top, product underneath), presenter_inset (product graphics full screen with the presenter in a small rounded window, the look of most viral dev-tool tutorials), voiceover_demo (no face: product on screen, a voice-over and captions), filmed_screen (no face: looks like a phone filming a computer monitor while a voice walks through it; use it when the reference is a filmed screen or screen-recorded walkthrough), text_story (no face: product on screen with large text), remake (a one-to-one remake of the reference itself: its footage, framing, cuts, timing, music, graphic placement and caption look are kept, with the brand's recurring presenter in place of the person, Kling 3.0 voicing them, and only the product facts in its words changed; internal only, never posted unless a person clears it; about $0.17 per second of the reference's full length plus about $0.30), code_ad (no camera and no AI video: a 15-30 second 3D cartoon ad made in code, in a viral explainer series' style: a fast narrator, a buff cartoon lead in a 3D scene (an office, a keynote stage, a gym, a rooftop pool, or a versus ad with the old way's slob downstairs) hitting a real problem and the product as the fix, its feature names popping on screen; it borrows the reference's premise and hook mechanic, whatever the reference's niche, so it suits a viral concept from outside the product's category; cents to make), brainrot (a deliberately terrible, so-cringe-it's-funny AI meme ad for reach: an outrageous stunt opener, original absurd characters, current meme trends, bass-boosted sound, the product as the punchline; it uses Adtopia's own viral brainrot formats, so reference_id may be any reference; held until a person clears it; about $2-4 a video). Match the reference's format where you can. Videos with a face cost about $0.40 per second to render; faceless formats cost almost nothing, so use them when the reference is faceless or the product is software that shows well on screen.`,
     `Research for the brand brief and the search plan (collected today from public sources):\n<research>\n${JSON.stringify(research)}\n</research>`,
     ...(past.length
-      ? [`How this brand's earlier Nomen videos performed on its own accounts (repeat what worked, drop what did not, do not reuse the same hooks):\n<past_results>\n${JSON.stringify(past)}\n</past_results>`]
+      ? [`How this brand's earlier Adtopia videos performed on its own accounts (repeat what worked, drop what did not, do not reuse the same hooks):\n<past_results>\n${JSON.stringify(past)}\n</past_results>`]
       : []),
   ].join("\n\n");
 }
@@ -330,3 +342,151 @@ export function captionFor(concept: Concept) {
   const tags = concept.hashtags.join(" ");
   return [concept.caption.trim(), tags].filter(Boolean).join("\n\n");
 }
+
+/** System prompt for the in-process creative director / brand strategist. */
+export const DIRECTOR_PROMPT = `You are Adtopia's creative director and brand strategist. A brand gives you its website. Adtopia's
+research agents have already done the legwork:
+
+- a **product brief** written from the brand's own site (the only source of claims),
+- the brand's real **product visuals** (photos, screenshots of its site and app) that can be on screen,
+- **reference videos**: short videos with proof that they work, each broken down beat by beat from
+  its transcript and frames. Some prove reach (views far above the account's followers); some
+  prove they sell (an ad an advertiser kept paying for, many saves per like, a review or demo that
+  asks for the sale). Each carries its \`role\`, its \`conversion_evidence\`, when it sells, its
+  selling beats (\`how_it_sells\`), and its \`cloneability\`: how faithfully Adtopia can remake it from
+  its own footage, with the reasons,
+- public research for the brand brief and the search plan (SEO keywords, live ads, Reddit, what
+  ChatGPT and Perplexity say).
+
+You return the brand brief, the search plan and one **video brief** per video. Adtopia's script room
+then writes each script from your brief and its reference, and production renders it. Answer only
+with the structured output.
+
+## Video briefs
+
+The playbook is to remake videos that already work. Each brief picks one reference and remakes it
+one-to-one for this product: its layout, graphics, captions and timing are rebuilt shot by shot,
+with our presenter and our product swapped in, so it earns the same retention.
+
+What stays the same:
+- the hook, word for word where it can
+- the beats, their order and timing
+- the wording and delivery
+- the shots and framing
+- the on-screen text and caption style
+- the kind of presenter and setting
+
+Only what has to change for this product changes: its name, its features, its real facts. An AI
+presenter of the same kind stands in for the original person. Never reuse the original's face,
+voice or music.
+
+- **Plan the campaign as a funnel mix.** The customer pays for sales, not views: a video with 2
+  million likes can sell less than one with 100 thousand. Performance teams run both kinds, so
+  every brief has a \`role\` and the \`metric\` it is judged on:
+  - \`reach\` gets the product seen and shared. Judged on \`views\`, \`shares\` or \`saves\`. Remake a
+    reference whose proof is reach. Any ask stays soft (follow, comment, share).
+  - \`convert\` makes viewers click, sign up or buy. Judged on \`link_clicks\`, \`sign_ups\` or
+    \`purchases\`. Remake a reference whose role is \`convert\` and keep its selling beats from
+    \`how_it_sells\` (the problem, the proof or demo, the objection, the offer, the call to action)
+    in its order, filled with this product's real facts and offer. \`cta\` is one concrete step true
+    to the product brief's offer ("get the $1 free credit, link in bio"). Each video gets its own
+    tracked link, so the step must be one a viewer can take. A testimonial or review reference
+    keeps its structure, but its "it worked for me" beats become the presenter showing the product
+    working, never a claimed personal result.
+
+  With two or more videos, include at least one of each role.
+- **Pick references on evidence, across lanes.** The kinds of reference:
+  - a competitor's winning post;
+  - a niche breakout (views far above the account's followers);
+  - a famous viral benchmark: a brand or creator known for short-form, like Cluely or MrBeast,
+    whose proof is raw virality (its hook can carry any product);
+  - a converter: a long-running ad (libraries publish no views; its proof is how long the
+    advertiser kept paying for it and how many ads reuse it), or a video with many saves per like
+    that asks for the sale.
+
+  Prefer good engagement and a format that can carry this product (\`fit_for_this_brand\`).
+- **Pick what the clone can reproduce.** A remake is made from the reference's own footage: a
+  lookalike AI presenter performs the original's exact motion (it needs one person, in continuous
+  takes), the original audio is re-voiced with this product's words, and its graphics and captions
+  are replaced in place. Each reference's \`cloneability\` (0-10) says how faithfully that works and
+  why; \`hardest_to_clone\` names its hardest part.
+  - **Face-to-camera UGC is the core format.** One person talking to the lens: a talking-head
+    testimonial, "I tried X", storytime, a POV reaction, green-screen commentary. It is the hardest
+    to get right and the highest return, and it is what the clone is built for. Favour it, and vary
+    the styles within it (the hook, the selling structure, the lane, the setting).
+  - Prefer references with \`cloneability\` 6 or more. Several people, a moving camera, crowds or
+    real locations, hands working a product in close-up, and songs or dialogue are what the clone
+    cannot reproduce.
+  - When you pick a reference below 6, say in \`why\` what makes it worth the harder remake.
+  - Every second is rendered (about $0.40 a second with a presenter), so when the evidence is
+    close, take the shorter reference: 45 seconds or less.
+- **Vary the styles.** Give each brief a different reference and a different style, mixing lanes,
+  roles, selling structures and formats, so the campaign tests several ways to win.
+- **format**: the reference's own format.
+  - \`talking_head_broll\`: a creator talks to camera, and the edit cuts to the real product while
+    they keep talking.
+  - \`split_screen\`: the creator on top, the product underneath.
+  - \`presenter_inset\`: product graphics full screen with the presenter in a small rounded window.
+    This is the look of most viral dev-tool tutorials.
+  - \`voiceover_demo\`: no face. The product is on screen with a voice-over and captions.
+  - \`filmed_screen\`: no face. It looks like a phone filming a computer monitor while a voice
+    walks through it. Use it when the reference is a filmed screen or a screen-recorded
+    walkthrough.
+  - \`text_story\`: no face. The product is on screen with large text.
+  - \`remake\`: a one-to-one remake of the reference itself: its footage, framing, cuts, timing,
+    music, graphic placement and caption look are kept, and only the people (the brand's recurring
+    presenter, a lookalike of the same type), the voice and the product facts in its words change.
+    \`creator\` describes that presenter. Internal only: never posted unless a person clears it. It
+    renders the reference's full length, about $0.17 per second plus about $0.30.
+  - \`code_ad\`: no camera and no AI video. A 15-30 second 3D cartoon ad made in code, in a viral
+    explainer series' style: a fast narrator, a buff cartoon lead in a 3D scene (an office, a keynote
+    stage, a gym, a rooftop pool, or a versus ad against the old way's slob) hitting a real
+    problem, the product as the fix, its feature names popping on screen. It takes
+    the reference's premise and hook mechanic, not its footage, so the reference can come from any
+    niche (an engineering explainer, a money story, a simulation). Cents to make. Leave creator
+    and setting empty.
+- **hook_plan**: the reference's hook, with exactly which words change for this product.
+- **keep**: everything that stays, concretely. For example: "hook 'POV: you just found…' word for
+  word, 6 beats, cuts every 2 s, deadpan delivery, white outlined captions".
+- **change**: only what must change. For example: "their app → our product, their price → our
+  free tier".
+- **visuals**: the product visual ids that stand in for whatever the reference shows on screen,
+  in order.
+- **creator / setting** (formats with a face only):
+  - creator: an AI presenter of the same kind as the reference's: age range, look, wardrobe and
+    energy. Never a copy of the real person's face or identity.
+  - setting: the same kind of place, time of day and light.
+  - \`filmed_screen\` leaves creator empty and uses setting for the desk and room around the
+    monitor, as the reference shows them.
+  - Leave both empty for the other faceless formats.
+- **What never carries over**: the reference's claims about itself. Its personal results, prices,
+  reviews and "I've used it for months" become true facts from the product brief that play the
+  same role.
+- **why**: cite the reference's numbers (or, for a converter, its conversion evidence) and why it
+  fits this product, buyer and role. For a reference with \`cloneability\` below 6, also say why it
+  is worth the harder remake.
+
+## Brand brief and search
+
+- Read the research like an analyst. Base every claim about the market on what the data shows.
+- \`value_props\` and \`proof_points\` come from the product brief and the site. Never invent
+  statistics, awards, ratings, ingredients, prices or results.
+- \`product_look\`: the real product as the brief and visuals show it.
+- \`content_patterns\`: the patterns the references share, and why they work. List the reference
+  URLs as examples.
+- \`search\`: the keywords worth winning, concrete SEO actions, and whether ChatGPT and Perplexity
+  mention the brand (\`aeo_status\`, quoting them). Also give actions that improve how AI answers
+  describe and cite the brand.
+
+## Rules you never break
+
+- **Brand-owned and labeled.** These videos are posted by the brand on its own accounts and
+  labeled AI-generated. The creator shows, explains and reacts to the product. They never claim a
+  personal history with it: no fake testimonials, no invented results, durations, ratings or
+  reviews.
+- **No unsupported claims.** No health, medical, financial or environmental claims unless the
+  brand's site makes the same claim, in the same strength.
+- **No real people or other brands.** No real people, celebrities or public figures, and no other
+  brands' trademarks. Never name or disparage a competitor.
+- **Captions sound like the platform.** Short, human, one clear call to action, no false urgency.
+  Use 3 to 6 relevant hashtags.`;

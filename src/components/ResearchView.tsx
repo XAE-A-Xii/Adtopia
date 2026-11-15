@@ -134,7 +134,7 @@ export function ResearchView({ campaign }: { campaign: CampaignView }) {
       </Card>
 
       {campaign.style && (
-        <Card title="Format study" subtitle={campaign.style.slug ? `Saved on Naive as ${campaign.style.slug}@${campaign.style.version}` : undefined} className="lg:col-span-3">
+        <Card title="Format study" subtitle={campaign.style.slug ? `${campaign.style.slug}@${campaign.style.version}` : undefined} className="lg:col-span-3">
           <details>
             <summary className="cursor-pointer text-sm text-zinc-300">What the top videos have in common</summary>
             <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-black/30 p-4 text-xs text-zinc-300">{campaign.style.skill_md}</pre>

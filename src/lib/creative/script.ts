@@ -1,10 +1,11 @@
 import { ApiError } from "../http";
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { QC_MODEL } from "../qc";
 import { extractJson } from "../research";
 import { isTall, usesCreator } from "./plan";
 import type { BeatJob, CreativeBrief, ProductBrief, ReferenceBreakdown, Script, ScriptBeat } from "./types";
 import { diffWords, phraseSyllables, tokens } from "./words";
+import { preferencesSection } from "../preferences";
 
 // The script room: a writer remakes a proven viral video for our product, as close to it as the truth allows, a linter
 // catches what makes scripts sound like AI, and a critic sends weak drafts back. The reference's
@@ -147,7 +148,8 @@ const CRITIC_TOOL = {
   },
 };
 
-export type ScriptContext = { product: ProductBrief; brief: CreativeBrief; reference: ReferenceBreakdown; targetSeconds: number };
+/** `preferences`: what the customer asked for (tone, audience, what to avoid); see src/lib/preferences.ts. */
+export type ScriptContext = { product: ProductBrief; brief: CreativeBrief; reference: ReferenceBreakdown; targetSeconds: number; preferences?: string };
 
 // ---------- the writer ----------
 
@@ -219,6 +221,7 @@ function contextBlock(ctx: ScriptContext) {
     })}\n</reference>`,
     `Target length: about ${ctx.targetSeconds} seconds. Format: ${brief.format}. Role: ${roleOf(brief)} (judged on ${(brief.metric ?? (roleOf(brief) === "convert" ? "link_clicks" : "views")).replace(/_/g, " ")}).`,
     ...(brief.format === "remake" ? [remakeBudgets(reference)] : []),
+    ...(preferencesSection(ctx.preferences) ? [preferencesSection(ctx.preferences)!] : []),
   ].join("\n\n");
 }
 
@@ -265,8 +268,10 @@ function remakeBudgets(reference: ReferenceBreakdown) {
   ].join("\n");
 }
 
-export async function writeScript(naive: NaiveClient, ctx: ScriptContext): Promise<Script> {
-  const reply = await naive.message({
+export async function writeScript(claude: Pick<ClaudeClient, "message">, ctx: ScriptContext): Promise<Script> {
+  // Code ads write a story for the 3D engine instead (src/lib/codeads/story.ts).
+  if (ctx.brief.format === "code_ad") return (await (await import("../codeads/story")).writeCodeAd(claude, ctx)).script;
+  const reply = await claude.message({
     model: QC_MODEL,
     max_tokens: 8000,
     system: writerSystem(),
@@ -274,12 +279,12 @@ export async function writeScript(naive: NaiveClient, ctx: ScriptContext): Promi
     tools: [SCRIPT_TOOL],
   });
   const beats = readBeats(reply, SCRIPT_TOOL.name, "beats");
-  if (!beats.length) throw new ApiError("naive", 502, "script_unreadable", "the writer returned no script");
+  if (!beats.length) throw new ApiError("anthropic", 502, "script_unreadable", "the writer returned no script");
   let script = normalizeScript(beats, ctx);
 
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     const issues = lintScript(script, ctx);
-    const review = await critique(naive, ctx, script, issues);
+    const review = await critique(claude, ctx, script, issues);
     if (review.score === null) {
       // No usable review: keep the draft and say so honestly rather than inventing a score.
       script.review = { score: 0, notes: [...issues.map((issue) => `lint: ${issue}`), "critic unavailable: no review came back"].slice(0, 10), rounds: round };
@@ -295,7 +300,7 @@ export async function writeScript(naive: NaiveClient, ctx: ScriptContext): Promi
   return script;
 }
 
-async function critique(naive: NaiveClient, ctx: ScriptContext, script: Script, issues: string[]): Promise<{ score: number | null; notes: string[]; revised: Array<Partial<ScriptBeat>> }> {
+async function critique(claude: Pick<ClaudeClient, "message">, ctx: ScriptContext, script: Script, issues: string[]): Promise<{ score: number | null; notes: string[]; revised: Array<Partial<ScriptBeat>> }> {
   const system = [
     "You are a short-form creative director who has watched ten thousand TikToks. You check remakes of viral videos before anything is filmed. The goal is a remake so close to the reference that it earns the same retention, adapted to a new product.",
     "Compare the script to the reference beat by beat. Fail: beats that drift from the reference (different order, timing, jobs or shots), a hook that changed more than it had to, lines rewritten into different words when the reference's wording could have stayed, anything that sounds like an ad instead of the reference's voice, product beats whose visual doesn't match the words, claims or numbers not in the product brief, any personal-history claim (past use, personal results, reviews) carried over from the reference, and lines too long to say in their beat's seconds.",
@@ -308,7 +313,7 @@ async function critique(naive: NaiveClient, ctx: ScriptContext, script: Script, 
     `If the overall score is below 8, write the complete revised script that fixes every problem, following the same rules as the writer (${ctx.brief.format === "remake" ? "the hook word for word except the product facts, every later line coherent and true for this product" : "replicate the reference as closely as possible, swap only what must change for this product"}, keep every claim true to the brief, fit each line in its seconds).`,
   ].join("\n");
   const content = `${contextBlock(ctx)}\n\n<script>\n${JSON.stringify(script.beats)}\n</script>\n\nAutomatic checks found: ${issues.length ? issues.join("; ") : "nothing"}.`;
-  const ask = (extra: string, tools?: object[]) => naive.message({ model: QC_MODEL, max_tokens: 10000, system: `${system}\n${extra}`, messages: [{ role: "user", content }], tools });
+  const ask = (extra: string, tools?: object[]) => claude.message({ model: QC_MODEL, max_tokens: 10000, system: `${system}\n${extra}`, messages: [{ role: "user", content }], tools });
 
   type Review = { score?: unknown; scores?: unknown; notes?: unknown; revised_beats?: unknown } | null;
   const reply = await ask("Call the script_review tool once.", [CRITIC_TOOL]);
@@ -327,7 +332,7 @@ async function critique(naive: NaiveClient, ctx: ScriptContext, script: Script, 
   return { score, notes, revised };
 }
 
-function readBeats(reply: Awaited<ReturnType<NaiveClient["message"]>>, tool: string, field: string): Array<Partial<ScriptBeat>> {
+function readBeats(reply: Awaited<ReturnType<ClaudeClient["message"]>>, tool: string, field: string): Array<Partial<ScriptBeat>> {
   const call = reply.content.find((block) => block.type === "tool_use" && block.name === tool);
   const raw = (call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"))) as Record<string, unknown> | null;
   const beats = raw?.[field];
@@ -526,6 +531,8 @@ const ASK = /\blink\b|\bbio\b|sign ?up|\btry\b|download|\bget\b|\bstart\b|\bfree
 export function targetSeconds(reference: Pick<ReferenceBreakdown, "duration">, format: CreativeBrief["format"] = "voiceover_demo") {
   // A one-to-one remake keeps the reference's whole length (about $0.17 a second of it on Kling).
   if (format === "remake") return Math.round(Math.min(90, Math.max(4, reference.duration || 18)));
+  // A code ad borrows the reference's concept, not its length: fast, 18-24 s.
+  if (format === "code_ad") return Math.round(Math.min(24, Math.max(18, (reference.duration || 40) * 0.45)));
   const cap = usesCreator(format) ? 24 : 40;
   return Math.round(Math.min(cap, Math.max(8, reference.duration || 18)));
 }

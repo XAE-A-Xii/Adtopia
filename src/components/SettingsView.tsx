@@ -7,15 +7,15 @@ type Secret = { set: boolean; source: "env" | "settings" | "none"; hint: string 
 type Settings = { values: Record<string, string>; secrets: Record<string, Secret>; videoModels: string[] };
 
 const KEYS = [
-  { key: "naive_api_key", label: "Naive", help: "Strategy, video rendering, quality checks and posting. Create a key in the Naive Studio (app.usenaive.ai)." },
+  { key: "anthropic_api_key", label: "Anthropic", help: "Claude for the director, scripts, research planning and quality checks." },
+  { key: "fal_api_key", label: "fal", help: "First frames (Nano Banana Pro), shot renders (Kling 3.0 Pro) and audio transcription." },
   { key: "monid_api_key", label: "Monid", help: "Research data and the backup video renderer. Create a key at app.monid.ai/access/api-keys." },
+  { key: "elevenlabs_api_key", label: "ElevenLabs", help: "Voice-overs and remake voices. Optional." },
   { key: "mobilerun_api_key", label: "Mobilerun", help: "Cloud phones for warming up the brand's own accounts. Optional." },
-  { key: "anthropic_api_key", label: "Anthropic", help: "Claude for the director, scripts, research planning and quality checks, instead of Naive. Optional." },
-  { key: "fal_api_key", label: "fal", help: "First frames (Nano Banana Pro) and shot renders (Kling 3.0 Pro), instead of Naive and Monid. Optional." },
-  { key: "elevenlabs_api_key", label: "ElevenLabs", help: "Voice-overs, transcription and remake voices, called directly instead of through Naive and Monid. Optional." },
+  { key: "postiz_api_key", label: "Postiz", help: "Posting and scheduling videos to connected social channels. Create a key in Postiz (platform.postiz.com)." },
 ];
 
-const VEO_PER_SECOND = 0.4;
+const KLING_PER_SECOND = 0.168;
 
 export function SettingsView() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -46,7 +46,7 @@ export function SettingsView() {
   if (!settings) return <div className="h-64 animate-pulse rounded-2xl bg-white/[0.03]" />;
   const set = (key: string) => (value: string) => setValues((current) => ({ ...current, [key]: value }));
   const seconds = Number(values.videos_per_campaign) * Number(values.shots_per_video) * Number(values.video_seconds);
-  const estimate = values.video_model === "google/veo-3.1" ? `about $${(seconds * VEO_PER_SECOND).toFixed(2)} of Veo 3.1 per campaign (${seconds} s at $0.40/s, measured)` : `${seconds} s of video per campaign`;
+  const estimate = `about $${(seconds * KLING_PER_SECOND).toFixed(2)} of Kling 3.0 per campaign (${seconds} s at $0.168/s)`;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -109,7 +109,7 @@ export function SettingsView() {
               <input type="number" min={0} value={values.creator_fee_usd} onChange={(event) => set("creator_fee_usd")(event.target.value)} className={inputClass} />
             </Field>
           ) : null}
-          <Field label="Video model" hint="Naive renders with this model; Monid's Kling 3.0 takes over if Naive runs out of credits.">
+          <Field label="Video model" hint="fal renders with this model; Monid's Kling 3.0 takes over when fallback is enabled.">
             <select value={values.video_model} onChange={(event) => set("video_model")(event.target.value)} className={inputClass}>
               {[...new Set([values.video_model, ...settings.videoModels])].map((id) => (
                 <option key={id} value={id}>
@@ -140,7 +140,7 @@ export function SettingsView() {
         </div>
         <div className="mt-5 space-y-3">
           <Toggle checked={values.learn_style === "true"} onChange={(v) => set("learn_style")(String(v))} label="Study the format of top videos before writing concepts" />
-          <Toggle checked={values.monid_video_fallback === "true"} onChange={(v) => set("monid_video_fallback")(String(v))} label="Render on Monid when Naive is out of credits" />
+          <Toggle checked={values.monid_video_fallback === "true"} onChange={(v) => set("monid_video_fallback")(String(v))} label="Fall back to Monid when fal video rendering fails or is unconfigured" />
           <Toggle
             checked={values.autopilot === "true"}
             onChange={(v) => set("autopilot")(String(v))}

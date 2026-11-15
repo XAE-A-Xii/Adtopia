@@ -17,8 +17,7 @@ function view(campaign: Partial<Campaign>): BrandView {
     stage: "review",
     stageIndex: 4,
     error: null,
-    naiveOut: false,
-    options: { concepts: 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "google/veo-3.1", learnStyle: true },
+    options: { concepts: 2, shotsPerConcept: 2, secondsPerShot: 8, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: true },
     estimateUsd: null,
     plan: { brand_name: "Acme", category: "soap", audience: "", competitors: [{ name: "Rival Co" }], content_queries: [], ads_query: "", reddit_query: "", aeo_prompts: [] },
     research: {
@@ -34,7 +33,7 @@ function view(campaign: Partial<Campaign>): BrandView {
     runs: [],
     creatives: [],
     posts: [],
-    spend: { naive: 0, monid: 0, style: 0, strategy: 0 },
+    spend: { ai: 0, monid: 0, style: 0, strategy: 0 },
     createdAt: "2026-11-07T10:00:00Z",
   };
   return { brand: { id: "brd_1", name: "Acme", domain: "acme.com", url: "https://acme.com", profile: null, connected: false }, campaign: { ...base, ...campaign } as unknown as Campaign, campaigns: [], events: [] } as unknown as BrandView;

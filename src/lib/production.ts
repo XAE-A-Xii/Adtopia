@@ -11,6 +11,8 @@ import { FAL, FAL_USD, FalClient, falImageUrl, falVideoUrl, hasFal } from "./fal
 import { ApiError } from "./http";
 import { chunkCaptions } from "./creative/captions";
 import { renderTimeline } from "./creative/edit";
+import { advanceBrainrot } from "./creative/brainrot-job";
+import { advanceCodeAd } from "./codeads/job";
 import { advanceRemake } from "./creative/remake-job";
 import { buildTimeline, type RenderedAssets, screenVisualId } from "./creative/plan";
 import { makePlate, newPlateRecord, type PlateRecord } from "./creative/plate";
@@ -18,14 +20,15 @@ import { buildScreens } from "./creative/screens";
 import { trimSilence } from "./creative/trim";
 import type { BrandKit, FilmedPlate, ProductBrief } from "./creative/types";
 import { download, extractFrames, ffmpegPath, probe, scratchDir, stitch } from "./media";
+import type { ClaudeClient } from "./claude";
 import { type MonidClient, type MonidRun, providerFailed, runCostMicro, TERMINAL } from "./monid";
-import type { NaiveClient } from "./naive";
 import { type Continuity, reviewContinuity, reviewFrame, reviewShot, type Verdict } from "./qc";
 import { getBool, getInt, getSetting } from "./settings";
-import { captionFor, type Concept, type Strategy } from "./strategy";
+import { resolveCreativeCaption } from "./hookjudge";
+import { type Concept, type Strategy } from "./strategy";
 
 // Production: every shot gets a product-faithful first frame, a render, and a QC pass; then the
-// shots are cut into one ad. Naive renders first; Monid renders when Naive is out of credits.
+// shots are cut into one ad. fal renders first when FAL_API_KEY is set, else Monid (Kling 3.0).
 //
 // What must outlive a tick is kept in the store's files (data/media locally, Convex storage on
 // serverless hosts), named by key: renders "crv_…/shot1-r1.mp4", frames "crv_…/shot1-frame.png", the
@@ -41,7 +44,7 @@ export type ShotState = {
   pose?: string;
   seconds: number;
   status: "pending" | "framed" | "rendering" | "rendered" | "passed" | "failed";
-  provider: "naive" | "monid" | "fal" | null;
+  provider: "monid" | "fal" | null;
   renders: number;
   qc_rounds: number;
   qc_errors?: number;
@@ -52,7 +55,7 @@ export type ShotState = {
   /** The stored copy of the first frame (signed provider links expire after seven days). */
   frame_key?: string | null;
   frame_skipped: boolean;
-  /** Shot 1 only: a still from its render, uploaded to Naive, when it had no first frame. */
+  /** Shot 1 only: a data URL of a still from its render, when it had no first frame. */
   identity_file_id?: string | null;
   identity_failed?: boolean;
   /** After a failed QC: the frame being replaced, and what was wrong with it. */
@@ -78,7 +81,6 @@ export type ShotState = {
   /** The stored render's file key (older local rows hold an absolute path, which still works). */
   local_path: string | null;
   qc: Verdict | null;
-  naive_cost: number;
   monid_cost: number;
   /** Estimated from fal's list prices (fal reports no cost per request). */
   fal_cost?: number;
@@ -113,10 +115,9 @@ export type CreativeRow = {
 export type ProductionContext = {
   campaignId: string;
   brandId: string;
-  naive: NaiveClient | null;
+  claude: ClaudeClient | null;
+  fal: FalClient | null;
   monid: MonidClient | null;
-  naiveOut: () => boolean;
-  markNaiveOut: () => Promise<void>;
   strategy: Strategy;
   /** The product analyst's brief, with the visuals the edit cuts to. */
   product?: ProductBrief;
@@ -243,10 +244,11 @@ export async function insertCreative(campaignId: string, idx: number, concept: C
     video_url: null,
     local_path: null,
     qc: null,
-    naive_cost: 0,
     monid_cost: 0,
+    fal_cost: 0,
     error: null,
   }));
+  const caption = await resolveCreativeCaption(campaignId, concept);
   await store().insert("creatives", {
     id,
     campaign_id: campaignId,
@@ -255,7 +257,7 @@ export async function insertCreative(campaignId: string, idx: number, concept: C
     concept_json: JSON.stringify(concept),
     shots_json: JSON.stringify(shots),
     status: "queued",
-    caption: captionFor(concept),
+    caption,
     platforms_json: JSON.stringify(concept.platforms),
     created_at: now(),
     updated_at: now(),
@@ -269,13 +271,17 @@ export async function advanceCreative(ctx: ProductionContext, creative: Creative
   if (!concept) return save("creatives", creative.id, { status: "failed", error: "concept is unreadable" });
   // One-to-one remakes rebuild the reference in their own module (creative/remake-job.ts).
   if (concept.brief?.format === "remake") return advanceRemake(ctx, creative, concept);
+  // Code ads are animated in code, in their own module (codeads/job.ts).
+  if (concept.brief?.format === "code_ad") return advanceCodeAd(ctx, creative, concept);
+  // Brainrot ads make their own stills, clips, voice and cut (creative/brainrot-job.ts).
+  if (concept.brief?.format === "brainrot") return advanceBrainrot(ctx, creative, concept);
   const shots = parse<ShotState[]>(creative.shots_json, []);
   // Spend outside the shots: filmed_screen's monitor photos.
   let otherCost = concept.plan?.format === "filmed_screen" ? ((await readPlate(creative.id))?.cost_micro ?? 0) : 0;
   const persist = (fields: Record<string, unknown> = {}) =>
     save("creatives", creative.id, {
       shots_json: JSON.stringify(shots),
-      cost_micro: shots.reduce((sum, shot) => sum + shot.naive_cost + shot.monid_cost + (shot.fal_cost ?? 0), 0) + otherCost,
+      cost_micro: shots.reduce((sum, shot) => sum + shot.monid_cost + (shot.fal_cost ?? 0), 0) + otherCost,
       ...fields,
     });
   if (creative.status === "queued") await persist({ status: "producing" });
@@ -326,18 +332,28 @@ const identityOf = (first: ShotState) => first.frame_file_id ?? first.identity_f
 
 function identityReady(ctx: ProductionContext, first: ShotState) {
   if (identityOf(first) || first.identity_failed || first.status === "failed") return true;
-  // Without Naive there is nothing to render a reference with; later shots go ahead on their own.
-  return first.frame_skipped && (!ctx.naive || ctx.naiveOut());
+  // Without fal there is nothing to render a frame reference with; later shots go ahead on their own.
+  return first.frame_skipped && !ctx.fal && !hasFal();
 }
 
 /** When shot 1 had to render without a frame, take a still from its video as everyone's reference. */
 async function ensureIdentity(ctx: ProductionContext, creativeId: string, shots: ShotState[]) {
   const first = shots[0];
   if (!first) return; // a faceless video renders no A-roll
-  if (identityOf(first) || !first.frame_skipped || !first.local_path || !ctx.naive?.hasKey || ctx.naiveOut()) return;
+  if (identityOf(first) || !first.frame_skipped || !first.local_path || (!ctx.fal && !hasFal())) return;
   try {
     const [still] = await extractFrames(await store().files.localPath(first.local_path), 1, 1080);
-    first.identity_file_id = await ctx.naive.uploadFile(`${creativeId}-identity.jpg`, "image/jpeg", still);
+    const key = fileKey(creativeId, "shot1-identity.jpg");
+    const dir = workDir(creativeId);
+    await mkdir(dir, { recursive: true });
+    const local = join(dir, "shot1-identity.jpg");
+    try {
+      await writeFile(local, still);
+      await store().files.putFile(key, local, "image/jpeg");
+    } finally {
+      await rm(local, { force: true }).catch(() => undefined);
+    }
+    first.identity_file_id = `data:image/jpeg;base64,${still.toString("base64")}`;
   } catch (error) {
     if (error instanceof ApiError && error.retryable) return;
     first.identity_failed = true; // later shots go ahead without a reference; the cut check still runs
@@ -351,11 +367,11 @@ async function ensureIdentity(ctx: ProductionContext, creativeId: string, shots:
  */
 async function checkContinuity(ctx: ProductionContext, creative: CreativeRow, concept: Concept, shots: ShotState[]): Promise<boolean> {
   const previous = parse<Continuity | null>(creative.continuity_json, null);
-  if (previous?.checked || shots.length < 2 || !ctx.naive || ctx.naiveOut() || !(await ffmpegPath())) return true;
+  if (previous?.checked || shots.length < 2 || !ctx.claude || !(await ffmpegPath())) return true;
   const rounds = (previous?.rounds ?? 0) + 1;
   try {
     const frames = await Promise.all(shots.map(async (shot) => (await extractFrames(await store().files.localPath(shot.local_path!), 1))[0]));
-    const verdict = await reviewContinuity(ctx.naive, { frames, concept });
+    const verdict = await reviewContinuity(ctx.claude, { frames, concept });
     const redo = verdict.mismatched.map((n) => shots[n - 1]).filter((shot) => shot && shot.renders < MAX_RENDERS);
     if (verdict.consistent || rounds > 1 || redo.length === 0) {
       await save("creatives", creative.id, { continuity_json: JSON.stringify({ checked: true, consistent: verdict.consistent, mismatched: verdict.mismatched, note: verdict.note, rounds }) });
@@ -392,7 +408,8 @@ async function checkContinuity(ctx: ProductionContext, creative: CreativeRow, co
 }
 
 async function makeFrame(ctx: ProductionContext, creativeId: string, concept: Concept, shots: ShotState[], shot: ShotState) {
-  if (!hasFal() && (!ctx.naive || ctx.naiveOut())) {
+  const fal = ctx.fal ?? (hasFal() ? new FalClient() : null);
+  if (!fal) {
     shot.frame_skipped = true;
     shot.status = "framed";
     return;
@@ -413,54 +430,16 @@ async function makeFrame(ctx: ProductionContext, creativeId: string, concept: Co
   // House rules for every frame, whatever the concept says: these are what make AI video look fake.
   prompt +=
     "\nPhotorealistic. No readable text anywhere, no captions, subtitles, cards, labels or graphics, no phone interface or status bar, no monitors or screens facing the camera, no logos except the product's own label.";
-  if (hasFal()) return falFrame(creativeId, concept, shot, prompt, references);
-  try {
-    const result = await ctx.naive!.generateImage({ prompt, aspect_ratio: "9:16", image_urls: references.length ? references : undefined }, shot.frame_idem);
-    const file = result.files[0];
-    if (!file) throw new ApiError("naive", 500, "no_file", "the image render returned no file");
-    shot.naive_cost += result.cost_micro_usd ?? 0;
-    shot.frame_file_id = file.id;
-    shot.frame_inflight_since = null;
-    shot.frame_url = (await ctx.naive!.fileUrl(file.id)).url;
-    // Keep a copy for the review page and the first-frame gate: signed links expire after seven days.
-    const key = fileKey(creativeId, `shot${shot.n}-frame.png`);
-    shot.frame_key = await store()
-      .files.saveUrl(key, shot.frame_url, "image/png")
-      .then(() => key)
-      .catch(() => null);
-    shot.status = "framed";
-  } catch (error) {
-    if (error instanceof ApiError && error.inFlight) {
-      onFrameInFlight(shot); // usually still rendering under this key: ask again next tick
-      return;
-    } else if (error instanceof ApiError && error.outOfCredits) {
-      await ctx.markNaiveOut();
-      shot.frame_skipped = true;
-      shot.status = "framed";
-    } else if (error instanceof ApiError && error.keyConflict) {
-      shot.frame_idem = `${shot.frame_idem}-k${shot.submit_errors + 1}`; // same key, new body: a fresh key
-      shot.submit_errors++;
-    } else if (error instanceof ApiError && error.retryable && shot.submit_errors < MAX_SUBMIT_ERRORS) {
-      backoff(shot);
-    } else if (!shot.drop_product_refs && concept.reference_images.length && !(error instanceof ApiError && error.retryable)) {
-      // A product photo the provider cannot fetch: keep the identity reference, drop the photos.
-      shot.drop_product_refs = true;
-      shot.frame_idem = `${shot.frame_idem}-noproduct`;
-    } else {
-      shot.frame_skipped = true;
-      shot.status = "framed";
-      shot.error = `first frame skipped: ${message(error)}`;
-    }
-  }
+  return falFrame(fal, creativeId, concept, shot, prompt, references);
 }
 
 /** A first frame on fal (Nano Banana Pro). The frame's link doubles as its id: later shots and Kling take links. */
-async function falFrame(creativeId: string, concept: Concept, shot: ShotState, prompt: string, references: string[]) {
-  const links = references.filter((ref) => /^(https?:|data:)/.test(ref)); // Naive file ids mean nothing to fal
+async function falFrame(fal: FalClient, creativeId: string, concept: Concept, shot: ShotState, prompt: string, references: string[]) {
+  const links = references.filter((ref) => /^(https?:|data:)/.test(ref));
   try {
     // ponytail: waits in this tick; a tick that dies mid-wait submits again next time (a frame costs cents).
     const input = { prompt, aspect_ratio: "9:16", num_images: 1, output_format: "png", resolution: "2K" };
-    const output = await new FalClient().run(links.length ? FAL.frameEdit : FAL.frame, links.length ? { ...input, image_urls: links } : input);
+    const output = await fal.run(links.length ? FAL.frameEdit : FAL.frame, links.length ? { ...input, image_urls: links } : input);
     const url = falImageUrl(output);
     if (!url) throw new ApiError("fal", 502, "no_image", "the frame render returned no image");
     shot.fal_cost = (shot.fal_cost ?? 0) + Math.round(FAL_USD.frame * 1_000_000);
@@ -487,11 +466,11 @@ async function falFrame(creativeId: string, concept: Concept, shot: ShotState, p
 /** Kling 3.0 Pro on fal, voicing its own line; about a second longer than the line, as on Monid. */
 const falSeconds = (shot: ShotState) => Math.max(3, Math.min(15, Math.ceil(shot.seconds + 1)));
 
-async function submitFal(shot: ShotState) {
+async function submitFal(fal: FalClient, shot: ShotState) {
   const firstFrame = shot.frame_url && !shot.text_only ? shot.frame_url : null;
   const base = { prompt: shot.prompt.slice(0, 2500), duration: String(falSeconds(shot)), generate_audio: true };
   try {
-    const id = await new FalClient().submit(firstFrame ? FAL.i2v : FAL.t2v, firstFrame ? { ...base, start_image_url: firstFrame } : { ...base, aspect_ratio: "9:16" });
+    const id = await fal.submit(firstFrame ? FAL.i2v : FAL.t2v, firstFrame ? { ...base, start_image_url: firstFrame } : { ...base, aspect_ratio: "9:16" });
     Object.assign(shot, { job_id: id, monid_run_id: null, provider: "fal", status: "rendering", renders: shot.renders + 1, submit_errors: 0 });
   } catch (error) {
     if (error instanceof ApiError && error.retryable && shot.submit_errors < MAX_SUBMIT_ERRORS) backoff(shot);
@@ -499,8 +478,7 @@ async function submitFal(shot: ShotState) {
   }
 }
 
-async function pollFal(shot: ShotState) {
-  const fal = new FalClient();
+async function pollFal(fal: FalClient, shot: ShotState) {
   const endpoint = shot.frame_url && !shot.text_only ? FAL.i2v : FAL.t2v;
   const status = await fal.status(endpoint, shot.job_id!);
   if (status.status !== "COMPLETED") return;
@@ -522,13 +500,13 @@ async function pollFal(shot: ShotState) {
  */
 async function gateFrame(ctx: ProductionContext, creativeId: string, concept: Concept, shot: ShotState) {
   shot.frame_gated = true;
-  if (shot.frame_skipped || !ctx.naive || ctx.naiveOut() || (shot.frame_checks ?? 0) >= FRAME_CHECKS) return;
+  if (shot.frame_skipped || !ctx.claude || (shot.frame_checks ?? 0) >= FRAME_CHECKS) return;
   const image = await frameJpeg(await storedFrame(creativeId, shot.n));
   if (!image) return;
   const identity = shot.n > 1 ? await frameJpeg(await storedFrame(creativeId, 1)) : null;
   let verdict: { pass: boolean; issues: string[] };
   try {
-    verdict = await reviewFrame(ctx.naive, { image, identity, creator: concept.creator, setting: concept.setting, prompt: shot.frame_prompt });
+    verdict = await reviewFrame(ctx.claude, { image, identity, creator: concept.creator, setting: concept.setting, prompt: shot.frame_prompt });
   } catch {
     return;
   }
@@ -595,65 +573,27 @@ async function submitRender(ctx: ProductionContext, shot: ShotState) {
     shot.error ??= "render failed repeatedly";
     return;
   }
-  if (hasFal()) return submitFal(shot);
-  // Kling 3.0 voicing the line itself is the presenter engine (it won the head-to-head); the Naive
-  // video model is the alternative (presenter_engine "naive"), and Kling stays its fallback.
-  const kling = getSetting("presenter_engine") !== "naive" && Boolean(ctx.monid);
-  if (ctx.naive && !ctx.naiveOut() && !shot.force_monid && !kling) {
-    try {
-      const job = await ctx.naive.generateVideo(
-        {
-          model: getSetting("video_model"),
-          prompt: shot.prompt,
-          seconds: shot.seconds,
-          aspect_ratio: "9:16",
-          image_urls: shot.frame_file_id && !shot.text_only ? [shot.frame_file_id] : undefined,
-        },
-        shot.video_idem,
-      );
-      Object.assign(shot, { job_id: job.id, monid_run_id: null, provider: "naive", status: "rendering", renders: shot.renders + 1, submit_errors: 0 });
-      return;
-    } catch (error) {
-      if (error instanceof ApiError && error.inFlight) {
-        return;
-      } else if (error instanceof ApiError && error.outOfCredits) {
-        await ctx.markNaiveOut();
-      } else if (error instanceof ApiError && error.code === "validation_failed" && shot.frame_file_id && !shot.text_only) {
-        shot.text_only = true; // this model does not animate a first frame: render from the prompt
-        shot.video_idem = `${shot.video_idem}-t2v`;
-        return;
-      } else if (error instanceof ApiError && error.keyConflict) {
-        shot.video_idem = `${shot.video_idem}-k${shot.submit_errors + 1}`;
-        shot.submit_errors++;
-        return;
-      } else if (error instanceof ApiError && error.retryable && shot.submit_errors < MAX_SUBMIT_ERRORS) {
-        backoff(shot);
-        return;
-      } else if (!monidVideoEnabled(ctx)) {
-        shot.status = "failed";
-        shot.error = message(error);
-        return;
-      }
-    }
+  const fal = ctx.fal ?? (hasFal() ? new FalClient() : null);
+  if (fal && !shot.force_monid && getSetting("presenter_engine") !== "monid") {
+    return submitFal(fal, shot);
   }
-  if (!kling && !monidVideoEnabled(ctx)) {
+  if (!ctx.monid) {
     shot.status = "failed";
-    shot.error = "Naive is out of credits and the Monid video fallback is off";
+    shot.error = "Video rendering needs FAL_API_KEY or Monid";
     return;
   }
   const resolution = getSetting("monid_video_resolution");
   // About a second longer than the line needs: the edit trims each take to its best part.
-  const duration = Math.max(3, Math.min(15, Math.ceil(shot.seconds + (kling ? 1 : 0))));
+  const duration = Math.max(3, Math.min(15, Math.ceil(shot.seconds + 1)));
   const prompt = shot.prompt.slice(0, 3000);
   const firstFrame = shot.frame_url && !shot.text_only;
   try {
-    const run = await ctx.monid!.run(
+    const run = await ctx.monid.run(
       "kling",
       firstFrame ? "/v1/video/kling-3.0-i2v" : "/v1/video/kling-3.0-t2v",
       { body: firstFrame ? { prompt, media: [{ type: "first_frame", url: shot.frame_url }], resolution, duration, audio: "native", multi_shot: false } : { prompt, resolution, aspect_ratio: "9:16", duration, audio: "native" } },
     );
     Object.assign(shot, { monid_run_id: run.runId, job_id: null, provider: "monid", status: "rendering", renders: shot.renders + 1, submit_errors: 0 });
-    if (!kling) await logEvent({ brandId: ctx.brandId, campaignId: ctx.campaignId, message: `Shot ${shot.n} is rendering on Monid (Kling 3.0) because Naive is unavailable` });
     if (TERMINAL.has(run.status)) await finishMonid(run, shot);
   } catch (error) {
     if (error instanceof ApiError && error.retryable && shot.submit_errors < MAX_SUBMIT_ERRORS) backoff(shot);
@@ -665,21 +605,8 @@ async function submitRender(ctx: ProductionContext, shot: ShotState) {
 }
 
 async function pollRender(ctx: ProductionContext, creativeId: string, shot: ShotState) {
-  if (shot.provider === "naive" && shot.job_id && ctx.naive) {
-    const job = await ctx.naive.getMediaJob(shot.job_id);
-    if (job.status === "completed" && job.result?.files[0]) {
-      shot.naive_cost += job.cost_micro_usd ?? 0;
-      shot.video_file_id = job.result.files[0].file_id;
-      shot.video_url = (await ctx.naive.fileUrl(shot.video_file_id)).url;
-      shot.status = "rendered";
-    } else if (job.status === "failed") {
-      shot.error = job.error?.message ?? "the render failed";
-      shot.video_idem = `${creativeId}-shot${shot.n}-render${shot.renders + 1}`;
-      shot.status = "framed";
-      if (shot.renders >= 2 && monidVideoEnabled(ctx)) shot.force_monid = true;
-    }
-  } else if (shot.provider === "fal" && shot.job_id) {
-    await pollFal(shot);
+  if (shot.provider === "fal" && shot.job_id) {
+    await pollFal(ctx.fal ?? new FalClient(), shot);
   } else if (shot.provider === "monid" && shot.monid_run_id && ctx.monid) {
     const run = await ctx.monid.getRun(shot.monid_run_id);
     if (TERMINAL.has(run.status)) await finishMonid(run, shot);
@@ -704,14 +631,14 @@ async function finishMonid(run: MonidRun, shot: ShotState) {
 }
 
 async function checkQuality(ctx: ProductionContext, concept: Concept, shot: ShotState) {
-  const canReview = ctx.naive && !ctx.naiveOut() && shot.local_path && (await ffmpegPath());
+  const canReview = ctx.claude && shot.local_path && (await ffmpegPath());
   if (!canReview) {
     shot.status = "passed";
     return;
   }
   try {
     const frames = await extractFrames(await store().files.localPath(shot.local_path!), 4);
-    const verdict = await reviewShot(ctx.naive!, { frames, brand: ctx.strategy.brand, concept, shot: concept.shots[shot.n - 1], shotNumber: shot.n, prompt: shot.prompt });
+    const verdict = await reviewShot(ctx.claude!, { frames, brand: ctx.strategy.brand, concept, shot: concept.shots[shot.n - 1], shotNumber: shot.n, prompt: shot.prompt });
     shot.qc = verdict;
     shot.qc_rounds++;
     const retries = getInt("qc_max_retries");
@@ -723,7 +650,7 @@ async function checkQuality(ctx: ProductionContext, concept: Concept, shot: Shot
       shot.prompt = verdict.fix_prompt;
       shot.video_idem = `${shot.video_idem.replace(/-qc\d+$/, "")}-qc${shot.qc_rounds}`;
       Object.assign(shot, { job_id: null, monid_run_id: null, video_file_id: null, video_url: null });
-      if (shot.frame_file_id && ctx.naive && !ctx.naiveOut()) {
+      if (shot.frame_file_id) {
         // The first frame sets the composition, so a defect is often already in it: rebuild the
         // frame from the old one with the fixes, keeping the same person and room, then re-render.
         // Drawn-in text, cards or UI live in the old frame itself, so those rebuild from the
@@ -746,7 +673,6 @@ async function checkQuality(ctx: ProductionContext, concept: Concept, shot: Shot
       shot.qc_errors = (shot.qc_errors ?? 0) + 1; // a busy or fumbling model: check again next tick
       return;
     }
-    if (error instanceof ApiError && error.outOfCredits) await ctx.markNaiveOut();
     shot.status = "passed"; // QC is a gate for quality, not a reason to lose a finished render
     shot.error = `quality check skipped: ${message(error)}`;
   }
@@ -807,16 +733,6 @@ async function cutFinal(ctx: ProductionContext, creative: CreativeRow, concept: 
   }
   await files.putFile(finalKey, finalPath, "video/mp4");
   fields.final_key = finalKey;
-  if (!fields.final_file_id && ctx.naive?.hasKey) {
-    try {
-      const fileId = await ctx.naive.uploadFile(`${slug(concept.title)}.mp4`, "video/mp4", await readFile(finalPath));
-      const link = await ctx.naive.fileUrl(fileId);
-      Object.assign(fields, { final_file_id: fileId, final_url: link.url, final_url_expires_at: link.expires_at });
-    } catch (error) {
-      // Not lost: posting uploads the stored cut itself (publish.ts), waiting out a busy Naive.
-      await logEvent({ brandId: ctx.brandId, campaignId: ctx.campaignId, level: "warn", message: `"${concept.title}" is ready; its upload to Naive failed (${message(error)}) and is retried when it is posted` });
-    }
-  }
   await save("creatives", creative.id, { ...fields, status: "ready" });
   await logEvent({ brandId: ctx.brandId, campaignId: ctx.campaignId, message: `"${concept.title}" is ready${scores.length ? ` (QC ${Math.min(...scores)}/10)` : ""}` });
 }
@@ -827,10 +743,7 @@ async function cutFinal(ctx: ProductionContext, creative: CreativeRow, concept: 
  * one that failed only because the model was busy is tried again on a later tick. Returns true while
  * screens are still to come, so the edit waits for them.
  */
-/**
- * A provider's "busy" answer, from its text: the screen builder reports some failures as text only
- * (the first Naive run lost 3 of 6 screens to "at capacity" that way).
- */
+/** A provider's "busy" answer, from its text. */
 export const busyError = (error: string) => /at capacity|rate.?limit|too many requests|timed? ?out/i.test(error);
 
 async function ensureScreens(ctx: ProductionContext, creativeId: string, concept: Concept): Promise<boolean> {
@@ -840,7 +753,7 @@ async function ensureScreens(ctx: ProductionContext, creativeId: string, concept
   const retryLater = (f: { id: string; error: string }) => busyError(f.error) && (done.attempts?.[f.id] ?? 0) < SCREEN_TRIES;
   const known = new Set([...done.clips, ...done.failures.filter((f) => !retryLater(f))].map((entry) => entry.id));
   const requests = (concept.plan?.screens ?? []).filter((request) => !known.has(request.id));
-  if (!requests.length || !ctx.product || !ctx.naive || ctx.naiveOut()) return false;
+  if (!requests.length || !ctx.product || !ctx.claude) return false;
   // Built in scratch space; the finished clips are kept under "crv_…/screens/<name>".
   const workDir = join(scratchDir(), `screens-${creativeId}`);
   await mkdir(workDir, { recursive: true });
@@ -848,7 +761,7 @@ async function ensureScreens(ctx: ProductionContext, creativeId: string, concept
     // Headless Chrome renders the screens. Where there is none (a serverless host), buildScreens
     // fails and every beat falls back to its real visual, as for any screen that can't be built.
     const product = await withLocalVisuals(ctx.product);
-    const result = await buildScreens(ctx.naive, requests, { product, kit: ctx.kit ?? null, style: concept.reference?.format }, { workDir });
+    const result = await buildScreens(ctx.claude, requests, { product, kit: ctx.kit ?? null, style: concept.reference?.format }, { workDir });
     const attempts = { ...done.attempts };
     const later = result.failures.filter((f) => (f.retryable || busyError(f.error)) && (attempts[f.id] = (attempts[f.id] ?? 0) + 1) < SCREEN_TRIES);
     const rebuilt = new Set(requests.map((request) => request.id));
@@ -908,15 +821,15 @@ export async function ensurePlate(ctx: ProductionContext, creativeId: string, co
   const record = (await readPlate(creativeId)) ?? newPlateRecord();
   const done = { pending: false, cost_micro: record.cost_micro };
   if (record.status !== "pending") return done;
-  // Without Naive the edit cannot voice the video either; if it still can, it shows the screens full frame.
-  if (!ctx.naive || ctx.naiveOut()) return done;
+  const fal = ctx.fal ?? (hasFal() ? new FalClient() : null);
+  if (!fal) return done;
   if (record.retry_at && Date.parse(record.retry_at) > Date.now()) return { pending: true, cost_micro: record.cost_micro };
   // The tries are scratch; the photo that passes is kept under "crv_…/plate.png".
   const dir = join(scratchDir(), `plate-${creativeId}`);
   await mkdir(dir, { recursive: true });
   try {
     record.retry_at = null;
-    await makePlate(ctx.naive, record, { dir, key: creativeId, setting: concept.setting });
+    await makePlate(fal, record, { dir, key: creativeId, setting: concept.setting });
     record.inflight_since = null;
     if ((record.status as PlateRecord["status"]) === "ready" && record.plate) {
       const key = fileKey(creativeId, "plate.png");
@@ -924,7 +837,7 @@ export async function ensurePlate(ctx: ProductionContext, creativeId: string, co
       record.plate.path = key; // a file key from here on (see plateFile)
     }
   } catch (error) {
-    if (onPlateError(record, error)) await ctx.markNaiveOut();
+    onPlateError(record, error);
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);
   }
@@ -944,7 +857,7 @@ export async function ensurePlate(ctx: ProductionContext, creativeId: string, co
  * What provider trouble does to a plate in the making. A request still in flight is waited for,
  * and asked anew under the next key after FRAME_INFLIGHT_MS; a reused key moves to the next one;
  * busy or failing providers are waited out with growing pauses, PLATE_ERRORS times; anything
- * else, or no credits, gives up on the plate. Returns true when Naive is out of credits.
+ * else, or no credits, gives up on the plate. Returns true when out of credits.
  */
 export function onPlateError(record: PlateRecord, error: unknown, now = Date.now()): boolean {
   if (error instanceof ApiError && error.inFlight) {
@@ -955,7 +868,7 @@ export function onPlateError(record: PlateRecord, error: unknown, now = Date.now
       record.inflight_since = null;
     }
   } else if (error instanceof ApiError && error.outOfCredits) {
-    Object.assign(record, { status: "fallback", reason: "Naive is out of credits" });
+    Object.assign(record, { status: "fallback", reason: "The image provider is out of credits" });
     return true;
   } else if (error instanceof ApiError && error.keyConflict) {
     record.tries++; // the key was used for another prompt: the next try gets a fresh one
@@ -987,13 +900,13 @@ async function editFinal(ctx: ProductionContext, creativeId: string, concept: Co
     // Kept between ticks: speech costs money, and a busy provider means trying again next tick.
     const key = fileKey(creativeId, "voiceover.wav");
     if (!(await files.exists(key))) {
-      if (!hasElevenLabs() && (!ctx.naive || ctx.naiveOut())) throw new Error("the voice-over needs an ElevenLabs or Naive key");
+      if (!hasElevenLabs()) throw new Error("the voice-over needs an ElevenLabs API key (ELEVENLABS_API_KEY)");
       const target = script.beats.reduce((sum, beat) => sum + beat.seconds, 0);
       const speed = voiceSpeed(plan.voiceover.text, target);
       const rawKey = fileKey(creativeId, "voiceover-raw.wav");
       if (!(await files.exists(rawKey))) {
         const raw = join(dir, "voiceover-raw.wav");
-        await speakTo(ctx.naive, plan.voiceover, speed, `${creativeId}-voiceover-${speed}`, raw);
+        await speakTo(plan.voiceover, speed, raw);
         await files.putFile(rawKey, raw, "audio/wav");
       }
       const paced = join(dir, "voiceover.wav");
@@ -1039,7 +952,7 @@ async function editFinal(ctx: ProductionContext, creativeId: string, concept: Co
   await renderTimeline(timeline, finalPath, { workDir: join(dir, "edit"), finish: getSetting("finish") !== "off" });
 }
 
-/** Text-to-speech through Naive, saved as a local file for the edit. */
+/** Text-to-speech through ElevenLabs, saved as a local file for the edit. */
 /** Words per second the text-to-speech voice reads at speed 1 (measured: 150 words in 48.4 s). */
 const TTS_WPS = 3.1;
 
@@ -1065,32 +978,18 @@ export async function paceVoice(raw: string, target: number, out: string) {
   await execAsync(bin, ["-hide_banner", "-loglevel", "error", "-y", "-i", raw, "-af", `atempo=${factor.toFixed(3)}`, out]);
 }
 
-/** ElevenLabs voice ids are 20 letters and digits; anything else (a Naive voice name, "") gets the default UGC voice. */
+/** ElevenLabs voice ids are 20 letters and digits; anything else gets the default UGC voice. */
 const elevenVoice = (voice: string) => (/^[A-Za-z0-9]{20}$/.test(voice) ? voice : DEFAULT_VOICES.female.id);
 
-async function speakTo(naive: ProductionContext["naive"], voiceover: { text: string; voice: string }, speed: number, idempotencyKey: string, path: string) {
-  if (hasElevenLabs()) {
-    // ElevenLabs takes speed 0.7-1.2; paceVoice() stretches whatever is left over.
-    const settings = { ...TTS_MODEL.voice_settings, speed: Math.min(1.2, Math.max(0.7, speed)) };
-    const mp3 = path.replace(/\.wav$/, "") + ".mp3";
-    await writeFile(mp3, await new ElevenLabsClient().tts(elevenVoice(voiceover.voice), { text: voiceover.text.slice(0, 4000), model_id: TTS_MODEL.model_id, voice_settings: settings }));
-    const bin = await ffmpegPath();
-    if (!bin) throw new Error("ffmpeg is needed to convert the ElevenLabs voice-over");
-    await execAsync(bin, ["-hide_banner", "-loglevel", "error", "-y", "-i", mp3, path]);
-    return;
-  }
-  if (!naive) throw new Error("the voice-over needs an ElevenLabs or Naive key");
-  const speech = await naive.speak({ text: voiceover.text.slice(0, 4000), ...(voiceover.voice ? { voice: voiceover.voice } : {}), ...(speed !== 1 ? { speed } : {}) }, idempotencyKey);
-  const fileId = speechFileId(speech);
-  if (!fileId) throw new ApiError("naive", 502, "no_file", "text-to-speech returned no file");
-  await download((await naive.fileUrl(fileId)).url, path);
-}
-
-function speechFileId(speech: unknown): string | null {
-  const record = (speech ?? {}) as Record<string, unknown>;
-  const file = (record.file ?? record.result ?? null) as Record<string, unknown> | null;
-  const candidates = [record.file_id, file?.id, file?.file_id, record.id];
-  return (candidates.find((value) => typeof value === "string" && value.startsWith("fil_")) as string | undefined) ?? null;
+async function speakTo(voiceover: { text: string; voice: string }, speed: number, path: string) {
+  if (!hasElevenLabs()) throw new Error("the voice-over needs an ElevenLabs API key (ELEVENLABS_API_KEY)");
+  // ElevenLabs takes speed 0.7-1.2; paceVoice() stretches whatever is left over.
+  const settings = { ...TTS_MODEL.voice_settings, speed: Math.min(1.2, Math.max(0.7, speed)) };
+  const mp3 = path.replace(/\.wav$/, "") + ".mp3";
+  await writeFile(mp3, await new ElevenLabsClient().tts(elevenVoice(voiceover.voice), { text: voiceover.text.slice(0, 4000), model_id: TTS_MODEL.model_id, voice_settings: settings }));
+  const bin = await ffmpegPath();
+  if (!bin) throw new Error("ffmpeg is needed to convert the ElevenLabs voice-over");
+  await execAsync(bin, ["-hide_banner", "-loglevel", "error", "-y", "-i", mp3, path]);
 }
 
 const execAsync = promisify(execFile);
@@ -1105,10 +1004,6 @@ async function savePoster(videoPath: string, out: string) {
   } catch {
     return false;
   }
-}
-
-function monidVideoEnabled(ctx: ProductionContext) {
-  return Boolean(ctx.monid) && getBool("monid_video_fallback");
 }
 
 export function firstVideoUrl(output: unknown): string | null {

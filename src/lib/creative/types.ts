@@ -1,4 +1,4 @@
-// The creative engine's contract: the typed documents Nomen's agents hand to each other.
+// The creative engine's contract: the typed documents Adtopia's agents hand to each other.
 //
 //   brand site ─► ProductBrief ─┐
 //   research   ─► ReferenceCandidate[] ─► ReferenceBreakdown[] ─► CreativeBrief[] ─► Script[] ─► ProductionPlan ─► EditTimeline ─► final.mp4
@@ -6,6 +6,7 @@
 // Every agent reads the documents before it and writes exactly one of these. Fields are plain
 // words a person could check; nothing downstream has to guess what an upstream agent meant.
 
+import type { CodeAdStory } from "../codeads/types";
 import type { Video } from "../research";
 
 // ---------- what we sell ----------
@@ -17,7 +18,7 @@ export type ProductVisual = {
   /** Stable id within a campaign, e.g. "v1". Scripts point at visuals by this id. */
   id: string;
   kind: "photo" | "screenshot" | "video";
-  /** A URL Nomen can download (https) or a local path under data/media once captured. */
+  /** A URL Adtopia can download (https) or a local path under data/media once captured. */
   url: string;
   /**
    * The store's file key of a captured copy ("visuals-cmp_…/site-pricing.png"). On a serverless host
@@ -273,7 +274,11 @@ export type VideoFormat =
   /** No face: a phone filming a computer monitor while a voice walks through the product (the screen-walkthrough look). */
   | "filmed_screen"
   /** The reference itself, one to one: its footage re-performed by our people, its music, its layout and graphic places, our product facts (internal only). */
-  | "remake";
+  | "remake"
+  /** No camera, no AI video: a 3D cartoon ad made in code (the original engine's build genre: Gary the Builder, a narrator, callouts), its concept taken from the reference (src/lib/codeads). */
+  | "code_ad"
+  /** A deliberately terrible, so-cringe-it's-funny AI meme ad: original characters, meme text, bass-boosted sound, the product as the punchline (creative/brainrot.ts; held until cleared). */
+  | "brainrot";
 
 /** The creative director's brief for one video: which viral video it remakes and what changes for this product. */
 /** What a video is judged on once posted: reach videos on attention, convert videos on action. */
@@ -342,6 +347,8 @@ export type Script = {
   total_seconds: number;
   /** The script critic's last verdict. */
   review: { score: number; notes: string[]; rounds: number } | null;
+  /** code_ad: the story the engine animates, beat by beat (src/lib/codeads). */
+  code_ad?: CodeAdStory;
 };
 
 // ---------- how it gets made ----------
@@ -415,7 +422,7 @@ export type FilmedPlate = { path: string; quad: Quad };
 
 // ---------- the brand kit (assets the brand gives us) ----------
 
-/** One file the brand uploaded or Nomen found in its repo. */
+/** One file the brand uploaded or Adtopia found in its repo. */
 export type BrandAsset = {
   /** Stable id within the brand, e.g. "a3". */
   id: string;

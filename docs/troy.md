@@ -1,8 +1,18 @@
 # Troy: the landing page and the camp
 
-Troy is the pixel-art front door of Nomen. `/` is a white page with a Trojan horse and one box:
-the company's website. Submitting it starts a real campaign; the horse's doors open, a gangplank
-drops and the campaign's agents march out, one by one, down to their posts in the camp. `/camp/[brandId]` is the camp:
+Troy is the pixel-art front door of Adtopia. `/` is a white page with a Trojan horse and one box:
+the company's website. As the page opens, the HQ's street door rolls up and one of the crew, Neon
+the greeter (`scenes/greeter.ts`), steps out and waits on the pavement just left of the building.
+Neon talks in a speech bubble up and to its left (clear of the ADTOPIA HQ sign), always in the same
+format; the box under the island is the visitor's answer, in the same place each time. First:
+"Hey, I'm Neon! Which site are we making videos for?" ("Hand it over"). Then: "<site>, nice!
+Anything the crew should know?", and the box takes an optional note ("Tell the crew", or
+"Surprise us" with nothing typed; "Wrong site? Change it" goes back). Neon says "Got it! Fetching
+the crew…" and walks back in while the campaign starts (the note goes to `POST /api/brands` as
+`preferences`), then comes the crew: the campaign's agents march out, one by one, across the
+street and down the stairs to their posts in the camp. If the campaign can't start, Neon comes back
+out and says so.
+`/camp/[brandId]` is the camp:
 the campaign's agents, one island per pipeline stage, doing the work the core track reports.
 
 ## Who owns what
@@ -130,7 +140,7 @@ When a real campaign has turned out well:
 npm run demo:export -- yourbrand.com
 ```
 
-The exporter reads the campaign from a running Nomen (`--from`, default `http://localhost:3000`)
+The exporter reads the campaign from a running Adtopia (`--from`, default `http://localhost:3000`)
 through the same HTTP API the camp uses. It writes `public/demo/<id>/` and adds the recording to
 the front of `public/demo/index.json`:
 - the finished videos (`1.mp4`…);

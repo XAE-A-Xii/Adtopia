@@ -10,7 +10,7 @@ import { proxy } from "@/proxy";
 const PASSWORD = "test-password#1";
 
 function request(path: string, cookie?: string) {
-  return new NextRequest(new URL(path, "https://nomen.example"), { headers: cookie ? { cookie: `${GATE_COOKIE}=${cookie}` } : {} });
+  return new NextRequest(new URL(path, "https://adtopia.example"), { headers: cookie ? { cookie: `${GATE_COOKIE}=${cookie}` } : {} });
 }
 
 afterEach(() => {
@@ -59,7 +59,7 @@ describe("the proxy", () => {
 
   it("keeps the demo public: its page, its recordings and videos, and the demo camp", async () => {
     process.env.SITE_PASSWORD = PASSWORD;
-    for (const path of ["/demo", "/demo/index.json", "/demo/usenaive-ai/script.json", "/demo/usenaive-ai/1.mp4", "/camp/demo", "/camp/demo?site=usenaive.ai"]) {
+    for (const path of ["/demo", "/demo/index.json", "/demo/fal-ai/script.json", "/demo/fal-ai/1.mp4", "/camp/demo", "/camp/demo?site=fal.ai"]) {
       expect((await proxy(request(path))).headers.get("x-middleware-next"), path).toBe("1");
     }
     // Everything else still needs the password: the live site, real camps, the workspace, the API.
@@ -77,7 +77,7 @@ describe("the proxy", () => {
     expect(api.status).toBe(401);
     const status = await proxy(request("/api/status"));
     expect(status.status).toBe(401);
-    expect(await status.json()).toMatchObject({ naive: { ok: false }, monid: { ok: false }, mobilerun: { configured: false } });
+    expect(await status.json()).toMatchObject({ anthropic: { configured: false }, fal: { configured: false }, monid: { ok: false }, mobilerun: { configured: false } });
   });
 
   it("lets the gate itself through", async () => {
@@ -103,7 +103,7 @@ describe("the demo-only build", () => {
     expect(brands.status).toBe(404);
     const status = await proxy(request("/api/status", cookie));
     expect(status.status).toBe(200);
-    expect(await status.json()).toMatchObject({ naive: { ok: false }, monid: { ok: false }, mobilerun: { configured: false } });
+    expect(await status.json()).toMatchObject({ anthropic: { configured: false }, fal: { configured: false }, monid: { ok: false }, mobilerun: { configured: false } });
     expect((await proxy(request("/api/gate"))).headers.get("x-middleware-next")).toBe("1");
     expect((await proxy(request("/camp/demo", cookie))).headers.get("x-middleware-next")).toBe("1");
   });

@@ -32,7 +32,7 @@ function EventRow({ event, times }: { event: Event; times: number }) {
   const hidden = open ? 0 : Math.max(0, items.length - ITEMS_SHOWN);
   const expandable = s.more || hidden > 0;
   return (
-    <li className="bg-[rgba(43,29,20,0.035)] py-2 pl-3 pr-2.5" style={{ boxShadow: `inset 3px 0 0 ${tone}` }}>
+    <li className="bg-[rgba(200,196,255,0.035)] py-2 pl-3 pr-2.5" style={{ boxShadow: `inset 3px 0 0 ${tone}` }}>
       <div className="flex items-baseline gap-2">
         <p className="min-w-0 flex-1 text-[12.5px] font-semibold leading-snug text-[var(--ink)]">
           {s.headline}
@@ -46,7 +46,7 @@ function EventRow({ event, times }: { event: Event; times: number }) {
       {s.chips.length > 0 && (
         <ul className="mt-1.5 flex flex-wrap gap-1" aria-label="Numbers">
           {s.chips.map((chip) => (
-            <li key={chip} className={`${styles.pixel} bg-[rgba(43,29,20,0.07)] px-1.5 py-px text-[11px] leading-[16px] text-[var(--ink)]`}>
+            <li key={chip} className={`${styles.pixel} bg-[rgba(200,196,255,0.07)] px-1.5 py-px text-[11px] leading-[16px] text-[var(--ink)]`}>
               {chip}
             </li>
           ))}
@@ -65,7 +65,7 @@ function EventRow({ event, times }: { event: Event; times: number }) {
           </ul>
         </div>
       )}
-      {open && s.more && <p className="mt-1.5 border-t border-dashed border-[rgba(43,29,20,0.15)] pt-1.5 text-[11.5px] leading-relaxed text-[var(--ink-soft)]">{event.message}</p>}
+      {open && s.more && <p className="mt-1.5 border-t border-dashed border-[rgba(200,196,255,0.15)] pt-1.5 text-[11.5px] leading-relaxed text-[var(--ink-soft)]">{event.message}</p>}
       {expandable && (
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className={`${styles.link} ${styles.pixel} mt-1 text-[11px] text-[var(--ink-soft)]`}>
           {open ? "Less ▴" : hidden > 0 ? `${hidden} more ▾` : "Full note ▾"}
@@ -89,7 +89,7 @@ export function Reason({ text }: { text: string }) {
       {chips.length > 0 && !open && (
         <ul className="mt-1 flex flex-wrap gap-1" aria-label="Creators it cites">
           {chips.slice(0, 4).map((chip) => (
-            <li key={chip} className={`${styles.pixel} bg-[rgba(43,29,20,0.07)] px-1.5 py-px text-[11px] leading-[16px]`}>
+            <li key={chip} className={`${styles.pixel} bg-[rgba(200,196,255,0.07)] px-1.5 py-px text-[11px] leading-[16px]`}>
               {chip}
             </li>
           ))}

@@ -34,7 +34,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(url, { ...init, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
   } catch {
-    throw new ApiFailure("Nomen's server can't be reached. Check your connection and try again.", 0);
+    throw new ApiFailure("Adtopia's server can't be reached. Check your connection and try again.", 0);
   }
   let data: unknown = null;
   try {
@@ -50,8 +50,9 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 /** Creates (or finds) the brand and starts its campaign: POST /api/brands. */
-export function startCampaign(url: string) {
-  return call<{ brandId: string; campaignId: string }>("/api/brands", { method: "POST", body: JSON.stringify({ url }) });
+/** `preferences`: what the visitor told the greeter at the door (sent along; the core may not use it yet). */
+export function startCampaign(url: string, preferences?: string) {
+  return call<{ brandId: string; campaignId: string }>("/api/brands", { method: "POST", body: JSON.stringify(preferences ? { url, preferences } : { url }) });
 }
 
 export async function listBrands() {
@@ -76,13 +77,13 @@ export function regenerate(creativeId: string, note?: string) {
 
 export type SocialAccountView = { platform: string; name: string; id: string };
 
-/** The brand's connected social accounts, read live from Naive (GET /api/brands/[id]/social), with why it failed if it did. */
+/** The brand's connected social channels, read live from Postiz (GET /api/brands/[id]/social), with why it failed if it did. */
 export async function socialAccounts(brandId: string): Promise<{ accounts: SocialAccountView[]; error: string | null }> {
   const data = await call<{ accounts: SocialAccountView[]; error?: string }>(`/api/brands/${encodeURIComponent(brandId)}/social`, { cache: "no-store" });
   return { accounts: data.accounts ?? [], error: data.error ?? null };
 }
 
-/** A hosted page where the brand's owner connects its accounts; returns here afterwards. */
+/** Opens Postiz where the brand's owner connects its channels. */
 export async function connectLink(brandId: string, returnTo: string) {
   return (await call<{ url: string }>(`/api/brands/${encodeURIComponent(brandId)}/social`, { method: "POST", body: JSON.stringify({ returnTo }) })).url;
 }

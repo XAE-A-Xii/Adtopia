@@ -1,6 +1,6 @@
 # Handoff: the phones track
 
-Nomen turns a brand's website into researched, high-quality UGC-style video ads and posts them to
+Adtopia turns a brand's website into researched, high-quality UGC-style video ads and posts them to
 the brand's own accounts. This track adds **phones**: Mobilerun cloud phones that warm up a brand's
 own new social accounts before posting starts. It runs in parallel with the core build, so it
 lives in its own folders and touches the rest of the app at exactly two points.
@@ -17,7 +17,7 @@ You own these paths: create, edit and delete freely.
 - `docs/phones.md`
 
 Everything else is read-only for you, including `package.json`, `package-lock.json`,
-`next.config.ts`, `naive.config.ts`, `src/lib/*.ts`, the rest of `src/app/**`,
+`next.config.ts`, `src/lib/*.ts`, the rest of `src/app/**`,
 `src/components/ui.tsx`, `CLAUDE.md` and the other docs. If you need a change outside your paths (a
 dependency, a setting key, a new hook), list it in the PR under **Changes needed outside the phones
 track** and it is made on the core branch.
@@ -93,7 +93,7 @@ cp .env.example .env.local   # add MOBILERUN_API_KEY
 npm run dev                  # http://localhost:3000
 ```
 
-You only need a Mobilerun key for this track. Without Naive and Monid keys, a new brand's campaign
+You only need a Mobilerun key for this track. Without Anthropic/fal and Monid keys, a new brand's campaign
 stops at research with a message, and the brand page and your panel still work.
 
 ## Prompt for the phones track.s Claude Code session

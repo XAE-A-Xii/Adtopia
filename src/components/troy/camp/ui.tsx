@@ -14,23 +14,24 @@ import styles from "../troy.module.css";
 // --- Names ------------------------------------------------------------------------------------------
 
 const NAMES = [
-  "Nikias", "Kleon", "Lysandros", "Kallias", "Demetrios", "Theron", "Philon", "Xanthos", "Myron", "Glaukos", "Damon", "Kimon",
-  "Agis", "Hermon", "Lykos", "Phaidon", "Alkaios", "Doros", "Menon", "Polemon", "Straton", "Timon", "Aristos", "Kritias",
-  "Eudoros", "Kleitos", "Philippos", "Antiochos", "Nikandros", "Hippias", "Isokrates", "Laches", "Meidias", "Pasion", "Simon", "Lykon",
-  "Thrasyllos", "Xenokles", "Zenon", "Ariston", "Diodoros", "Euthymos", "Kallistratos", "Mnason", "Nikon", "Phormion", "Sostratos", "Chairon",
-  // Enough for the agora's army too.
-  "Andronikos", "Archelaos", "Aristeides", "Dion", "Hagnon", "Iason", "Kallimachos", "Kleomenes", "Lysias", "Megakles", "Nearchos", "Pausanias",
-  "Perdikkas", "Pelopidas", "Philotas", "Sokles", "Telamon", "Theodoros", "Thrasyboulos", "Timoleon", "Xenon", "Zopyros", "Agathon", "Akastos",
-  "Charmides", "Dexippos", "Eumenes", "Glaukias", "Hieron", "Krateros", "Lykourgos", "Nikostratos", "Alkimos", "Bion", "Eudemos", "Hipponikos",
+  "Glitch", "Mochi", "Cipher", "Byte", "Nyx", "Pixel", "Static", "Vector", "Rook", "Echo", "Patch", "Flux",
+  "Kilo", "Synth", "Hex", "Volt", "Jinx", "Raster", "Zero", "Lumen", "Nova", "Dash", "Proxy", "Sable",
+  "Cache", "Torque", "Mosaic", "Prism", "Rune", "Spark", "Tango", "Vapor", "Widget", "Yotta", "Zed", "Arc",
+  "Blitz", "Chroma", "Delta", "Ember", "Fable", "Gizmo", "Halo", "Ion", "Jolt", "Karma", "Lynx", "Mako",
+  // Enough for the street's crowds and every scout too.
+  "Nimbus", "Orbit", "Pulse", "Quark", "Riff", "Shard", "Trace", "Umbra", "Vibe", "Wren", "Xeno", "Yuzu",
+  "Zinc", "Axiom", "Beacon", "Comet", "Drift", "Fuse", "Grid", "Hertz", "Indigo", "Jade", "Koi", "Loop",
+  "Mint", "Nacho", "Oz", "Pico", "Quill", "Ripple", "Sonar", "Tofu", "Ultra", "Velvet", "Wisp", "Lux",
 ];
-const FIXED: Record<string, string> = { general: "Themistokles", herald: "Stentor" };
+// Neon is the greeter at the HQ's door (scenes/greeter.ts): nobody else takes the name.
+const FIXED: Record<string, string> = { general: "Kernel", herald: "Broadcast", greeter: "Neon" };
 const named = new Map<string, string>();
 
 /**
- * A Greek name for an agent: the same every time for the same agent, and no two agents share one
- * (the first free name from the agent's own place in the list).
+ * A crew handle for an agent: the same every time for the same agent, and no two agents share one
+ * (the first free handle from the agent's own place in the list).
  */
-export function greekName(id: string) {
+export function crewName(id: string) {
   const known = named.get(id) ?? FIXED[id];
   if (known) return known;
   let h = 7;
@@ -41,16 +42,19 @@ export function greekName(id: string) {
     const candidate = NAMES[(h + i) % NAMES.length];
     if (!taken.has(candidate)) name = candidate;
   }
-  // More agents than names: the second of a name is "the Younger".
-  if (!name) name = `${NAMES[h % NAMES.length]} the Younger`;
+  // More agents than handles: the second of a handle is its v2.
+  if (!name) name = `${NAMES[h % NAMES.length]}_v2`;
   named.set(id, name);
   return name;
 }
 
+/** Kept for older callers. */
+export const greekName = crewName;
+
 // --- Portraits ----------------------------------------------------------------------------------------
 
 /**
- * A soldier drawn full length on a patch of sand, animated with the frames the camp uses: walking
+ * An agent drawn full length on a pool of neon floor light, animated with the frames the HQ uses: walking
  * in place while on the move, galloping when mounted, and their work loop at their post.
  */
 export function Portrait({
@@ -102,13 +106,13 @@ export function Portrait({
       const scale = Math.max(1, Math.floor(Math.min(w / figure.w, (h * 0.86) / figure.h)));
       const footX = Math.round(w / 2);
       const footY = Math.round(h * 0.9);
-      // A patch of sand and a soft shadow, pixel by pixel.
+      // A pool of floor light and a soft shadow, pixel by pixel.
       const rx = (mounted ? 15 : 11) * scale;
       for (let y = -4; y <= 4; y++) {
         for (let x = -rx; x <= rx; x += scale) {
           const d = (x / rx) ** 2 + (y / 4) ** 2;
           if (d > 1) continue;
-          ctx.fillStyle = d < 0.45 ? "rgba(160, 120, 70, 0.30)" : (x / scale + y) % 2 ? "rgba(214, 186, 139, 0.55)" : "rgba(214, 186, 139, 0.3)";
+          ctx.fillStyle = d < 0.45 ? "rgba(10, 8, 30, 0.45)" : (x / scale + y) % 2 ? "rgba(82, 217, 237, 0.28)" : "rgba(240, 92, 205, 0.18)";
           ctx.fillRect(footX + x, footY + y * scale * 0.5, scale, Math.max(1, scale * 0.5));
         }
       }
@@ -126,14 +130,16 @@ export function Portrait({
   return <canvas ref={ref} width={size * 2} height={Math.round(size * 2.2)} style={{ width: size, height: Math.round(size * 1.1), imageRendering: "pixelated" }} aria-hidden="true" />;
 }
 
-/** Each station's emblem: its main piece of furniture, baked like the camp's. */
+/** Each station's emblem: its main piece of furniture in the HQ, baked like the HQ's. */
 const EMBLEM: Record<StationId, { id: PropId; v: number }> = {
-  scouts: { id: "tower", v: 0 },
-  oracle: { id: "shrine", v: 2 },
+  // The wall map over the operators' desk; the format table, its holograms playing; the writer's
+  // desk; the green-screen set; the review desk and its buttons; the analytics board.
+  scouts: { id: "mapscreen", v: 0 },
+  oracle: { id: "shrine", v: 5 },
   tent: { id: "pavilion", v: 0 },
-  workshop: { id: "desk", v: 4 },
+  workshop: { id: "filmset", v: 0 },
   theatre: { id: "screen", v: 0 },
-  agora: { id: "podium", v: 0 },
+  agora: { id: "dashboard", v: 0 },
 };
 
 export function Emblem({ baker, id, size = 56 }: { baker: Baker | null; id: StationId; size?: number }) {
@@ -208,6 +214,9 @@ export const STATE_COLOR: Record<StationState, string> = {
  * The six stations as they sit in the camp (two rows, the road running round), coloured by state.
  * `here` is ringed; `route` draws an errand from one station to another.
  */
+/** The steps' short names for the map. */
+const MAP_NAME: Record<StationId, string> = { scouts: "Research", oracle: "Viral study", tent: "Strategy", workshop: "Production", theatre: "Review", agora: "Publish" };
+
 export function CampMap({
   stations,
   here,
@@ -219,7 +228,7 @@ export function CampMap({
   route?: { from: StationId; to: StationId } | null;
   onPick?: (id: StationId) => void;
 }) {
-  // Columns and rows of the camp: top row scouts → tent, bottom row agora ← workshop.
+  // The two floors: upstairs research → viral study → strategy, downstairs publish ← review ← production.
   const cell: Record<StationId, [number, number]> = { scouts: [0, 0], oracle: [1, 0], tent: [2, 0], agora: [0, 1], theatre: [1, 1], workshop: [2, 1] };
   const x = (id: StationId) => 34 + cell[id][0] * 116;
   const y = (id: StationId) => 16 + cell[id][1] * 48;
@@ -232,9 +241,9 @@ export function CampMap({
     ["agora", "scouts"],
   ];
   return (
-    <svg viewBox="0 0 300 100" className="block w-full" role="img" aria-label="The camp's stations and their state" shapeRendering="crispEdges">
+    <svg viewBox="0 0 300 100" className="block w-full" role="img" aria-label="The six steps and their state" shapeRendering="crispEdges">
       {roads.map(([a, b]) => (
-        <line key={`${a}${b}`} x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} stroke="#e3c896" strokeWidth={6} />
+        <line key={`${a}${b}`} x1={x(a)} y1={y(a)} x2={x(b)} y2={y(b)} stroke="var(--line)" strokeWidth={6} />
       ))}
       {route && (
         <line x1={x(route.from)} y1={y(route.from)} x2={x(route.to)} y2={y(route.to)} stroke="var(--crimson)" strokeWidth={2} strokeDasharray="4 3" className={styles.march} />
@@ -250,7 +259,7 @@ export function CampMap({
             {plan.state === "working" && <rect x={x(s.id) - 4} y={y(s.id) - 4} width={8} height={8} fill="var(--paper)" className={styles.blink} />}
             {plan.state === "done" && <path d={`M${x(s.id) - 5} ${y(s.id)}l3 4l7-8`} stroke="var(--paper)" strokeWidth={2.5} fill="none" />}
             <text x={x(s.id)} y={y(s.id) + 23} textAnchor="middle" className={styles.pixel} fontSize={10} fill={active ? "var(--ink)" : "var(--ink-soft)"}>
-              {s.name}
+              {s.n} {MAP_NAME[s.id]}
             </text>
           </>
         );
@@ -288,7 +297,7 @@ export function Steps({ steps, current, failed = false }: { steps: string[]; cur
       {steps.map((step, i) => {
         const done = i < current;
         const now = i === current;
-        const color = now && failed ? "var(--crimson-dark)" : done ? "var(--olive)" : now ? "var(--crimson)" : "rgba(43,29,20,0.12)";
+        const color = now && failed ? "var(--crimson-dark)" : done ? "var(--olive)" : now ? "var(--crimson)" : "rgba(200,196,255,0.12)";
         return (
           <li key={step} className="min-w-0 flex-1">
             <span className={`block h-[6px] ${now && !failed ? styles.blink : ""}`} style={{ background: color }} />
@@ -311,7 +320,7 @@ export function Chip({ children, tone = "ink" }: { children: ReactNode; tone?: "
 
 export function Stat({ n, label, icon }: { n: ReactNode; label: string; icon?: IconName }) {
   return (
-    <div className="bg-[rgba(43,29,20,0.05)] px-2 py-2 text-center">
+    <div className="bg-[rgba(200,196,255,0.05)] px-2 py-2 text-center">
       <div className={`${styles.pixel} flex items-center justify-center gap-1.5 text-[20px] leading-none`}>
         {icon && <Icon name={icon} size={14} />}
         {n}
@@ -329,7 +338,8 @@ export function Parchment({ children, className = "" }: { children: ReactNode; c
 // 14×14 pixel glyphs, drawn crisp.
 const ICONS = {
   scroll: "M3 2h8v1h1v2h-1v6h1v2h-1v1h-8v-1h-1v-2h1v-6h-1v-2h1zM4 4v7h6v-7z",
-  horse: "M8 2h2v1h1v1h1v2h-2v1h-1v2h1v3h-1v-2h-3v2h-1v-3h-1v-1h-1v2h-1v-3h1v-1h4v-1h1v-2h-1z",
+  // A scout's motorbike (the name is the old one's).
+  horse: "M8 3h3v1h-2v1h1v1h1v1h1v1h1v3h-1v1h-2v-1h-1v-3h1v-1h-1v1h-4v1h-1v1h-1v1h-2v-1h-1v-3h1v-1h2v-1h4v-1h-1zM2 9v2h2v-2zM10 9v2h2v-2z",
   hourglass: "M3 2h8v2h-1v1h-1v1h-1v2h1v1h1v1h1v2h-8v-2h1v-1h1v-1h1v-2h-1v-1h-1v-1h-1z",
   check: "M11 3h2v2h-1v1h-1v1h-1v1h-1v1h-1v1h-1v1h-2v-1h-1v-1h-1v-1h-1v-2h2v1h1v1h1v-1h1v-1h1v-1h1v-1h1z",
   cross: "M3 3h2v1h1v1h2v-1h1v-1h2v2h-1v1h-1v2h1v1h1v2h-2v-1h-1v-1h-2v1h-1v1h-2v-2h1v-1h1v-2h-1v-1h-1z",

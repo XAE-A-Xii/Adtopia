@@ -23,6 +23,8 @@ export type Entity = {
   reveal?: number;
   /** Radius (art px) of the soft blob shadow drawn at the entity's feet. */
   shadow?: number;
+  /** Height of the surface the shadow falls on (the floor, 0, unless said: the street is higher). */
+  shadowZ?: number;
   /** Custom drawing. `px` is the device-pixel size of one art pixel. */
   paint?: (ctx: CanvasRenderingContext2D, sx: number, sy: number, px: number, time: number) => void;
   tick?: (dt: number, time: number) => void | "remove";
@@ -93,6 +95,8 @@ export class Stage {
    * (the point left the visible world).
    */
   follow: { at: () => { x: number; y: number; z: number } | null; dx: number; dy: number } | null = null;
+  /** How fast the camera catches up with a followed point (per second): lower is gentler. */
+  followRate = 5;
 
   /** Where the camera's centre may go (art px) when the viewer pans or zooms; null: anywhere. */
   bounds: { x0: number; y0: number; x1: number; y1: number } | null = null;
@@ -283,6 +287,11 @@ export class Stage {
     this.cameraTween = { from: { ...this.camera }, to: target, start: this.time, duration, ease, done };
   }
 
+  /** Seconds of scene time so far: what the figures have lived through (slowed by dropped frames, scaled by timeScale). */
+  get elapsed() {
+    return this.time;
+  }
+
   get cameraMoving() {
     return this.cameraTween !== null;
   }
@@ -343,7 +352,7 @@ export class Stage {
         this.cameraTween.to = { ...this.cameraTween.to, x: tx, y: ty };
       } else {
         // Ease toward it, so a galloping rider pulls the camera along without jitter.
-        const k = 1 - Math.exp(-dt * 5);
+        const k = 1 - Math.exp(-dt * this.followRate);
         this.camera.x += (tx - this.camera.x) * k;
         this.camera.y += (ty - this.camera.y) * k;
       }
@@ -391,7 +400,9 @@ export class Stage {
 
     const sorted: Entity[] = [];
     for (const entity of this.entities) {
-      if (entity.hidden) continue;
+      // Hidden, or not revealed yet: not drawn, not even its shadow, and not asked for (the camp asks
+      // for what it will need in its own order, so the first screen is not kept waiting).
+      if (entity.hidden || (entity.reveal !== undefined && entity.reveal <= 0)) continue;
       if (entity.ground) this.drawEntity(entity, ox, oy, px, viewX0, viewY0, viewX1, viewY1);
       else sorted.push(entity);
     }
@@ -424,9 +435,10 @@ export class Stage {
     const alpha = entity.alpha ?? 1;
     if (alpha <= 0) return;
     if (entity.shadow) {
-      const gy = projectY(entity.x, entity.y, 0);
+      const floor = entity.shadowZ ?? 0;
+      const gy = projectY(entity.x, entity.y, floor);
       const r = entity.shadow;
-      ctx.globalAlpha = alpha * Math.max(0.25, 1 - entity.z / 40);
+      ctx.globalAlpha = alpha * Math.max(0.25, 1 - (entity.z - floor) / 40);
       ctx.drawImage(this.shadowSprite, Math.round(ox + (sx - r) * px), Math.round(oy + (gy - r * 0.45) * px), Math.round(r * 2 * px), Math.round(r * 0.9 * px));
     }
     if (entity.job) {
@@ -541,10 +553,11 @@ function makeShadowSprite() {
       const inside = d < 0.72 || (d < 1 && (x + y) % 2 === 0);
       if (!inside) continue;
       const i = (y * w + x) * 4;
-      img.data[i] = 120;
-      img.data[i + 1] = 90;
-      img.data[i + 2] = 60;
-      img.data[i + 3] = 92;
+      // A cool, dark shadow: the HQ's floors and streets are night blue.
+      img.data[i] = 6;
+      img.data[i + 1] = 6;
+      img.data[i + 2] = 22;
+      img.data[i + 3] = 120;
     }
   }
   c.putImageData(img, 0, 0);

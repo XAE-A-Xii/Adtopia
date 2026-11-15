@@ -139,27 +139,27 @@ describe.skipIf(!ffmpeg)("making the plate", () => {
     if (dir) await rm(dir, { recursive: true, force: true });
   });
 
-  /** A Naive stand-in that hands out the given images in order. */
-  const fake = (sequence: string[], calls: Array<{ prompt: string; aspect_ratio?: string; key: string }>) => ({
-    generateImage: async (input: { prompt: string; aspect_ratio?: string }, key: string) => {
-      calls.push({ ...input, key });
-      return { model: "fake", files: [{ id: `fil_${calls.length}`, content_type: "image/png" }], cost_micro_usd: 30_000 };
+  /** A fal stand-in that hands out the given images in order. */
+  const fake = (sequence: string[], calls: Array<{ endpoint: string; prompt: string; aspect_ratio?: string }>) => ({
+    run: async (endpoint: string, input: Record<string, unknown>) => {
+      calls.push({ endpoint, prompt: String(input.prompt ?? ""), aspect_ratio: input.aspect_ratio as string | undefined });
+      const label = sequence[calls.length - 1];
+      return { images: [{ url: images[label] }] };
     },
-    fileUrl: async (id: string) => ({ url: images[sequence[Number(id.slice(4)) - 1]], expires_at: "" }),
   });
 
   it("tries again under a new key when the photo has no clean display, then keeps the good one", async () => {
     const out = join(dir, "video1");
     await mkdir(out);
-    const calls: Array<{ prompt: string; aspect_ratio?: string; key: string }> = [];
+    const calls: Array<{ endpoint: string; prompt: string; aspect_ratio?: string }> = [];
     const record = await makePlate(fake(["blank", "good"], calls) as never, newPlateRecord(), { dir: out, key: "crv_x", setting: "a dim bedroom desk at night, warm lamp light", fetchTo: (url, path) => copyFile(url, path) });
     expect(record.status).toBe("ready");
-    expect(calls.map((c) => c.key)).toEqual(["crv_x-plate-1", "crv_x-plate-2"]);
+    expect(calls).toHaveLength(2);
     expect(calls[0].aspect_ratio).toBe("9:16");
     expect(calls[0].prompt).toContain("#00FF00");
     expect(calls[0].prompt).toContain("a dim bedroom desk at night, warm lamp light");
     expect(record.tries).toBe(2);
-    expect(record.cost_micro).toBe(60_000);
+    expect(record.cost_micro).toBe(300_000);
     expect(record.notes).toEqual(["image 1: no green display in the photo"]);
     expect(record.plate?.path).toBe(join(out, "plate.png"));
     expect(existsSync(join(out, "plate.png"))).toBe(true);
@@ -170,7 +170,7 @@ describe.skipIf(!ffmpeg)("making the plate", () => {
   it("gives up after three photos without a clean display", async () => {
     const out = join(dir, "video2");
     await mkdir(out);
-    const calls: Array<{ prompt: string; key: string }> = [];
+    const calls: Array<{ endpoint: string; prompt: string; aspect_ratio?: string }> = [];
     const record = await makePlate(fake(["blank", "blank", "blank", "good"], calls) as never, newPlateRecord(), { dir: out, key: "crv_y", fetchTo: (url, path) => copyFile(url, path) });
     expect(calls).toHaveLength(PLATE_TRIES);
     expect(record.status).toBe("fallback");

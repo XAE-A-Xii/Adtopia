@@ -121,7 +121,7 @@ export function outputLink(output: unknown, kind: "video" | "audio"): string | n
 /**
  * A local file at a public link for a day, on Monid's own file store (`sfs`): /put mints an upload
  * link, the bytes are PUT there, and /cat gives the public link. Every link the remake hands to
- * Kling, ElevenLabs and the image model comes from here, so nothing waits on Naive's file links.
+ * Kling, ElevenLabs and the image model comes from here directly.
  */
 export async function hostFile(monid: MonidRunner, bytes: Buffer, name: string, contentType: string, ttl = "1d"): Promise<string> {
   const path = `nomen/${name.replace(/[^\w.-]+/g, "-")}`;

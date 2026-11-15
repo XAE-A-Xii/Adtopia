@@ -15,9 +15,9 @@ import { liveEnabled } from "./lib/live";
 // src/lib/live.ts), `/` plays the demo and the API is switched off here, so nothing on the server
 // opens a database or calls a provider. Once Convex is connected, `/` is live and /demo the demo.
 
-type Status = { naive: { ok: boolean; error?: string }; monid: { ok: boolean; error?: string }; mobilerun: { configured: boolean }; ffmpeg: boolean };
+type Status = { anthropic: { configured: boolean }; fal: { configured: boolean }; monid: { ok: boolean; error?: string }; mobilerun: { configured: boolean }; ffmpeg: boolean };
 
-const statusSaying = (error: string): Status => ({ naive: { ok: false, error }, monid: { ok: false, error }, mobilerun: { configured: false }, ffmpeg: false });
+const statusSaying = (error: string): Status => ({ anthropic: { configured: false }, fal: { configured: false }, monid: { ok: false, error }, mobilerun: { configured: false }, ffmpeg: false });
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

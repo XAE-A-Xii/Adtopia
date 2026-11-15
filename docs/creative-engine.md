@@ -1,8 +1,8 @@
 # The creative engine
 
-Nomen remakes short videos that already went viral, adapted to the brand's product. It does not
+Adtopia remakes short videos that already went viral, adapted to the brand's product. It does not
 write ads from scratch. A video that got 40x more views than its account has followers proves its
-hook, structure and pacing work. Nomen finds those videos, breaks them down second by second, and
+hook, structure and pacing work. Adtopia finds those videos, breaks them down second by second, and
 rebuilds them with the brand's product, its real screenshots and an AI presenter.
 
 ## The flow
@@ -11,10 +11,10 @@ rebuilds them with the brand's product, its real screenshots and an AI presenter
 website
   └─ research (Monid) ─ planner ─ ~25 searches (videos and ads) ─ scout ─ up to 5 follow-up searches
        └─ references ─ product analyst ─ site screenshots ─ reach and conversion ranking ─ 6 beat-by-beat breakdowns (reach and convert mix)
-            └─ director (Naive agent nomen-director) ─ one brief per video: which video it remakes, its role (reach or convert) and metric
+            └─ director (in-process Claude session) ─ one brief per video: which video it remakes, its role (reach or convert) and metric
                  └─ script room ─ writer ─ linter ─ critic (x2) ─ per video, in parallel
                       └─ production ─ presenter shots (Kling 3.0) + QC ─ product cutaways ─ voice-over ─ edit
-                           └─ review ─ posting (Naive Social) ─ analytics feed the next campaign
+                           └─ review ─ posting ─ analytics feed the next campaign
 ```
 
 Every agent writes one typed document for the next (`src/lib/creative/types.ts`):
@@ -25,13 +25,13 @@ Every agent writes one typed document for the next (`src/lib/creative/types.ts`)
 
 | Agent | Where | Reads | Writes |
 | - | - | - | - |
-| Research planner | `research.ts`, Claude Haiku on Naive | site, brand profile | 5 kinds of search phrases, 3 conversion searches, competitors, benchmarks for reach and for conversion |
+| Research planner | `research.ts`, Claude Haiku | site, brand profile | 5 kinds of search phrases, 3 conversion searches, competitors, benchmarks for reach and for conversion |
 | Scout | `creative/scout.ts`, Claude Haiku | first-wave stats, captions, hashtags | up to 5 follow-up searches (phase D) |
 | Product analyst | `creative/product.ts`, Claude Sonnet with vision | site text and images | `ProductBrief`: facts, allowed claims, which images show the product |
-| Site capture | `creative/capture.ts`, Naive cloud browser | the brand's site | phone-size screenshots (software and services) |
+| Site capture | `creative/capture.ts`, local headless Chrome | the brand's site | phone-size screenshots (software and services) |
 | Ranking | `creative/references.ts`, `creative/cloneability.ts`, code | ~90 videos and up to 10 ads | `ReferenceCandidate`s with a reach score (views per follower, engagement), a conversion score (ad run length and variants, saves per like, selling cues) and a cloneability guess (caption cues, length), each a reach or convert role; hard-to-clone ones are picked last; see `docs/research-steering.md` |
-| Breakdown analyst | `creative/references.ts`, Naive speech-to-text and Claude Sonnet with vision | the video, its transcript, cuts and frames | `ReferenceBreakdown`: every beat with timing, exact lines, on-screen text, shots, hook mechanic, how it sells (problem, proof, offer, CTA), what the footage is made of and its cloneability, fit |
-| Director | Naive agent `nomen-director` (`naive/agents/director.md`) | product brief, breakdowns, research | brand brief, search plan, one `CreativeBrief` per video, with a role and metric (at least one of each with 2+ videos) |
+| Breakdown analyst | `creative/references.ts`, ElevenLabs / fal Whisper and Claude Sonnet with vision | the video, its transcript, cuts and frames | `ReferenceBreakdown`: every beat with timing, exact lines, on-screen text, shots, hook mechanic, how it sells (problem, proof, offer, CTA), what the footage is made of and its cloneability, fit |
+| Director | `strategy.ts` (`DIRECTOR_PROMPT`), Claude | product brief, breakdowns, research | brand brief, search plan, one `CreativeBrief` per video, with a role and metric (at least one of each with 2+ videos) |
 | Writer | `creative/script.ts`, Claude Sonnet | brief, reference, product | `Script`: the reference remade beat by beat |
 | Linter | `creative/script.ts`, code | script, reference, product | problems: ad phrases, invented numbers, personal claims, drift from the reference |
 | Critic | `creative/script.ts`, Claude Sonnet | all of the above | score; a full rewrite until 8/10 (two rounds) |
@@ -59,6 +59,26 @@ kind replaces the original person.
 
 These videos are posted by the brand on its own accounts and labeled AI-generated.
 
+## The customer's preferences, and not looking like a competitor
+
+**Preferences.** When a campaign starts, the landing's greeter asks "Do you have any preference or
+requirements?" The answer (at most 600 characters, `src/lib/preferences.ts`) is kept in the
+campaign's `options_json` as `preferences`, logged ("The customer asked for: …"), and given to the
+creative director and to the script writer and critic, fenced in `<customer_preferences>`. It
+shapes tone, audience, formats and emphasis; it is never a source of claims, and it cannot
+override the house rules. The autopilot's next campaign, and "new campaign", keep the last answer.
+
+**Two companies, one niche.** Brands that sell similar things find the same viral videos, and a
+one-to-one remake of the same video would give them the same ad. So:
+- A reference another brand remade in the last 60 days (`TAKEN_DAYS`) is skipped when the
+  breakdowns are picked (`takenByOtherBrands`, `pickAvoidingTaken`). Only its link is used: nothing
+  about the other brand reaches this brand's agents.
+- If that leaves fewer than 3 fresh references (`MIN_FRESH`, a narrow niche), the taken ones come
+  back marked `already_remade_by_another_brand`, and the director must give them a clearly
+  different hook, setting and angle, and say how in the brief.
+- Every brief's angle and hook must rest on what only this product has (its aha moment, proof,
+  offer or a detail from the product brief), not on a line any competitor could say.
+
 ## The edit
 
 - **Captions:** Poppins ExtraBold, white with a heavy outline, popping in two or three words at a
@@ -83,9 +103,8 @@ These videos are posted by the brand on its own accounts and labeled AI-generate
 
 ## The presenter
 
-Presenter shots render on Kling 3.0 image-to-video on Monid with its own voice
-(`presenter_engine`: `kling-3.0`, the default; `naive` uses the Naive video model in
-`video_model`). It won a head-to-head against Veo 3.1, HeyGen, Seedance and Wan for realism and
+Presenter shots render on Kling 3.0 image-to-video on fal or Monid with its own voice
+(`presenter_engine`: `kling-3.0`, the default). It won a head-to-head against Veo 3.1, HeyGen, Seedance and Wan for realism and
 lip-sync. What made it look real is the prompt recipe in `plan.ts`:
 
 - **The first frame** names the camera propped up at eye level an arm's length away, chest-up,
@@ -107,6 +126,7 @@ lip-sync. What made it look real is the prompt recipe in `plan.ts`:
 | `filmed_screen` | a phone filming a monitor that shows the product | text-to-speech | cents, plus one to three photos |
 | `text_story` | the product only, with large text | text-to-speech | cents |
 | `remake` | the reference itself, one to one: our people, our graphics, its layout, cuts and music | our people (Kling 3.0's own voice) over the reference's music | about $0.17 per second of the reference plus about $0.30, internal only |
+| `code_ad` | a 3D cartoon ad made in code: a buff cartoon lead in an office, on a keynote stage, at the gym or a rooftop pool (or a versus ad against the old way), the product as the fix, its feature names popping on screen (the original engine's build genre; docs/code-ads.md) | a narrator (ElevenLabs on Monid, or a free scratch voice) over a synthesized score and foley | cents; renders locally only (headless Chrome with WebGL) |
 
 ## One-to-one remakes (`remake`)
 
@@ -147,8 +167,7 @@ them (`clearForPosting` in publish.ts).
    on the creative and in the manifest.
 5. **The presenter** (`presenter.ts`, one interface): `kling-native` (default) is Kling 3.0
    image-to-video voicing the line itself, with the head-to-head's recipe; `kling-motion` (Kling
-   Motion Control driven by the reference's own footage, silent) and `naive:<model>` are options,
-   and an audio-driven model only needs `submit` and `poll`.
+   Motion Control driven by the reference's own footage, silent) is an option.
 6. **Sound** (`dub.ts`). Demucs (`npm run setup:stems`) splits the reference into voice and bed;
    without it, ElevenLabs isolates the voice and there is no bed. Speech-to-text times the
    reference's words. Each render's own voice is the soundtrack for its stretch: its lead-in is
@@ -166,18 +185,16 @@ as many syllables, gives every line an emotion tag, and keeps on-screen text's w
 numbering; `lintRemake` checks all of it.
 
 **People** (`persona.ts`): kept per brand in the store's files (`brd_…/persona.json` and `.png`, the
-co-host as `cohost.*`): a portrait from the director's description, or a prebuilt Naive character
-(`persona_character`, chr_…). Each has one ElevenLabs voice (Lena or Brielle, Matt or Arthur, by
+co-host as `cohost.*`): a portrait from the director's description generated via `FAL.frame`. Each has one ElevenLabs voice (Lena or Brielle, Matt or Arthur, by
 gender, age and vibe).
 
-**Live tests:** `tests/remake.live.test.ts` (opt-in, paid): the Cluely hook (0-9 s) for monid.ai and
-hustle.jordan99's "Part 67" (the first ~12 s) for usenaive.ai. See the file's header for the
+**Live tests:** `tests/remake.live.test.ts` (opt-in, paid): the Cluely hook (0-9 s) for monid.ai. See the file's header for the
 commands, the plan-only mode and the options.
 
 ## Costs
 
 - **Research:** about $0.10–0.40 on Monid.
-- **Agents:** about $1–2 on Naive for the analysts, director, writers and critics.
+- **Agents:** Anthropic Claude API costs for the analysts, director, writers and critics.
 - **Video:** about $0.17 per presenter second on Kling 3.0 (1080p with audio; $0.40 on Veo 3.1),
   plus QC re-renders (`qc_max_retries`). Faceless formats cost cents.
 

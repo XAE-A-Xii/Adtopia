@@ -13,11 +13,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   return handle(async () => {
-    const { url, staticOnly } = await body<{ url: string; staticOnly: boolean }>(request);
+    const { url, staticOnly, preferences } = await body<{ url: string; staticOnly: boolean; preferences?: string }>(request);
     if (staticOnly && store().kind !== "sqlite") return Response.json({ error: "Static ads aren't available on this deployment yet: they still keep their data on the local disk." }, { status: 400 });
     const brandId = await createBrand(String(url ?? ""));
     const [running] = await store().find<{ id: string }>("campaigns", { brand_id: brandId, status: "running" }, { limit: 1 });
-    const campaignId = running?.id ?? (await startCampaign(brandId, staticOnly ? { ...defaultOptions(), concepts: 0, statics: true } : defaultOptions()));
+    // A campaign already running keeps its own preferences; a new one takes what the customer typed at the door.
+    const campaignId = running?.id ?? (await startCampaign(brandId, { ...(staticOnly ? { ...defaultOptions(), concepts: 0, statics: true } : defaultOptions()), preferences }));
     after(tick);
     return Response.json({ brandId, campaignId }, { status: 201 });
   });

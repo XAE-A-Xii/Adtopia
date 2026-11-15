@@ -37,7 +37,7 @@ export function PublishView({ brandId, campaign, onChange }: { brandId: string; 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not open the connection page");
       window.open(data.url, "_blank", "noopener");
-      setMessage({ tone: "good", text: "The connection page opened in a new tab. Connect the brand's accounts there, then press Refresh." });
+      setMessage({ tone: "good", text: "Postiz opened in a new tab. Connect the brand's channels there, then press Refresh." });
     } catch (err) {
       setMessage({ tone: "bad", text: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -68,7 +68,7 @@ export function PublishView({ brandId, campaign, onChange }: { brandId: string; 
     <div className="grid gap-5 lg:grid-cols-3">
       <Card
         title="The brand's accounts"
-        subtitle="Nomen posts only to accounts the brand owns, connected through Naive. It never sees the passwords."
+        subtitle="Adtopia posts only to channels connected in Postiz. It never sees the passwords."
         action={
           <Button size="sm" variant="ghost" onClick={() => void loadAccounts()}>
             Refresh
@@ -93,10 +93,10 @@ export function PublishView({ brandId, campaign, onChange }: { brandId: string; 
         <Button className="mt-4 w-full" loading={busy === "connect"} onClick={() => void connect()}>
           Connect accounts
         </Button>
-        <p className="mt-3 text-xs text-zinc-500">TikTok, Instagram, YouTube, X, Facebook, LinkedIn and Threads can receive videos.</p>
+        <p className="mt-3 text-xs text-zinc-500">TikTok, Instagram, YouTube, X, Facebook, LinkedIn, Threads and Bluesky can receive videos.</p>
       </Card>
 
-      <Card title="Publish approved videos" subtitle="Every post carries each network's AI-generated label and an #AIgenerated line." className="lg:col-span-2">
+      <Card title="Publish approved videos" subtitle="TikTok posts carry Postiz's AI-generated disclosure setting; other platforms include an #AIgenerated line." className="lg:col-span-2">
         {approved.length === 0 ? (
           <Empty title="Nothing approved yet">Approve videos on the Videos tab first.</Empty>
         ) : (

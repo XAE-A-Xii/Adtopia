@@ -1,6 +1,6 @@
 # Static ads
 
-Nomen turns a brand's research into ready-to-upload static ad packs for Google Ads (Search, Display
+Adtopia turns a brand's research into ready-to-upload static ad packs for Google Ads (Search, Display
 and Performance Max), Meta (Facebook and Instagram), X and Reddit. A pack is a ZIP with one folder
 per platform: every image at the exact size the platform recommends, the copy in the columns each
 upload or import screen asks for, and a README that explains how to upload it and what research it
@@ -47,7 +47,7 @@ the campaign's sources on the Research tab):
 | Agency case studies | `parallel /search` (basic mode) | ranked pages with excerpts | about $0.005 |
 | The brand's own site | `context.dev /web/screenshot` | a 1920×1080 screenshot, cookie banner dismissed | about $0.002 per credit |
 
-**How ads are ranked.** Ad libraries do not publish results for commercial ads, so Nomen ranks by
+**How ads are ranked.** Ad libraries do not publish results for commercial ads, so Adtopia ranks by
 the signals they do publish and says so wherever it shows them: Meta's own impression ranking,
 days running and number of versions (an advertiser keeps paying for ads that work, and duplicates
 the ones it scales); on X, views and engagement (likes, reposts, bookmarks and quotes over views);
@@ -156,22 +156,21 @@ Known gaps, stated in the pack's README where they apply:
 ## Costs
 
 Measured on 2026-11-08 with a static-ads-only campaign for monid.ai (4 concepts, 14 sizes each),
-from Monid's run list and Naive's credit ledger:
+from Monid's run list and Anthropic / fal token and image costs:
 
 | Item | Cost |
 | --- | --- |
 | Campaign research on Monid (17 runs) | $0.051 |
 | Static research on Monid (23 runs) | $0.032 |
-| Planning, ad study, copy and four image checks on Naive (9 model calls, Claude Haiku 5.5 and Opus 5.5) | $0.479 |
-| Generated pictures | none in this run; when a concept needs one, the cost Naive reports is added to the pack |
+| Planning, ad study, copy and four image checks on Claude (9 model calls) | $0.479 |
+| Generated pictures | none in this run; when a concept needs one, the fal image cost is added to the pack |
 | **Total** | **about $0.56**, about four minutes end to end |
 
-The tab shows each pack's Monid cost exactly and estimates the model cost from token counts at
-Anthropic's list prices (Naive bills its own rate; its ledger is the record).
+The tab shows each pack's Monid cost and estimates the model cost from token counts at
+Anthropic's list prices.
 
-Model calls stream through Naive's proxy: a long call made as a plain request was cut off upstream
-after about 30 seconds and still billed for what it had generated. The steps that call models
-retry at most twice for that reason.
+Model calls stream with Claude SSE: the steps that call models
+retry at most twice on transient errors.
 
 ## Code
 

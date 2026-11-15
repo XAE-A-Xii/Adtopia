@@ -2,11 +2,12 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { db, logEvent, newId, now, parse, store, update as updateSqlite } from "../db";
+import { type ClaudeClient, claudeClient, hasClaude } from "../claude";
+import { FAL, FAL_USD, FalClient, falImageUrl } from "../fal";
 import { ApiError } from "../http";
 import { download } from "../media";
 import { recomputeSpend } from "../pipeline";
 import { MonidClient } from "../monid";
-import { NaiveClient } from "../naive";
 import { record, type ResearchPack, type ResearchPlan, text } from "../research";
 import { ensureRuns, listRuns, progressRuns, requeueFailedRuns } from "../runs";
 import { mediaRoot } from "../store/sqlite";
@@ -206,7 +207,7 @@ export async function advancePack(id: string) {
 
 /** Provider trouble worth another try: rate limits, outages, timeouts, a model call the proxy lost upstream. */
 function transient(error: unknown) {
-  return error instanceof ApiError && (error.retryable || (error.service === "naive" && /upstream|overloaded|timed? ?out|stream/i.test(error.message)));
+  return error instanceof ApiError && (error.retryable || ((error.service === "anthropic" || error.service === "fal") && /upstream|overloaded|timed? ?out|stream/i.test(error.message)));
 }
 
 function clients() {
@@ -217,7 +218,7 @@ function clients() {
       return null;
     }
   };
-  return { naive: make(() => new NaiveClient()), monid: make(() => new MonidClient()) };
+  return { claude: hasClaude() ? claudeClient() : null, fal: make(() => new FalClient()), monid: make(() => new MonidClient()) };
 }
 
 const addTokens = (packId: string, tokens: { input: number; output: number }) =>
@@ -229,11 +230,11 @@ async function stepResearch(pack: PackRow) {
   const campaign = (await campaignOf(pack.campaign_id))!;
   const researchPack = parse<ResearchPack | null>(campaign.research_json, null);
   if (!researchPack) return; // the campaign's own research is still running
-  const { naive, monid } = clients();
+  const { claude, monid } = clients();
   if (!monid) throw new Error("Static research runs on Monid: add a Monid API key in Settings, then retry.");
   let plan = parse<StaticPlan | null>(pack.plan_json, null);
   if (!plan) {
-    plan = await planStatics(naive, researchPack, parse<ResearchPlan | null>(campaign.plan_json, null));
+    plan = await planStatics(claude, researchPack, parse<ResearchPlan | null>(campaign.plan_json, null));
     update("static_packs", pack.id, { plan_json: JSON.stringify(plan) });
     await ensureRuns(pack.campaign_id, staticSpecs(researchPack.domain, plan));
     const who = [...plan.competitors.map((c) => c.name), ...plan.leaders.map((c) => c.name)].join(", ");
@@ -259,8 +260,8 @@ async function stepResearch(pack: PackRow) {
 // ---------- study ----------
 
 async function stepStudy(pack: PackRow) {
-  const { naive } = clients();
-  if (!naive) throw new Error("The ad study runs on Naive: add a Naive API key in Settings, then retry.");
+  const { claude } = clients();
+  if (!claude) throw new Error("The ad study runs on Anthropic: add an Anthropic API key in Settings, then retry.");
   const campaign = (await campaignOf(pack.campaign_id))!;
   const researchPack = parse<ResearchPack | null>(campaign.research_json, null)!;
   const research = parse<StaticResearch | null>(pack.research_json, null)!;
@@ -271,7 +272,7 @@ async function stepStudy(pack: PackRow) {
   const tmp = join(dir, "study-tmp");
   await mkdir(tmp, { recursive: true });
   try {
-    const study = await studyStatics(naive, { research, brandName: researchPack.brand.name, category: plan?.category ?? researchPack.brand.industry, screenshotPath: assets.screenshot ? join(/*turbopackIgnore: true*/ dir, assets.screenshot) : null, tmpDir: tmp });
+    const study = await studyStatics(claude, { research, brandName: researchPack.brand.name, category: plan?.category ?? researchPack.brand.industry, screenshotPath: assets.screenshot ? join(/*turbopackIgnore: true*/ dir, assets.screenshot) : null, tmpDir: tmp });
     addTokens(pack.id, study.tokens);
     update("static_packs", pack.id, { study_json: JSON.stringify(study), stage: "write" });
     await logEvent({ brandId: pack.brand_id, campaignId: pack.campaign_id, message: `Ad study: ${study.studied.length} top ads read; direction: ${study.art.type_style} type on ${study.art.scheme}, ${study.art.imagery.replace("_", " ")}, decoration ${study.art.decoration}` });
@@ -320,8 +321,8 @@ async function gatherAssets(pack: PackRow, researchPack: ResearchPack, research:
 // ---------- copy ----------
 
 async function stepWrite(pack: PackRow) {
-  const { naive } = clients();
-  if (!naive) throw new Error("The copywriter runs on Naive: add a Naive API key in Settings, then retry.");
+  const { claude } = clients();
+  if (!claude) throw new Error("The copywriter runs on Anthropic: add an Anthropic API key in Settings, then retry.");
   const campaign = (await campaignOf(pack.campaign_id))!;
   const researchPack = parse<ResearchPack | null>(campaign.research_json, null)!;
   const strategy = parse<Strategy | null>(campaign.strategy_json, null);
@@ -333,7 +334,7 @@ async function stepWrite(pack: PackRow) {
   const corpus = siteCorpus(researchPack, strategy);
   const opts = { hasScreenshot: Boolean(assets.screenshot), photos: Math.min(8, researchPack.brand.images.length) };
 
-  const [first, search] = await Promise.all([writeConcepts(naive, input), writeSearchAssets(naive, input)]);
+  const [first, search] = await Promise.all([writeConcepts(claude, input), writeSearchAssets(claude, input)]);
   addTokens(pack.id, first.tokens);
   addTokens(pack.id, search.tokens);
   let concepts = checkAll(first.concepts, corpus, opts);
@@ -341,7 +342,7 @@ async function stepWrite(pack: PackRow) {
   if (failing.length) {
     await logEvent({ brandId: pack.brand_id, campaignId: pack.campaign_id, message: `Copy check sent ${failing.length} concept${failing.length > 1 ? "s" : ""} back: ${failing[0].problems![0]}` });
     try {
-      const repair = await writeConcepts(naive, input, { concepts: failing, problems: failing.map((c) => c.problems ?? []) });
+      const repair = await writeConcepts(claude, input, { concepts: failing, problems: failing.map((c) => c.problems ?? []) });
       addTokens(pack.id, repair.tokens);
       const fixed = checkAll(repair.concepts, corpus, opts);
       let k = 0;
@@ -393,7 +394,7 @@ async function packLogo(pack: PackRow, assets: PackAssets) {
 }
 
 async function stepProduce(pack: PackRow) {
-  const { naive } = clients();
+  const { claude, fal } = clients();
   const assets = parse<PackAssets>(pack.assets_json, { logo: null, screenshot: null });
   const logo = await packLogo(pack, assets);
   await ensureLogos(pack, logo);
@@ -401,7 +402,7 @@ async function stepProduce(pack: PackRow) {
   const ad = listStaticAds(pack.id).find((a) => !a.rejected && a.status !== "ready" && a.status !== "failed");
   if (ad) {
     try {
-      await advanceAd(pack, ad, naive, assets, logo);
+      await advanceAd(pack, ad, { claude, fal }, assets, logo);
     } catch (error) {
       if (transient(error)) throw error;
       update("static_ads", ad.id, { status: "failed", error: error instanceof Error ? error.message : String(error) });
@@ -440,13 +441,13 @@ async function baseInput(pack: PackRow, logo: LogoAsset | null): Promise<AdInput
   };
 }
 
-async function advanceAd(pack: PackRow, ad: StaticAdRow, naive: NaiveClient | null, assets: PackAssets, logo: LogoAsset | null) {
+async function advanceAd(pack: PackRow, ad: StaticAdRow, deps: { claude: Pick<ClaudeClient, "messageStream"> | null; fal: Pick<FalClient, "run"> | null }, assets: PackAssets, logo: LogoAsset | null) {
   const concept = parse<Concept>(ad.concept_json, null as unknown as Concept);
   const dir = adDir(pack.id, ad.id);
   await mkdir(dir, { recursive: true });
   let visual = parse<VisualState | null>(ad.visual_json, null);
   if (ad.status === "queued" || ad.status === "visual" || !visual) {
-    visual = await makeVisual(pack, ad, concept, naive, assets, visual);
+    visual = await makeVisual(pack, ad, concept, deps.fal, assets, visual);
     update("static_ads", ad.id, { visual_json: JSON.stringify(visual), status: "rendering" });
   }
   const study = parse<Study | null>(pack.study_json, null);
@@ -481,10 +482,10 @@ async function advanceAd(pack: PackRow, ad: StaticAdRow, naive: NaiveClient | nu
     const pick = (id: string) => renders.find((r) => r.placement === id);
     const shots = [pick("meta-feed-4x5"), pick("x-1.91x1")].filter((r): r is Render => Boolean(r));
     let verdict: StaticVerdict | null = null;
-    if (naive && shots.length) {
+    if (deps.claude && shots.length) {
       const images = await Promise.all(shots.map(async (r) => (await normalizeImage(await readFile(join(dir, r.file)), { maxSide: 1100 })).bytes));
       try {
-        verdict = await reviewStatic(naive, { images, concept, brandName: base.brandName });
+        verdict = await reviewStatic(deps.claude, { images, concept, brandName: base.brandName });
         addTokens(pack.id, verdict.tokens);
       } catch (error) {
         if (transient(error)) throw error;
@@ -502,7 +503,7 @@ async function advanceAd(pack: PackRow, ad: StaticAdRow, naive: NaiveClient | nu
 }
 
 /** The picture for one ad: the site screenshot, one of the brand's photos, a generated photo, or none. */
-async function makeVisual(pack: PackRow, ad: StaticAdRow, concept: Concept, naive: NaiveClient | null, assets: PackAssets, previous: VisualState | null): Promise<VisualState> {
+async function makeVisual(pack: PackRow, ad: StaticAdRow, concept: Concept, fal: Pick<FalClient, "run"> | null, assets: PackAssets, previous: VisualState | null): Promise<VisualState> {
   const campaign = (await campaignOf(pack.campaign_id))!;
   const researchPack = parse<ResearchPack | null>(campaign.research_json, null)!;
   const dir = adDir(pack.id, ad.id);
@@ -521,7 +522,7 @@ async function makeVisual(pack: PackRow, ad: StaticAdRow, concept: Concept, naiv
       return { kind: "none", file: null, attempts: 1, cost_micro: 0, error: `site photo unavailable: ${error instanceof Error ? error.message : String(error)}` };
     }
   }
-  if (kind === "generated" && naive && getBool("static_ai_images")) {
+  if (kind === "generated" && fal && getBool("static_ai_images")) {
     const attempts = (previous?.attempts ?? 0) + 1;
     const refs = researchPack.brand.images.slice(0, 3);
     const prompt = [
@@ -531,15 +532,23 @@ async function makeVisual(pack: PackRow, ad: StaticAdRow, concept: Concept, naiv
       previous?.note ? `A reviewer rejected the previous picture. Fix exactly this: ${previous.note}` : "",
     ].filter(Boolean).join("\n");
     try {
-      const result = await naive.generateImage({ model: getSetting("static_image_model"), prompt, aspect_ratio: "1:1", image_urls: refs.length ? refs : undefined }, `${ad.id}-visual-${attempts}`);
-      const file = result.files[0];
-      if (!file) throw new ApiError("naive", 502, "no_file", "the image model returned no picture");
-      staticsDb().prepare("update static_packs set image_cost_micro = image_cost_micro + ? where id = ?").run(result.cost_micro_usd ?? 0, pack.id);
-      const link = await naive.fileUrl(file.id);
-      const raw = await download(link.url, join(dir, `generated-${attempts}`));
+      const model = getSetting("static_image_model") || FAL.frame;
+      const endpoint = refs.length && model === FAL.frame ? FAL.frameEdit : model;
+      const out = await fal.run(endpoint, {
+        prompt,
+        aspect_ratio: "1:1",
+        output_format: "png",
+        num_images: 1,
+        ...(refs.length ? { image_urls: refs } : {}),
+      });
+      const url = falImageUrl(out);
+      if (!url) throw new ApiError("fal", 502, "no_file", "the image model returned no picture");
+      const costMicro = Math.round(FAL_USD.frame * 1_000_000);
+      staticsDb().prepare("update static_packs set image_cost_micro = image_cost_micro + ? where id = ?").run(costMicro, pack.id);
+      const raw = await download(url, join(dir, `generated-${attempts}`));
       const image = await normalizeImage(await readFile(raw), { maxSide: 1600 });
       await writeFile(join(dir, "visual.jpg"), image.bytes);
-      return { kind, file: relative("visual.jpg"), attempts, cost_micro: (previous?.cost_micro ?? 0) + (result.cost_micro_usd ?? 0) };
+      return { kind, file: relative("visual.jpg"), attempts, cost_micro: (previous?.cost_micro ?? 0) + costMicro };
     } catch (error) {
       if (error instanceof ApiError && (error.retryable || error.inFlight)) throw error;
       return { kind: "none", file: null, attempts, cost_micro: previous?.cost_micro ?? 0, error: `no generated picture: ${error instanceof Error ? error.message : String(error)}` };

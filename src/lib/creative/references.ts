@@ -5,10 +5,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { ElevenLabsClient, hasElevenLabs, segmentsFromWords } from "../elevenlabs";
+import { FAL, FalClient, hasFal } from "../fal";
 import { ApiError } from "../http";
 import { download, ffmpegPath, probe } from "../media";
-import type { NaiveClient, TranscriptSegment } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { QC_MODEL } from "../qc";
+
+export type TranscriptSegment = { start_seconds: number; end_seconds: number; text: string };
 import { extractJson, type Video } from "../research";
 import { CLONE_GATE, CLONE_SCHEMA, CLONE_WEIGHT, cloneabilityOf, cloneabilityPrior, cloneable, cloneOf, readFootage } from "./cloneability";
 import type { BeatJob, ConversionAnatomy, FunnelRole, ReferenceBeat, ReferenceBreakdown, ReferenceCandidate, SellingStructure, ShotKind } from "./types";
@@ -348,6 +351,30 @@ export function pickForBreakdown(
   return picked.sort((a, b) => usable.indexOf(a) - usable.indexOf(b));
 }
 
+/** Fewest fresh picks worth breaking down before references other brands took are allowed back. */
+export const MIN_FRESH = 3;
+
+/**
+ * pickForBreakdown that steers clear of `taken`: videos other brands already remade, so two
+ * companies in one niche don't get the same ad. If too few fresh videos are left (a narrow niche),
+ * it picks as if nothing were taken and returns the taken ones it used in `shared`, for the
+ * director to give a different angle.
+ */
+export function pickAvoidingTaken(
+  candidates: ReferenceCandidate[],
+  n: number,
+  options: Parameters<typeof pickForBreakdown>[2] & { taken: Iterable<string> },
+): { picks: ReferenceCandidate[]; shared: string[]; avoided: number } {
+  const { taken, ...rest } = options;
+  const takenKeys = new Set([...taken].map(canonicalUrl));
+  const isTaken = (candidate: ReferenceCandidate) => takenKeys.has(canonicalUrl(candidate.url));
+  const fresh = pickForBreakdown(candidates, n, { ...rest, exclude: [...(rest.exclude ?? []), ...takenKeys] });
+  const avoided = candidates.filter(isTaken).length;
+  if (fresh.length >= Math.min(MIN_FRESH, n)) return { picks: fresh, shared: [], avoided };
+  const picks = pickForBreakdown(candidates, n, rest);
+  return { picks, shared: picks.filter(isTaken).map((c) => c.url), avoided: 0 };
+}
+
 /**
  * The order the director reads the breakdowns in: the ones the footage clone can reproduce first,
  * then by fit for this brand, then by cloneability. A breakdown from before cloneability counts as
@@ -363,11 +390,11 @@ export function orderBreakdowns(breakdowns: ReferenceBreakdown[]): ReferenceBrea
 
 /** The model that reads a reference: the vision model the QC step already uses. */
 export const BREAKDOWN_MODEL = QC_MODEL;
-/** Naive's model proxy takes at most 12 images per request; 10 leaves room. */
+/** The vision model reads at most 10 frames per request. */
 export const MAX_FRAMES = 10;
 
-/** The NaiveClient methods a breakdown uses (a NaiveClient satisfies it). */
-export type BreakdownClient = Pick<NaiveClient, "uploadFile" | "transcribe" | "getTranscription" | "message">;
+/** The Claude + optional fal clients a breakdown uses. */
+export type BreakdownClient = Pick<ClaudeClient, "message"> & { fal?: Pick<FalClient, "run"> };
 
 export type BreakdownOptions = {
   /** Scratch space; each breakdown works in its own subfolder and removes it when done. */
@@ -409,7 +436,7 @@ export function referenceId(url: string) {
  * vision model write the beat-by-beat breakdown. Provider problems throw ApiError (check
  * `.retryable`); a video that cannot be fetched throws ReferenceUnavailableError.
  */
-export async function breakdownReference(naive: BreakdownClient, candidate: ReferenceCandidate, options: BreakdownOptions): Promise<ReferenceBreakdown> {
+export async function breakdownReference(client: BreakdownClient, candidate: ReferenceCandidate, options: BreakdownOptions): Promise<ReferenceBreakdown> {
   if (!candidate.media_url) throw new ReferenceUnavailableError(candidate.url, "no downloadable video link");
   const bin = await ffmpegPath();
   if (!bin) throw new Error("ffmpeg is not available, so references cannot be broken down");
@@ -425,12 +452,12 @@ export async function breakdownReference(naive: BreakdownClient, candidate: Refe
     const duration = round(info.duration, 1);
 
     const cuts = await detectCuts(video, options.sceneThreshold ?? 0.3, duration);
-    const speech = info.hasAudio ? await transcribe(naive, video, dir, id, options) : { text: "", segments: [] };
+    const speech = info.hasAudio ? await transcribe(client, video, dir, id, options) : { text: "", segments: [] };
     const wpm = wordsPerMinute(speech.text, speech.segments, duration);
     const frames = await grabFrames(bin, video, dir, frameTimes(duration, cuts, Math.min(options.maxFrames ?? MAX_FRAMES, MAX_FRAMES)));
     if (frames.length === 0) throw new ReferenceUnavailableError(candidate.url, "no frames could be read from the video");
 
-    const raw = await askForBreakdown(naive, options.model ?? BREAKDOWN_MODEL, buildContent({ candidate, duration, cuts, speech, wpm, frames, brand: options.brand }));
+    const raw = await askForBreakdown(client, options.model ?? BREAKDOWN_MODEL, buildContent({ candidate, duration, cuts, speech, wpm, frames, brand: options.brand }));
     const read = readBreakdown(raw, { duration, transcript: speech.text, segments: speech.segments });
     // Watched now: the frames, cuts and transcript replace the caption's guess.
     const cloneability = read.footage
@@ -462,7 +489,7 @@ export type BreakdownFailure = { candidate: ReferenceCandidate; error: string; r
 
 /** Breaks down several references, three at a time. Failures are reported, never thrown. */
 export async function breakdownAll(
-  naive: BreakdownClient,
+  client: BreakdownClient,
   candidates: ReferenceCandidate[],
   options: BreakdownOptions & { concurrency?: number },
 ): Promise<{ breakdowns: ReferenceBreakdown[]; failures: BreakdownFailure[] }> {
@@ -473,7 +500,7 @@ export async function breakdownAll(
       const i = next++;
       const candidate = candidates[i];
       try {
-        results[i] = { ok: true, value: await breakdownReference(naive, candidate, options) };
+        results[i] = { ok: true, value: await breakdownReference(client, candidate, options) };
       } catch (error) {
         const retryable = error instanceof ApiError ? error.retryable : false;
         results[i] = { ok: false, failure: { candidate, error: error instanceof Error ? error.message : String(error), retryable, cause: error } };
@@ -596,8 +623,8 @@ async function extractAudio(bin: string, video: string, dir: string): Promise<{ 
   }
 }
 
-/** Speech to text: ElevenLabs with the brand's own key, else Naive (upload, transcribe with timestamps, wait if queued). */
-async function transcribe(naive: BreakdownClient, video: string, dir: string, id: string, options: BreakdownOptions): Promise<{ text: string; segments: TranscriptSegment[] }> {
+/** Speech to text: ElevenLabs with the brand's own key, else fal Whisper with segment timestamps. */
+async function transcribe(client: BreakdownClient, video: string, dir: string, _id: string, options: BreakdownOptions): Promise<{ text: string; segments: TranscriptSegment[] }> {
   const bin = (await ffmpegPath())!;
   const audio = await extractAudio(bin, video, dir);
   const language = options.language === undefined ? "en" : options.language;
@@ -606,23 +633,33 @@ async function transcribe(naive: BreakdownClient, video: string, dir: string, id
     const segments = segmentsFromWords(result.words ?? []);
     return { text: (result.text ?? "").trim() || segments.map((segment) => segment.text).join(" "), segments };
   }
-  const fileId = await naive.uploadFile(`${id}-audio.${audio.ext}`, audio.contentType, await readFile(/*turbopackIgnore: true*/ audio.path));
-  let job = await naive.transcribe({ file_id: fileId, model: "stt/auto", timestamps: true, ...(language ? { language } : {}) }, `nomen-ref-stt-${fileId}`);
-  const deadline = Date.now() + (options.transcriptionTimeoutMs ?? 180_000);
-  while (job.status === "queued" || job.status === "processing") {
-    if (Date.now() > deadline) throw new ApiError("naive", 504, "transcription_timeout", `transcription ${job.id} is still ${job.status}; try again later`);
-    await sleep(options.pollMs ?? 3000);
-    job = await naive.getTranscription(job.id);
+  const fal = client.fal ?? (hasFal() ? new FalClient() : null);
+  if (!fal) {
+    throw new ApiError("fal", 500, "not_configured", "ELEVENLABS_API_KEY or FAL_API_KEY is required to transcribe reference audio");
   }
-  if (job.status !== "completed" || !job.result) {
-    throw new ApiError("naive", 502, job.error?.code ?? "transcription_failed", job.error?.message ?? `transcription ${job.id} ended ${job.status}`);
-  }
-  const segments = (job.result.segments ?? [])
-    .filter((segment) => Number.isFinite(segment.start_seconds) && Number.isFinite(segment.end_seconds) && typeof segment.text === "string")
-    .map((segment) => ({ start_seconds: segment.start_seconds, end_seconds: segment.end_seconds, text: segment.text.trim() }))
-    .filter((segment) => segment.text)
+  const bytes = await readFile(/*turbopackIgnore: true*/ audio.path);
+  const audioUrl = `data:${audio.contentType};base64,${bytes.toString("base64")}`;
+  const out = (await fal.run(FAL.whisper, {
+    audio_url: audioUrl,
+    task: "transcribe",
+    chunk_level: "segment",
+    ...(language ? { language } : {}),
+  })) as { text?: unknown; chunks?: unknown } | null;
+  const rawChunks: unknown[] = out && Array.isArray(out.chunks) ? out.chunks : [];
+  const segments: TranscriptSegment[] = rawChunks
+    .map((chunk: unknown): TranscriptSegment | null => {
+      if (!chunk || typeof chunk !== "object") return null;
+      const c = chunk as { text?: unknown; start?: unknown; end?: unknown; timestamp?: unknown };
+      const ts = Array.isArray(c.timestamp) ? c.timestamp : null;
+      const start = typeof c.start === "number" ? c.start : ts && typeof ts[0] === "number" ? ts[0] : NaN;
+      const rawEnd = typeof c.end === "number" ? c.end : ts && typeof ts[1] === "number" ? ts[1] : start;
+      const text = typeof c.text === "string" ? c.text.trim() : "";
+      if (!Number.isFinite(start) || !Number.isFinite(rawEnd) || !text) return null;
+      return { start_seconds: start, end_seconds: Math.max(start, rawEnd), text };
+    })
+    .filter((segment): segment is TranscriptSegment => segment !== null)
     .sort((a, b) => a.start_seconds - b.start_seconds);
-  const text = (job.result.text ?? "").trim() || segments.map((segment) => segment.text).join(" ");
+  const text = (out && typeof out.text === "string" ? out.text.trim() : "") || segments.map((segment) => segment.text).join(" ");
   return { text, segments };
 }
 
@@ -869,8 +906,8 @@ function buildContent(input: ContentInput): unknown[] {
   return content;
 }
 
-async function askForBreakdown(naive: BreakdownClient, model: string, content: unknown[]): Promise<Record<string, unknown>> {
-  const ask = (text: string, tools?: object[]) => naive.message({ model, max_tokens: 12000, system: SYSTEM, messages: [{ role: "user", content: [...content, { type: "text", text }] }], tools });
+async function askForBreakdown(client: BreakdownClient, model: string, content: unknown[]): Promise<Record<string, unknown>> {
+  const ask = (text: string, tools?: object[]) => client.message({ model, max_tokens: 12000, system: SYSTEM, messages: [{ role: "user", content: [...content, { type: "text", text }] }], tools });
   let raw: unknown = null;
   try {
     const reply = await ask("Call the reference_breakdown tool once.", [BREAKDOWN_TOOL]);
@@ -882,7 +919,7 @@ async function askForBreakdown(naive: BreakdownClient, model: string, content: u
     // The model fumbled the tool call: ask for the same breakdown as plain JSON.
     const reply = await ask(`Answer with only a JSON object of this shape, following every rule above:\n${JSON_SHAPE}`);
     raw = extractJson(reply.content.map((block) => block.text ?? "").join("\n"));
-    if (!isRecord(raw)) throw new ApiError("naive", 502, "breakdown_unreadable", "the breakdown model returned no breakdown");
+    if (!isRecord(raw)) throw new ApiError("anthropic", 502, "breakdown_unreadable", "the breakdown model returned no breakdown");
   }
   return raw;
 }
@@ -932,7 +969,7 @@ export function readBreakdown(raw: Record<string, unknown>, context: { duration:
     if (end - start < 0.05) continue;
     beats.push({ ...beat, start, end });
   }
-  if (beats.length === 0) throw new ApiError("naive", 502, "breakdown_unreadable", "the breakdown had no usable beats");
+  if (beats.length === 0) throw new ApiError("anthropic", 502, "breakdown_unreadable", "the breakdown had no usable beats");
   beats[beats.length - 1].end = round(duration, 1);
   for (const beat of beats) beat.line = verbatim(beat.line, () => said(beat.start, beat.end));
 
@@ -1063,5 +1100,3 @@ function text(value: unknown) {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

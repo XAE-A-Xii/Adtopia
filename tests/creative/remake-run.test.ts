@@ -107,7 +107,7 @@ afterAll(async () => {
 
 function fakes(over: { presenter?: Presenter } = {}) {
   const calls = { layout: 0, gate: 0, qc: 0, images: 0, kling: [] as Array<Record<string, unknown>>, stt: [] as string[], tts: 0, sts: 0, order: [] as string[] };
-  const naive: RemakeDeps["naive"] = {
+  const claude: RemakeDeps["claude"] = {
     async message(input) {
       const tool = (input.tools?.[0] as { name?: string } | undefined)?.name;
       if (tool === "remake_layout") {
@@ -122,20 +122,13 @@ function fakes(over: { presenter?: Presenter } = {}) {
       calls.gate++;
       return { stop_reason: "end_turn", content: [{ type: "text", text: '{"pass": true, "issues": []}' }] };
     },
-    async generateImage(input) {
+  };
+  const fal: RemakeDeps["fal"] = {
+    async run(_endpoint, input) {
       calls.images++;
       calls.order.push("image");
       expect(input.image_urls).toHaveLength(2);
-      return { model: "fake", files: [{ id: `fil_twin${calls.images}`, content_type: "image/png" }], cost_micro_usd: 40_000 };
-    },
-    async fileUrl(id) {
-      return { url: `https://files.invalid/${id}.png`, expires_at: "" };
-    },
-    async generateVideo() {
-      throw new Error("no Naive video in this test");
-    },
-    async getMediaJob() {
-      throw new Error("no Naive video in this test");
+      return { images: [{ url: `https://files.invalid/fil_twin${calls.images}.png` }] } as never;
     },
   };
   const words = (list: string, from: number, step: number) => list.split(" ").map((text, i) => ({ text, start: from + i * step, end: from + i * step + step * 0.8, type: "word" }));
@@ -170,7 +163,8 @@ function fakes(over: { presenter?: Presenter } = {}) {
     },
   };
   const deps: RemakeDeps = {
-    naive,
+    claude,
+    fal,
     monid,
     files: folderFiles(join(dir, "kept")),
     ...(over.presenter ? { presenter: over.presenter } : {}),
@@ -279,7 +273,7 @@ describe.skipIf(!ffmpeg)("remakeVideo with Kling voicing itself (fake providers,
     deps.busyWaitsMs = [0, 0];
     deps.buildGraphics = async (requests, workDir) => {
       calls++;
-      if (calls === 1) return { clips: [], failures: requests.map((r) => ({ id: r.id, error: "naive: the service is at capacity" })) };
+      if (calls === 1) return { clips: [], failures: requests.map((r) => ({ id: r.id, error: "anthropic: the service is at capacity" })) };
       return real(requests, workDir);
     };
     await remakeVideo(deps, input("crv_busy"));

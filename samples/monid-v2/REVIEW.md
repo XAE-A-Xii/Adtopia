@@ -106,7 +106,7 @@ gonna…").
 | - | - | - |
 | Ranking by numbers alone | Picked an `#api` emoji loop, a news slideshow and a meme | Relevance screen (`creative/relevance.ts`) |
 | Breakdown output limit | 55-85 s references came back empty | 12k tokens, at most 14 beats |
-| Naive browser options | `os: "mobile"` and similar left the browser "unavailable"; 0 screenshots | Live-tested config |
+| Remote browser options | `os: "mobile"` and similar left the browser "unavailable"; 0 screenshots | Live-tested config |
 | Critic output limit | The critic never reviewed; the script showed a fake 1/10 | 10k tokens, JSON retry, an honest "unavailable" |
 | Edit directions in video prompts | Veo drew gibberish captions and cards | Presenter-only prompts (`presenterOnly`) |
 | QC frame rebuild | Quoted gibberish was pasted into the image prompt, and the bad frame was reused | Quotes stripped, text defects rebuild from identity |
@@ -125,12 +125,12 @@ gonna…").
    the reference does it. Captions in a clear band so they never sit on screenshot text.
 3. **Tighter silence trim.** Measure each clip's noise floor instead of using a fixed -32 dB.
 4. **A spend counter for the agents.** Model, speech and browser calls don't show in the
-   campaign's spend yet. The true cost came from the Naive balance: $174.69 to $145.39.
-5. **Try HeyGen Avatar IV** (in Naive's catalogue) for one continuous presenter take with one
+   campaign's spend yet. The true cost came from the provider balance: $174.69 to $145.39.
+5. **Try HeyGen Avatar IV** for one continuous presenter take with one
    voice, instead of stitched 8 s Veo shots.
 
 ## Face swap test (local only)
 
-Naive's Mira swapped our AI presenter into the first 10 s of the @viralex.aii video for $1.48. It
+Mira swapped our AI presenter into the first 10 s of the @viralex.aii video for $1.48. It
 kept the motion and graphics cleanly. The graphics still say Claude, so a swap alone doesn't make a
 Monid ad. The output stays in `data/media/swap-test/`, outside the repo.

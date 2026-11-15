@@ -1,6 +1,6 @@
 # Phones
 
-Nomen can warm up a brand's own new social accounts on a Mobilerun cloud phone before posting
+Adtopia can warm up a brand's own new social accounts on a Mobilerun cloud phone before posting
 starts. A warm-up session opens the app on the brand's phone and has Mobilerun's phone agent browse
 the brand's niche the way its social manager would. The same phone can also send a creator the
 outreach DM a person approved in real-creator mode. Phones are optional: campaigns and posting work
@@ -10,7 +10,7 @@ without them.
 
 - **Brand-owned accounts only.** Linking needs the "This is the brand's own official account"
   confirmation. One account per platform per brand, and one phone per brand (a phone linked to one
-  brand cannot be linked to another). Nomen never creates accounts.
+  brand cannot be linked to another). Adtopia never creates accounts.
 - **Passive warm-up.** The brief (`warmupTask()` in `src/lib/phones/mobilerun.ts`) browses and
   watches the niche, likes at most 8 videos and follows at most 2 creators. It never posts, comments,
   messages, buys, changes settings or engages with the brand's own posts.
@@ -19,11 +19,11 @@ without them.
   an outreach session: the brief (`outreachTask()`) opens the brand's own account, finds the
   creator's exact handle (or stops), opens their DMs (or stops if they are closed), types the
   approved message exactly and sends it once. Nothing else: no second message, follows, likes or
-  comments. A DM is sent once per brief. Nomen does not read replies or carry on the conversation.
+  comments. A DM is sent once per brief. Adtopia does not read replies or carry on the conversation.
 - **The risk is on screen.** The panel always states that automated activity can break a
   platform's terms and put the account at risk.
 - **Keys stay out of the repo.** Use `.env.local` or the Settings page. Logins live in Mobilerun's
-  credential store; Nomen only stores and shows their names, never their values.
+  credential store; Adtopia only stores and shows their names, never their values.
 
 ## How it works
 

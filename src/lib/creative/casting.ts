@@ -1,7 +1,7 @@
 import { ApiError } from "../http";
 import type { MonidRunner } from "../monid";
 import { runCostMicro } from "../monid";
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { QC_MODEL } from "../qc";
 import { extractJson, type Video } from "../research";
 import type { ProductBrief } from "./types";
@@ -184,7 +184,7 @@ export function searchKeywords(input: { category?: string; audience?: string; an
 
 // ---------- the model's parts ----------
 
-type Message = (input: Parameters<NaiveClient["message"]>[0]) => ReturnType<NaiveClient["message"]>;
+type Message = (input: Parameters<ClaudeClient["message"]>[0]) => ReturnType<ClaudeClient["message"]>;
 
 async function ask<T>(message: Message, system: string, user: string, tool: { name: string; description: string; input_schema: object }, maxTokens = 3000): Promise<T | null> {
   try {

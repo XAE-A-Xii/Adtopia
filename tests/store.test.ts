@@ -7,7 +7,7 @@ import { type ConvexCaller, convexStore } from "@/lib/store/convex";
 import { sqliteConnection, sqliteStore } from "@/lib/store/sqlite";
 import type { Store } from "@/lib/store/types";
 import { approveAll } from "@/lib/publish";
-import { type CampaignOptions, createBrand, getCampaign, listCreatives, recomputeSpend, regenerateCreative, retryCampaign, startCampaign } from "@/lib/pipeline";
+import { type CampaignOptions, createBrand, getCampaign, lastPreferences, listCreatives, recomputeSpend, regenerateCreative, retryCampaign, startCampaign, TAKEN_DAYS, takenByOtherBrands } from "@/lib/pipeline";
 import { insertCreative } from "@/lib/production";
 import { brandList, brandView } from "@/lib/views";
 import { tick } from "@/lib/worker";
@@ -150,7 +150,7 @@ describe.each(BACKENDS)("the pipeline on the %s store", (_name, make) => {
     const concept = { title: "Swap", format: "UGC", angle: "a", platforms: ["tiktok"], hook: "h", creator: "", setting: "", shots: [{ frame_prompt: "f", video_prompt: "v", seconds: 8 }], reference_images: [], caption: "c", hashtags: [], cta: "", inspired_by: [], why: "" };
     const first = await insertCreative(campaignId, 0, concept as never);
     const second = await insertCreative(campaignId, 1, concept as never);
-    const shots = (n: number) => JSON.stringify([{ n: 1, status: "passed", naive_cost: n, monid_cost: 1000 }]);
+    const shots = (n: number) => JSON.stringify([{ n: 1, status: "passed", fal_cost: n, monid_cost: 1000 }]);
     await store().update("creatives", { id: first }, { status: "ready", shots_json: shots(3_200_000) });
     await store().update("creatives", { id: second }, { status: "ready", shots_json: shots(3_200_000) });
     const retake = await regenerateCreative(second, "brighter");
@@ -167,8 +167,7 @@ describe.each(BACKENDS)("the pipeline on the %s store", (_name, make) => {
     await recomputeSpend(campaignId);
     const campaign = (await getCampaign(campaignId))!;
     // The retake starts with fresh shots: only the two finished videos have spent anything.
-    expect(campaign.monid_spend_micro).toBe(30_000 + 2 * 1000);
-    expect(campaign.naive_spend_micro).toBe(2 * 3_200_000);
+    expect(campaign.monid_spend_micro).toBe(30_000 + 2 * 1000 + 2 * 3_200_000);
     const view = (await brandView(brandId))!;
     expect(view.campaign!.creatives.map((c) => c.id)).toEqual([first, retake]);
     expect(view.campaign!.creatives[0]).toMatchObject({ approved: true, videoUrl: null });
@@ -289,5 +288,56 @@ describe("the Convex worker schedule", () => {
     expect(await t.mutation(ref.heartbeat, {})).toBe("idle");
     await t.mutation(ref.update, { secret: SECRET, table: "brand_loops", where: { brand_id: "brd_1" }, fields: { enabled: 1 } });
     expect(await t.mutation(ref.heartbeat, {})).toBe("tick scheduled");
+  });
+});
+
+describe.each(BACKENDS)("keeping each brand's videos its own, on the %s store", (_name, make) => {
+  beforeEach(() => useStore(make()));
+  afterEach(() => useStore(undefined));
+
+  const remakeOf = async (campaignId: string, url: string, status = "ready") =>
+    store().insert("creatives", {
+      id: `crv_${Math.random().toString(36).slice(2, 10)}`,
+      campaign_id: campaignId,
+      idx: 0,
+      generation: 1,
+      concept_json: JSON.stringify({ title: "t", reference: { url } }),
+      shots_json: "[]",
+      status,
+      caption: "",
+      platforms_json: "[]",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+  it("keeps what the customer asked for on the campaign, logs it, and carries it to the next one", async () => {
+    const brandId = await createBrand("acme.example");
+    const campaignId = await startCampaign(brandId, { ...OPTIONS, preferences: "  Playful tone,\n\n\n\n aimed at students  " });
+    expect((await brandView(brandId))!.campaign!.options).toMatchObject({ preferences: "Playful tone,\n\n aimed at students" });
+    expect((await brandView(brandId))!.events.map((e) => e.message)).toContain("The customer asked for: Playful tone,\n\n aimed at students");
+    expect(await lastPreferences(brandId)).toBe("Playful tone,\n\n aimed at students");
+    // A blank answer is not kept at all.
+    const other = await createBrand("plain.example");
+    await startCampaign(other, { ...OPTIONS, preferences: "   " });
+    expect((await brandView(other))!.campaign!.options).not.toHaveProperty("preferences");
+    expect(await lastPreferences(other)).toBeUndefined();
+    expect(campaignId).toMatch(/^cmp_/);
+  });
+
+  it("lists references other brands remade lately, never this brand's own or failed ones", async () => {
+    const mine = await createBrand("mine.example");
+    const rival = await createBrand("rival.example");
+    const old = await createBrand("old.example");
+    await remakeOf(await startCampaign(mine, OPTIONS), "https://www.tiktok.com/@a/video/1");
+    const rivalCampaign = await startCampaign(rival, OPTIONS);
+    await remakeOf(rivalCampaign, "https://www.tiktok.com/@b/video/2");
+    await remakeOf(rivalCampaign, "https://www.tiktok.com/@c/video/3", "failed");
+    const oldCampaign = await startCampaign(old, OPTIONS);
+    await remakeOf(oldCampaign, "https://www.tiktok.com/@d/video/4");
+    const longAgo = new Date(Date.now() - (TAKEN_DAYS + 5) * 86_400_000).toISOString();
+    await store().update("campaigns", { id: oldCampaign }, { created_at: longAgo });
+
+    expect(await takenByOtherBrands(mine)).toEqual(["https://www.tiktok.com/@b/video/2"]);
+    expect(await takenByOtherBrands(rival)).toEqual(["https://www.tiktok.com/@a/video/1"]);
   });
 });

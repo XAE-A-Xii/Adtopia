@@ -67,7 +67,7 @@ describe("the demo clock", () => {
     const review = campaignAt(88);
     expect(review).toMatchObject({ stage: "review", status: "review" });
     expect(review.creatives.every((c) => c.status === "ready" && c.posterUrl && !c.approved)).toBe(true);
-    expect(review.spend.naive).toBeCloseTo(SAMPLE.spend.naive, 5);
+    expect(review.spend.ai).toBeCloseTo(SAMPLE.spend.ai, 5);
     const waited = play(SAMPLE, at(82), 60);
     expect(waited.t).toBe(timeline(SAMPLE).review + REVIEW_HOLD);
   });
@@ -200,7 +200,7 @@ describe("event lines on the clock", () => {
         { s: 700, level: "info", message: "Studying the format of 3 top-performing videos frame by frame" },
         { s: 900, level: "info", message: "The strategist is writing the brand brief and 4 concepts" },
         { s: 1100, level: "info", message: 'Campaign "Clean Hands, Short Story": 4 concepts, now producing' },
-        { s: 1500, level: "info", message: "Shot 1 is rendering on Monid (Kling 3.0) because Naive is unavailable" },
+        { s: 1500, level: "info", message: "Shot 1 is rendering on Monid (Kling 3.0) because fal is unavailable" },
         { s: 2400, level: "info", message: "4 of 4 videos are ready for review" },
         { s: 2500, level: "info", message: "Queued 4 posts one per day" },
       ],

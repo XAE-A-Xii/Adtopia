@@ -27,10 +27,11 @@ import { existsSync, statSync } from "node:fs";
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
+import type { ClaudeClient } from "../claude";
+import { FAL, FAL_USD, type FalClient, falImageUrl } from "../fal";
 import { ApiError } from "../http";
 import { download, probe, scratchDir } from "../media";
 import { hostFile, type MonidRunner } from "../monid";
-import type { NaiveClient } from "../naive";
 import { type CloneVerdict, QC_MODEL, reviewClone, reviewFrame } from "../qc";
 import { extractJson } from "../research";
 import type { Files } from "../store/types";
@@ -70,7 +71,7 @@ import {
 } from "./clone";
 import { type AudioRecord, demucs, type EffectPiece, makeVoice, referenceAudio, renderVoice, type RenderVoice, sliceArgs, soundArgs, stemsPython, timeOurBeats, timeOurWords, type Voice, type VoiceMode, voiceMode, type VoicePiece } from "./dub";
 import { DEFAULT_FONT, FINISHED_ENCODE, fontMetrics, PICTURE_FINISH, renderTimeline } from "./edit";
-import { CHARACTER_STYLE, genderOf, type Persona } from "./persona";
+import { genderOf, type Persona } from "./persona";
 import { decodeRgb, makePlate, newPlateRecord, type PlateRecord } from "./plate";
 import { presenterOnly } from "./plan";
 import { type Presenter, type PresenterInput, presenterFor, type RenderRecord, renderPresenter } from "./presenter";
@@ -871,7 +872,7 @@ const LAYOUT_TOOL = {
   },
 };
 
-/** Naive's message API takes at most 12 images per request (found on the first live run). */
+/** The vision model reads at most 12 images per request. */
 export const MAX_ANALYSIS_FRAMES = 12;
 
 /** When to look at the reference: just after each beat starts, then evenly between, at most `max` frames. */
@@ -902,10 +903,10 @@ function layoutPrompt(breakdown: ReferenceBreakdown, beats: ReferenceBeat[], end
   ].join("\n");
 }
 
-type Messenger = Pick<NaiveClient, "message">;
+type Messenger = Pick<ClaudeClient, "message">;
 
 /** The vision pass: sampled frames of the reference (up to `end`) and its breakdown → its layout. */
-export async function analyzeReference(naive: Messenger, input: { referencePath: string; breakdown: ReferenceBreakdown; beats: ReferenceBeat[]; end: number }): Promise<RemakeLayout> {
+export async function analyzeReference(claude: Messenger, input: { referencePath: string; breakdown: ReferenceBreakdown; beats: ReferenceBeat[]; end: number }): Promise<RemakeLayout> {
   const times = sampleTimes(input.beats, input.end);
   const frames: Array<{ t: number; jpeg: Buffer }> = [];
   for (const t of times) {
@@ -921,17 +922,17 @@ export async function analyzeReference(naive: Messenger, input: { referencePath:
     { type: "text", text: layoutPrompt(input.breakdown, input.beats, input.end) },
   ];
   const context = { beats: input.beats, until: input.end, caption_style: input.breakdown.caption_style };
-  const reply = await naive.message({ model: QC_MODEL, max_tokens: 8000, messages: [{ role: "user", content }], tools: [LAYOUT_TOOL] });
+  const reply = await claude.message({ model: QC_MODEL, max_tokens: 8000, messages: [{ role: "user", content }], tools: [LAYOUT_TOOL] });
   const call = reply.content.find((block) => block.type === "tool_use" && block.name === LAYOUT_TOOL.name);
   let raw = (call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"))) as Record<string, unknown> | null;
   if (!raw?.frame) {
-    const again = await naive.message({
+    const again = await claude.message({
       model: QC_MODEL,
       max_tokens: 8000,
       messages: [{ role: "user", content: [...content.slice(0, -1), { type: "text", text: `${layoutPrompt(input.breakdown, input.beats, input.end).replace("Call the remake_layout tool once.", "")}\nAnswer with only one JSON object with the keys frame, set, presenter, beats, segments, graphics, texts and captions.` }] }],
     });
     raw = extractJson(again.content.map((block) => block.text ?? "").join("\n")) as Record<string, unknown> | null;
-    if (!raw?.frame) throw new ApiError("naive", 502, "layout_unreadable", "the reference analysis returned no layout");
+    if (!raw?.frame) throw new ApiError("anthropic", 502, "layout_unreadable", "the reference analysis returned no layout");
   }
   return parseLayout(raw, context);
 }
@@ -947,7 +948,7 @@ export type Work = {
   dir: string;
   pollMs: number;
   say(message: string): void;
-  spend(provider: "naive" | "monid", micro: number): void;
+  spend(provider: "fal" | "monid", micro: number): void;
   /** Keeps a local file under `<prefix>/remake/<name>`; returns its key. */
   keep(name: string, path: string, type: string): Promise<string>;
   /** A local copy of a kept file, or null when it is not kept. */
@@ -959,9 +960,9 @@ export type Work = {
 };
 
 /**
- * Naive answers "at capacity" in bursts. A remake makes dozens of calls over several minutes, so
- * each call waits out a busy answer (5 s doubling to 1 min, about 5 minutes in all) instead of
- * failing the whole remake. Paid calls carry idempotency keys, so a retry never pays twice.
+ * Providers sometimes answer "at capacity" in bursts. A remake makes dozens of calls over several
+ * minutes, so each call waits out a busy answer (5 s doubling to 1 min, about 5 minutes in all)
+ * instead of failing the whole remake.
  */
 export function patient<T extends object>(client: T, delaysMs: number[] = [5, 10, 20, 40, 60, 60, 60, 60].map((s) => s * 1000)): T {
   return new Proxy(client, {
@@ -982,10 +983,9 @@ export function patient<T extends object>(client: T, delaysMs: number[] = [5, 10
   });
 }
 
-export type RemakeNaive = Pick<NaiveClient, "message" | "generateImage" | "fileUrl" | "generateVideo" | "getMediaJob">;
-
 export type RemakeDeps = {
-  naive: RemakeNaive;
+  claude: Pick<ClaudeClient, "message">;
+  fal: Pick<FalClient, "run">;
   monid: MonidRunner;
   files: Files;
   /** The presenter step (default: the `presenter` input's name, else Kling motion control). */
@@ -1024,7 +1024,7 @@ export type RemakeInput = {
   until?: number;
   /** The cost guard: refuse, before paying for anything, an estimate over this (USD). */
   maxUsd: number;
-  /** The presenter's name when `deps.presenter` is not given ("kling-native", "kling-motion", "naive:<model>"). */
+  /** The presenter's name when `deps.presenter` is not given ("kling-native", "kling-motion"). */
   presenter?: string;
   /** Our voice, for presenters that do not voice themselves and for stretches no render says. */
   voice: VoiceMode | "auto";
@@ -1044,8 +1044,8 @@ export type RemakeInput = {
 };
 
 /** One render as the UI shows it ("Take n"): who, when, how far along, and what it cost. */
-export type TakeView = { n: number; layer: string; role: "host" | "cohost" | null; inset: boolean; start: number; end: number; status: "pending" | "framed" | "rendering" | "rendered" | "failed"; frame_key: string | null; naive_micro: number; monid_micro: number; error: string | null };
-export type RemakeProgress = { takes: TakeView[]; spend: { naive_micro: number; monid_micro: number }; estimate: CostEstimate | null };
+export type TakeView = { n: number; layer: string; role: "host" | "cohost" | null; inset: boolean; start: number; end: number; status: "pending" | "framed" | "rendering" | "rendered" | "failed"; frame_key: string | null; fal_micro: number; monid_micro: number; error: string | null };
+export type RemakeProgress = { takes: TakeView[]; spend: { fal_micro: number; monid_micro: number }; estimate: CostEstimate | null };
 
 /** How each render's own voice came out, to compare them: pitch and level, before and after speech-to-speech. */
 export type VoiceReport = { render: string; role: "host" | "cohost"; words: number; words_per_s: number | null; pitch_hz: number | null; level_db: number; matched: { pitch_hz: number | null; level_db: number } | null; speed: number; cut: boolean };
@@ -1058,7 +1058,7 @@ export type RemakeResult = {
   layout: RemakeLayout;
   layers: CloneLayer[];
   estimate: CostEstimate;
-  spend: { naive_micro: number; monid_micro: number };
+  spend: { fal_micro: number; monid_micro: number };
   qc: CloneVerdict | null;
   voices: VoiceReport[];
   notes: string[];
@@ -1086,7 +1086,7 @@ type Manifest = {
   hosted: Record<string, { url: string; at: number }>;
   fallbacks: Record<string, string>;
   qc?: CloneVerdict | null;
-  spend: { naive_micro: number; monid_micro: number };
+  spend: { fal_micro: number; monid_micro: number };
 };
 
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
@@ -1235,7 +1235,8 @@ const wordsIn = (words: TimedWord[], start: number, end: number) =>
  * retryable ApiError, and the next run picks up where this stopped.
  */
 export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise<RemakeResult> {
-  const naive = patient(deps.naive);
+  const claude = patient(deps.claude);
+  const fal = patient(deps.fal);
   const files = deps.files;
   const prefix = `${input.prefix}/remake`;
   const manifestKey = `${prefix}/manifest.json`;
@@ -1247,7 +1248,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
   const notes: string[] = [];
 
   const loaded = (await files.exists(manifestKey)) ? (JSON.parse(await readFile(await files.localPath(manifestKey), "utf8")) as Partial<Manifest>) : {};
-  const manifest: Manifest = { version: 3, audio: {}, takes: {}, screens: {}, hosted: {}, fallbacks: {}, spend: { naive_micro: 0, monid_micro: 0 }, ...(loaded.version === 3 ? loaded : {}) };
+  const manifest: Manifest = { version: 3, audio: {}, takes: {}, screens: {}, hosted: {}, fallbacks: {}, spend: { fal_micro: 0, monid_micro: 0 }, ...(loaded.version === 3 ? loaded : {}) };
   let saving = Promise.resolve();
   const save = () =>
     (saving = saving.then(async () => {
@@ -1263,7 +1264,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
     pollMs,
     say,
     spend(provider, micro) {
-      manifest.spend[provider === "naive" ? "naive_micro" : "monid_micro"] += Math.max(0, Math.round(micro || 0));
+      manifest.spend[provider === "fal" ? "fal_micro" : "monid_micro"] += Math.max(0, Math.round(micro || 0));
     },
     async keep(name, path, type) {
       const key = `${prefix}/${name}`;
@@ -1289,7 +1290,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
     },
     save,
   };
-  const presenter = deps.presenter ?? presenterFor(input.presenter ?? "kling-native", { naive, monid: deps.monid });
+  const presenter = deps.presenter ?? presenterFor(input.presenter ?? "kling-native", { monid: deps.monid });
 
   const info = await probe(input.referencePath);
   if (!info.duration || !info.width) throw new Error(`remake: ${input.referencePath} is not a playable video`);
@@ -1301,7 +1302,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
   // 1. How the reference is built.
   if (!manifest.layout || manifest.layout.beats.length !== span.beats.length || !manifest.layout.segments) {
     say(`Reading the reference's layout and segments from its frames (0-${end.toFixed(1)} s)`);
-    manifest.layout = await analyzeReference(naive, { referencePath: input.referencePath, breakdown: input.breakdown, beats: span.beats, end });
+    manifest.layout = await analyzeReference(claude, { referencePath: input.referencePath, breakdown: input.breakdown, beats: span.beats, end });
     manifest.real = undefined;
     await save();
   }
@@ -1388,8 +1389,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
       const rec = manifest.takes[id];
       const status: TakeView["status"] = rec?.failed ? "failed" : rec?.render?.clip_key ? "rendered" : rec?.render?.job ? "rendering" : rec?.frame_done || (rec && !presenter.needs.frame) ? "framed" : "pending";
       const rendered = rec?.render?.cost_micro ?? 0;
-      const naiveRender = rec?.render?.job?.provider === "naive" || (presenter.name.startsWith("naive:") && rendered > 0);
-      return { n, layer: layer.id, role: layer.role, inset: layer.inset, start: chunk.start, end: chunk.end, status, frame_key: rec?.frame_key ?? null, naive_micro: (rec?.frame_micro ?? 0) + (naiveRender ? rendered : 0), monid_micro: naiveRender ? 0 : rendered, error: rec?.failed ?? rec?.render?.error ?? null };
+      return { n, layer: layer.id, role: layer.role, inset: layer.inset, start: chunk.start, end: chunk.end, status, frame_key: rec?.frame_key ?? null, fal_micro: rec?.frame_micro ?? 0, monid_micro: rendered, error: rec?.failed ?? rec?.render?.error ?? null };
     });
     await input.onProgress?.({ takes, spend: { ...manifest.spend }, estimate });
   };
@@ -1404,7 +1404,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
 
   // 6. The people: the host is given; the co-host is made when a stitch needs one.
   const cohost = needsCohost && input.cohost ? await input.cohost(segments.find((s) => s.kind === "stitch")?.other ?? "") : null;
-  if (cohost?.cost_micro) work.spend("naive", cohost.cost_micro);
+  if (cohost?.cost_micro) work.spend("fal", cohost.cost_micro);
   const hostPerson = { handle: input.host, url: await work.host(input.host.portrait, "image/png"), jpeg: await grabJpeg(input.host.portrait, null).catch(() => null) };
   const cohostPerson = cohost ? { handle: cohost as PersonaHandle, url: await work.host(cohost.portrait, "image/png"), jpeg: await grabJpeg(cohost.portrait, null).catch(() => null) } : hostPerson;
   const personFor = (layer: CloneLayer) => (layer.role === "cohost" ? cohostPerson : hostPerson);
@@ -1449,7 +1449,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
       });
       const first = { ...chunk.takes[0], frame_at: afterCut(chunk.takes[0], softCuts) };
       let frameUrl: string | null = null;
-      if (presenter.needs.frame) frameUrl = await twinFrame(work, naive, rec, { reference: input.referencePath, take: first, crop, blank, layer, layout, who, portraitUrl: person.url, portraitJpeg: person.jpeg, uiKey: `${input.prefix}/shot${n}-frame.png`, idem: `${input.idem}-${id}-${key}` });
+      if (presenter.needs.frame) frameUrl = await twinFrame(work, { claude, fal }, rec, { reference: input.referencePath, take: first, crop, blank, layer, layout, who, portraitUrl: person.url, portraitJpeg: person.jpeg, uiKey: `${input.prefix}/shot${n}-frame.png`, idem: `${input.idem}-${id}-${key}` });
       let motionUrl: string | null = null;
       if (presenter.needs.motion) {
         const clip = join(dir, `${id}-motion.mp4`);
@@ -1505,7 +1505,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
   for (const layer of layers.filter((l) => l.kind === "screen")) {
     const segment = segments.find((s) => s.n === layer.segment)!;
     try {
-      const path = await filmedMonitor(work, naive, manifest, { layer, segment, layout, stage, stageRef, reference: input.referencePath, built, product: input.product, mode: input.screens ?? "auto", cuts: manifest.real?.[layer.id] ?? [], idem: `${input.idem}-${layer.id}` });
+      const path = await filmedMonitor(work, { claude, fal }, manifest, { layer, segment, layout, stage, stageRef, reference: input.referencePath, built, product: input.product, mode: input.screens ?? "auto", cuts: manifest.real?.[layer.id] ?? [], idem: `${input.idem}-${layer.id}` });
       if (!path) manifest.fallbacks[layer.id] ??= "the filmed monitor could not be rebuilt";
     } catch (error) {
       if (stopping(error)) throw error;
@@ -1684,7 +1684,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
 
   // 13. The check: our frames against the reference's at the same moments.
   try {
-    manifest.qc = await checkClone(naive, { reference: input.referencePath, ours: finalPath, stage, stageRef, layers, host: hostPerson.jpeg, cohost: cohost ? cohostPerson.jpeg : null });
+    manifest.qc = await checkClone(claude, { reference: input.referencePath, ours: finalPath, stage, stageRef, layers, host: hostPerson.jpeg, cohost: cohost ? cohostPerson.jpeg : null });
     if (manifest.qc && !manifest.qc.pass) notes.push(`check: ${manifest.qc.score}/10 ${manifest.qc.issues.slice(0, 2).join("; ")}`);
   } catch (error) {
     if (error instanceof ApiError && error.outOfCredits) throw error;
@@ -1705,7 +1705,7 @@ export async function remakeVideo(deps: RemakeDeps, input: RemakeInput): Promise
   }
   await save();
   await progress();
-  say(`Remake ready: ${end.toFixed(1)} s, $${((manifest.spend.naive_micro + manifest.spend.monid_micro) / 1e6).toFixed(2)} spent`);
+  say(`Remake ready: ${end.toFixed(1)} s, $${((manifest.spend.fal_micro + manifest.spend.monid_micro) / 1e6).toFixed(2)} spent`);
   return { key, path: finalPath, poster_key: posterKey, duration: end, layout, layers, estimate, spend: { ...manifest.spend }, qc: manifest.qc ?? null, voices, notes };
 }
 
@@ -1739,7 +1739,7 @@ async function buildGraphics(work: Work, deps: RemakeDeps, manifest: Manifest, r
   work.say(`Building ${todo.length} graphics and screens in the reference's places`);
   const dir = join(work.dir, "graphics");
   await mkdir(dir, { recursive: true });
-  const build = deps.buildGraphics ?? ((list: ScreenRequest[], at: string) => buildScreens(deps.naive, list, { product: input.product, kit: input.kit, style: input.breakdown.format }, { workDir: at, render: { pushIn: 0 }, keepFailed: true }));
+  const build = deps.buildGraphics ?? ((list: ScreenRequest[], at: string) => buildScreens(deps.claude, list, { product: input.product, kit: input.kit, style: input.breakdown.format }, { workDir: at, render: { pushIn: 0 }, keepFailed: true }));
   const result = await build(todo, dir);
   // A graphic that failed only because the model was busy is built again in this run, after a
   // wait: left for a rerun, the Cluely remake went out without its opening LinkedIn card.
@@ -1771,7 +1771,7 @@ async function buildGraphics(work: Work, deps: RemakeDeps, manifest: Manifest, r
  */
 async function twinFrame(
   work: Work,
-  naive: RemakeNaive,
+  clients: { claude: Pick<ClaudeClient, "message">; fal: Pick<FalClient, "run"> },
   rec: TakeRecord,
   o: { reference: string; take: { frame_at: number }; crop: Rect; blank: Rect[]; layer: CloneLayer; layout: RemakeLayout; who: PersonaHandle; portraitUrl: string; portraitJpeg: Buffer | null; uiKey: string; idem: string },
 ): Promise<string> {
@@ -1787,20 +1787,25 @@ async function twinFrame(
   while (!rec.frame_done) {
     const tries = rec.frame_tries ?? 0;
     const prompt = twinPrompt({ look: o.who.persona.description, gender: o.who.persona.gender, set: o.layout.set, green: o.layer.inset, blanked: o.layer.blank.length > 0, fix: rec.frame_fix });
-    // A prebuilt character renders its own face; our own persona is the second image.
-    const character = o.who.persona.character ? { character: o.who.persona.character, style: CHARACTER_STYLE } : {};
-    const image = await withInFlight(() => naive.generateImage({ prompt, aspect_ratio: o.layer.ratio, image_urls: [refUrl, o.portraitUrl], ...character }, `${o.idem}-twin${tries ? `-g${tries}` : ""}`), work.pollMs);
-    const file = image.files[0];
-    if (!file) throw new ApiError("naive", 502, "no_file", "the twin frame came back empty");
-    work.spend("naive", image.cost_micro_usd ?? 0);
-    rec.frame_micro = (rec.frame_micro ?? 0) + (image.cost_micro_usd ?? 0);
+    const out = await clients.fal.run(FAL.frameEdit, {
+      prompt,
+      aspect_ratio: o.layer.ratio,
+      image_urls: [refUrl, o.portraitUrl],
+      output_format: "png",
+      num_images: 1,
+    });
+    const url = falImageUrl(out);
+    if (!url) throw new ApiError("fal", 502, "no_file", "the twin frame came back empty");
+    const frameCost = Math.round(FAL_USD.frame * 1_000_000);
+    work.spend("fal", frameCost);
+    rec.frame_micro = (rec.frame_micro ?? 0) + frameCost;
     rec.frame_tries = tries + 1;
-    await work.fetch((await naive.fileUrl(file.id)).url, twin);
+    await work.fetch(url, twin);
     await work.files.putFile(o.uiKey, twin, "image/png");
     rec.frame_key = o.uiKey;
     let verdict: { pass: boolean; issues: string[] } = { pass: true, issues: [] };
     try {
-      verdict = await reviewFrame(naive, { image: await grabJpeg(twin, null), creator: o.who.persona.description, setting: o.layer.inset ? "a flat green screen" : o.layout.set, prompt, persona: o.portraitJpeg, reference: refJpeg, expect: o.layer.inset ? GREEN_GATE : undefined });
+      verdict = await reviewFrame(clients.claude, { image: await grabJpeg(twin, null), creator: o.who.persona.description, setting: o.layer.inset ? "a flat green screen" : o.layout.set, prompt, persona: o.portraitJpeg, reference: refJpeg, expect: o.layer.inset ? GREEN_GATE : undefined });
     } catch (error) {
       if (error instanceof ApiError && error.outOfCredits) throw error;
       // A check that cannot run (busy, unreadable) never holds the video up, as in production.
@@ -1823,7 +1828,7 @@ async function twinFrame(
  */
 async function filmedMonitor(
   work: Work,
-  naive: RemakeNaive,
+  clients: { claude: Pick<ClaudeClient, "message">; fal: Pick<FalClient, "run"> },
   manifest: Manifest,
   o: { layer: CloneLayer; segment: RemakeSegment; layout: RemakeLayout; stage: Stage; stageRef: Rect; reference: string; built: Map<string, { kind: "video" | "image"; path: string }>; product: ProductBrief; mode: "auto" | "track" | "plate"; cuts: number[]; idem: string },
 ): Promise<string | null> {
@@ -1852,7 +1857,7 @@ async function filmedMonitor(
     let keys: QuadKey[] = [];
     let usable = { ok: false, reason: "no frames" };
     if (frames.length) {
-      keys = parseQuads(await readScreenCorners(naive, frames, QC_MODEL), stage);
+      keys = parseQuads(await readScreenCorners(clients.claude, frames, QC_MODEL), stage);
       usable = quadsUsable(keys, frames.length, stage, o.cuts);
     }
     if (usable.ok) {
@@ -1878,8 +1883,8 @@ async function filmedMonitor(
   await mkdir(plateDir, { recursive: true });
   if (status() === "pending") {
     const before = plate.cost_micro;
-    await makePlate(naive, plate, { dir: plateDir, key: o.idem, setting: segment.shows, fetchTo: (url, path) => work.fetch(url, path) });
-    work.spend("naive", plate.cost_micro - before);
+    await makePlate(clients.fal, plate, { dir: plateDir, key: o.idem, setting: segment.shows, fetchTo: (url, path) => work.fetch(url, path) });
+    work.spend("fal", plate.cost_micro - before);
     if (status() === "ready" && plate.plate) rec.plate_key = await work.keep(`screens/${layer.id}-plate.png`, plate.plate.path, "image/png");
     await work.save();
   }
@@ -1907,7 +1912,7 @@ async function filmedMonitor(
 }
 
 /** The final check: one moment per take or segment (at most five), ours against the reference's, with our people's portraits. */
-async function checkClone(naive: Pick<NaiveClient, "message">, o: { reference: string; ours: string; stage: Stage; stageRef: Rect; layers: CloneLayer[]; host: Buffer | null; cohost: Buffer | null }): Promise<CloneVerdict | null> {
+async function checkClone(claude: Pick<ClaudeClient, "message">, o: { reference: string; ours: string; stage: Stage; stageRef: Rect; layers: CloneLayer[]; host: Buffer | null; cohost: Buffer | null }): Promise<CloneVerdict | null> {
   if (!o.host) return null;
   const moments = o.layers
     .filter((l) => !l.inset)
@@ -1919,7 +1924,7 @@ async function checkClone(naive: Pick<NaiveClient, "message">, o: { reference: s
     const [reference, ours] = await Promise.all([grabJpeg(o.reference, m.t, 400, o.stageRef), grabJpeg(o.ours, m.t, 400, ourStage)]);
     pairs.push({ t: m.t, reference, ours, what: m.what });
   }
-  return pairs.length ? reviewClone(naive, { pairs, host: o.host, cohost: o.cohost }) : null;
+  return pairs.length ? reviewClone(claude, { pairs, host: o.host, cohost: o.cohost }) : null;
 }
 
 /** Whether a reference video file is usable (size, not a stub), for callers that download it. */

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { ApiError } from "../http";
 import { download, ffmpegPath } from "../media";
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { QC_MODEL } from "../qc";
 import { extractJson, type ResearchPack } from "../research";
 import type { BrandKit, ProductBrief, ProductKind, ProductVisual } from "./types";
@@ -87,8 +87,8 @@ async function loadImages(urls: string[], dir: string): Promise<Array<{ url: str
   return loaded;
 }
 
-export async function analyzeProduct(naive: NaiveClient, pack: ResearchPack, workDir: string, kit: BrandKit | null = null): Promise<ProductBrief> {
-  return withBrandKit(await analyzeSite(naive, pack, workDir, kit), kit);
+export async function analyzeProduct(claude: Pick<ClaudeClient, "message">, pack: ResearchPack, workDir: string, kit: BrandKit | null = null): Promise<ProductBrief> {
+  return withBrandKit(await analyzeSite(claude, pack, workDir, kit), kit);
 }
 
 /**
@@ -121,7 +121,7 @@ export function withBrandKit(brief: ProductBrief, kit: BrandKit | null): Product
   };
 }
 
-async function analyzeSite(naive: NaiveClient, pack: ResearchPack, workDir: string, kit: BrandKit | null): Promise<ProductBrief> {
+async function analyzeSite(claude: Pick<ClaudeClient, "message">, pack: ResearchPack, workDir: string, kit: BrandKit | null): Promise<ProductBrief> {
   const images = await loadImages(pack.brand.images, join(workDir, "product-images")).catch(() => []);
   try {
     const content: unknown[] = [];
@@ -159,12 +159,10 @@ async function analyzeSite(naive: NaiveClient, pack: ResearchPack, workDir: stri
     ].join("\n");
     let reply;
     try {
-      reply = await naive.message({ model: QC_MODEL, max_tokens: 3000, system, messages: [{ role: "user", content }], tools: [BRIEF_TOOL] });
+      reply = await claude.message({ model: QC_MODEL, max_tokens: 3000, system, messages: [{ role: "user", content }], tools: [BRIEF_TOOL] });
     } catch (error) {
-      // Naive's proxy sometimes rejects the model's tool call as malformed, and retrying the same request
-      // fails the same way (the mobilerun.ai study failed six times in a row): ask for plain JSON instead.
       if (!(error instanceof ApiError && /malformed tool call/i.test(error.message))) throw error;
-      reply = await naive.message({
+      reply = await claude.message({
         model: QC_MODEL,
         max_tokens: 3000,
         system: system.replace("Call the product_brief tool once.", "Answer with only one JSON object, no other text."),
@@ -173,7 +171,7 @@ async function analyzeSite(naive: NaiveClient, pack: ResearchPack, workDir: stri
     }
     const call = reply.content.find((block) => block.type === "tool_use" && block.name === BRIEF_TOOL.name);
     const raw = (call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"))) as Partial<RawBrief> | null;
-    if (!raw) throw new ApiError("naive", 502, "brief_unreadable", "the product analyst returned no brief");
+    if (!raw) throw new ApiError("anthropic", 502, "brief_unreadable", "the product analyst returned no brief");
     return toBrief(raw, pack, images.map((image) => image.url));
   } catch (error) {
     if (error instanceof ApiError && error.retryable) throw error;

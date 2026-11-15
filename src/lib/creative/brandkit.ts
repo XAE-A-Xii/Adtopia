@@ -1,4 +1,4 @@
-// Brand kit intake: the files a brand hands Nomen (uploads) and what a read-only scan of its code
+// Brand kit intake: the files a brand hands Adtopia (uploads) and what a read-only scan of its code
 // finds, so the video agents can show the real product instead of two website screenshots.
 //
 //   data/brandkits/<brandId>/kit.json   the BrandKit, plus a private index (content hashes, vision state)
@@ -17,7 +17,7 @@ import { isAbsolute, join, posix, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logEvent, now, store } from "../db";
 import { ffmpegPath, probe } from "../media";
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { QC_MODEL } from "../qc";
 import { extractJson } from "../research";
 import type { BrandAsset, BrandKit, RepoScan } from "./types";
@@ -343,7 +343,7 @@ export async function requireBrand(brandId: string): Promise<{ id: string; name:
  * so there they can be read (empty) but not changed yet: see docs/convex.md.
  */
 export function requireKitDisk() {
-  if (store().kind !== "sqlite") throw new BrandKitError(501, "Brand kits aren't available on this deployment yet: they are kept on the server's disk, which a serverless host doesn't have. Run Nomen locally to import one.");
+  if (store().kind !== "sqlite") throw new BrandKitError(501, "Brand kits aren't available on this deployment yet: they are kept on the server's disk, which a serverless host doesn't have. Run Adtopia locally to import one.");
 }
 
 /**
@@ -1734,7 +1734,7 @@ export async function scanRepo(brandId: string, source: string): Promise<BrandKi
 
 // ---------- captions (vision pass) ----------
 
-type CaptionClient = Pick<NaiveClient, "message">;
+type CaptionClient = Pick<ClaudeClient, "message">;
 export type CaptionResult = { captioned: number; failed: number; errors: string[] };
 
 const DESCRIBE_TOOL = {
@@ -1787,7 +1787,7 @@ async function thumbnail(bin: string, path: string, asset: BrandAsset, out: stri
  * and fixes the kind when it is obviously wrong. At most 12 images per request; only pixels and
  * the current kind go to the model, never paths or names. Failures are reported, not thrown.
  */
-export async function captionAssets(naive: CaptionClient, brandId: string, options: { max?: number } = {}): Promise<CaptionResult> {
+export async function captionAssets(claude: CaptionClient, brandId: string, options: { max?: number } = {}): Promise<CaptionResult> {
   const kit = readStored(brandId);
   const todo = kit.assets
     .filter((a) => !kit.index.vision[a.id] && (a.kind === "video" || ((a.kind === "logo" || a.kind === "icon" || a.kind === "screenshot" || a.kind === "image") && RASTER_EXT.has(extOf(a.path)))))
@@ -1811,7 +1811,7 @@ export async function captionAssets(naive: CaptionClient, brandId: string, optio
     for (let i = 0; i < thumbs.length; i += CAPTION_BATCH) {
       const batch = thumbs.slice(i, i + CAPTION_BATCH);
       try {
-        for (const [id, value] of await describeBatch(naive, batch)) described.set(id, value);
+        for (const [id, value] of await describeBatch(claude, batch)) described.set(id, value);
       } catch (error) {
         result.errors.push(error instanceof Error ? error.message : String(error));
       }
@@ -1841,7 +1841,7 @@ export async function captionAssets(naive: CaptionClient, brandId: string, optio
   return result;
 }
 
-async function describeBatch(naive: CaptionClient, batch: Array<{ asset: BrandAsset; data: string }>) {
+async function describeBatch(claude: CaptionClient, batch: Array<{ asset: BrandAsset; data: string }>) {
   const content: unknown[] = [];
   batch.forEach(({ asset }, i) => {
     const size = asset.width && asset.height ? `, ${asset.width}x${asset.height} px` : "";
@@ -1855,7 +1855,7 @@ async function describeBatch(naive: CaptionClient, batch: Array<{ asset: BrandAs
     "Call the describe_assets tool once with every image.",
   ].join("\n");
   content.push({ type: "text", text: instructions });
-  const reply = await naive.message({ model: QC_MODEL, max_tokens: 1500, messages: [{ role: "user", content }], tools: [DESCRIBE_TOOL] });
+  const reply = await claude.message({ model: QC_MODEL, max_tokens: 1500, messages: [{ role: "user", content }], tools: [DESCRIBE_TOOL] });
   const call = reply.content.find((block) => block.type === "tool_use" && block.name === DESCRIBE_TOOL.name);
   const raw = (call?.input ?? extractJson(reply.content.map((block) => block.text ?? "").join("\n"))) as { assets?: unknown } | null;
   const rows = raw && Array.isArray(raw.assets) ? raw.assets : [];

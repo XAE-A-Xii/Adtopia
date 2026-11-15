@@ -178,7 +178,7 @@ export function derive(view: BrandView | null): CampPlan {
     else if (state === "skipped") set("oracle", "Skipped this time");
     else if (state === "done") set("oracle", campaign?.study?.studied ? `${plural(campaign.study.studied, "viral video")} broken down` : "Format learned", 1);
     else if (state === "failed") set("oracle", campaign?.error ?? "Stopped");
-    else set("oracle", "Waiting for the scouts");
+    else set("oracle", "Waiting for the research");
   }
 
   // War tent: the creative director's briefs, then the script room writes each video.
@@ -238,20 +238,18 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "lookout",
     station: "scouts",
-    role: "Lookout",
-    task: scouting ? "Watching the scouts come and go" : "On watch",
+    role: "Research operator",
+    task: scouting ? "Tracking the scouts' runs on the wall map and filing the research pack" : "At the map desk",
     look: 0,
-    act: scouting ? "lookout" : "stand",
+    act: scouting ? "type" : "sit",
     ...SPOTS.lookout,
-    via: SPOTS.lookoutClimb,
-    sort: 1,
     state: scouting ? "working" : "idle",
   });
   agents.push({
     id: "courier",
     station: "scouts",
     role: "Courier",
-    task: "Rides each finished piece of work on to the next station",
+    task: "Carries each finished piece of work on to the next station",
     look: 3,
     act: "stand",
     ...SPOTS.courier,
@@ -270,7 +268,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "watcher",
     station: "oracle",
-    role: "Oracle",
+    role: "Reference analyst",
     task:
       style === "working"
         ? (study?.task ?? "Watching the best short videos in the category and writing down why they work")
@@ -280,9 +278,8 @@ export function derive(view: BrandView | null): CampPlan {
             : "Wrote the format study"
           : "Resting",
     look: 4,
-    act: style === "working" ? "watch" : style === "done" ? "stand" : "sit",
+    act: style === "working" ? "type" : "sit",
     ...SPOTS.watcher,
-    via: SPOTS.watcherSteps,
     state: style === "working" ? "working" : style === "done" ? "done" : "idle",
   });
 
@@ -301,21 +298,20 @@ export function derive(view: BrandView | null): CampPlan {
             ? "Choosing which viral video each of ours remakes, and how"
             : "Writing the brief, the search plan and the concepts"
         : strat === "done"
-          ? "Signed off the battle plan"
-          : "Waiting for the scouts",
+          ? "Signed off the plan"
+          : "Waiting for the research",
     look: -1,
-    act: directing ? "point" : "stand",
-    ...SPOTS.general,
-    z: 0,
+    // At the cork board, pointing the plan out; up the library ladder for a reference while the script room writes.
+    ...(strat === "working" && room ? { act: "read" as const, ...SPOTS.ladder, via: SPOTS.ladderClimb } : { act: directing ? ("point" as const) : ("stand" as const), ...SPOTS.general, z: 0 }),
     state: strat === "working" ? "working" : strat === "done" ? "done" : "idle",
   });
   agents.push({
     id: "scribe",
     station: "tent",
-    role: room ? "Script room" : "Scribe",
-    task: strat === "working" ? (room ? `Writing the remakes line by line; a critic scores each (${room.written} of ${room.total} done)` : "Taking down every shot") : "Standing by",
+    role: room ? "Script room" : "Script writer",
+    task: strat === "working" ? (room ? `Writing the remakes line by line; a critic scores each (${room.written} of ${room.total} done)` : "Writing each concept's script and hook") : "Standing by",
     look: 5,
-    act: strat === "working" ? "read" : "stand",
+    act: strat === "working" ? "type" : "sit",
     ...SPOTS.scribe,
     z: 0,
     state: strat === "working" ? "working" : "idle",
@@ -333,7 +329,7 @@ export function derive(view: BrandView | null): CampPlan {
       id: `editor:${slot}`,
       station: "workshop",
       role: "Editor",
-      task: creative ? editorTask(creative) : "Waiting at the desk for a concept from the war tent",
+      task: creative ? editorTask(creative) : "Waiting at the desk for a script from the script room",
       look: slot % 6,
       act: state === 1 ? "type" : "sit",
       x: desk.x + EDITOR_OFFSET.x,
@@ -348,8 +344,8 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "painter",
     station: "workshop",
-    role: "Painter",
-    task: framing ? "Painting the first frame of each shot so the product looks right" : "Waiting at the easel for shots to paint",
+    role: "Frame artist",
+    task: framing ? "Making the first frame of each shot: the presenter, the setting, the framing" : "Waiting at the frame screen for shots",
     look: 2,
     act: framing ? "paint" : "stand",
     ...SPOTS.painter,
@@ -361,7 +357,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "inspector",
     station: "workshop",
-    role: "Inspector",
+    role: "QA inspector",
     task: checked ? "Checking every frame for warped hands, wrong labels and garbled text" : "Waiting for a rendered shot to check",
     look: 3,
     act: checked ? "inspect" : "stand",
@@ -374,7 +370,7 @@ export function derive(view: BrandView | null): CampPlan {
   const reviewing = (campaign?.stageIndex ?? 0) >= 4 && ready.length > 0;
   const seated = reviewing ? Math.min(SPOTS.audience.length, Math.max(2, ready.length)) : 0;
   SPOTS.audience.forEach((spot, i) => {
-    const base = { id: `audience:${i}`, station: "theatre" as const, role: "Audience", look: (i + 2) % 6 };
+    const base = { id: `audience:${i}`, station: "theatre" as const, role: "Reviewer", look: (i + 2) % 6 };
     if (i < seated) {
       agents.push({ ...base, task: "Watching the cut", act: "watch", x: spot.x, y: spot.y, z: (spot.z ?? 0) - WATCH_DROP + 1.2, dir: spot.dir, sort: 0, via: [{ x: spot.x + 7, y: spot.y + 7, z: 0 }], state: "working" });
     } else {
@@ -390,7 +386,7 @@ export function derive(view: BrandView | null): CampPlan {
   agents.push({
     id: "herald",
     station: "agora",
-    role: "Herald",
+    role: "Publisher",
     task: posting ? "Announcing each video on the brand's own accounts" : allOut ? "Announced every video" : "Waiting for approved videos",
     look: 1,
     act: posting ? "herald" : "stand",
@@ -541,7 +537,7 @@ function editorTask(creative: CreativeView) {
   const shot = creative.shots.find((s) => s.status !== "passed");
   // No presenter to film (a faceless format), or every shot passed: screens, voice-over, the edit.
   if (!shot) return creative.shots.length ? `${title}: cutting the edit` : `${title}: building screens, the voice-over and the edit`;
-  const verb = { pending: "framing", framed: "queuing", rendering: shot.provider === "monid" ? "rendering on Kling" : "rendering on Veo", rendered: "in quality check", passed: "approved", failed: "failed" }[shot.status];
+  const verb = { pending: "framing", framed: "queuing", rendering: shot.provider === "monid" ? "rendering on Kling (Monid)" : "rendering on Kling", rendered: "in quality check", passed: "approved", failed: "failed" }[shot.status];
   return `${title}: shot ${shot.n} of ${creative.shots.length} ${verb}`;
 }
 
@@ -555,7 +551,7 @@ export function stationForEvent(message: string, stage: string): StationId {
   if (/^client taste /.test(m)) return "theatre";
   if (/casting from \d+ creators|best fit @|outreach to @|people search for/.test(m)) return "workshop";
   // Rendering talk first: Monid is also the video fallback, so "monid" alone can't mean research.
-  if (/\bshot\b|render|\bqc\b|kling|veo|naive is out|product screens|the edit failed|first frame/.test(m) && !/ready for review/.test(m)) return "workshop";
+  if (/\bshot\b|render|\bqc\b|kling|veo|fal is out|product screens|the edit failed|first frame/.test(m) && !/ready for review/.test(m)) return "workshop";
   if (/ready for review|approved/.test(m)) return "theatre";
   // The creative engine's director and script room, before "reference" sends a line to the oracle.
   if (/strategist|creative director|script room|scripts ready|concepts, now producing|^campaign "/.test(m)) return "tent";

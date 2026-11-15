@@ -9,14 +9,13 @@
 //
 // Kept by key like production's files, so a later tick on another machine finds the same person.
 
-import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { FAL, FAL_USD, type FalClient, falImageUrl } from "../fal";
 import { ApiError } from "../http";
 import { download, scratchDir } from "../media";
 import { type MonidRunner, runCostMicro, runToEnd } from "../monid";
-import type { NaiveClient } from "../naive";
 import type { Files } from "../store/types";
 import { lookOnly } from "./plan";
 
@@ -34,8 +33,6 @@ export type Persona = {
   voice: PersonaVoice;
   /** The portrait's file key. */
   portrait_key: string;
-  /** A prebuilt Naive character (chr_…) this persona is: every image of them is rendered with it. */
-  character?: string;
   /** What making it cost, once (micro-USD). */
   cost_micro: number;
   created_at: string;
@@ -63,19 +60,6 @@ export const DEFAULT_VOICES: Record<Gender, { id: string; name: string }> = {
   female: { id: "roYauZ4bOLAKvVZTPLre", name: "Lena" },
   male: { id: "3iY0r3RaYmOh6WfIwMIH", name: "Matt" },
 };
-
-/** Naive's prebuilt characters: ready to use, no training, no cost (naive/channel-template-ai-influencer). */
-export const PREBUILT_CHARACTERS: Record<string, string> = {
-  "Priya Raman": "chr_bb1xr9kn5tav3nqbgq5w2p8g61",
-  "Maya Elusing": "chr_e0tgbzd9kqfrfrzzs33bsxh89f",
-  "Hank Delgado": "chr_b3nnct3kvsv4d17eb14dhqfhhv",
-  "Ava Lindqvist": "chr_4sq1wcpx4jygj46wqspp4z8d5a",
-  "Marcus Bell": "chr_bpg78xxfgmtrshbx2nv2nx5f62",
-  "Theo Park": "chr_ry84wq63nwd3nd2j615m4j7svx",
-};
-
-/** The look a character's stills are rendered in: a talking-to-camera selfie reads as real UGC. */
-export const CHARACTER_STYLE = "Candid selfie";
 
 /** Whom a description is about: the first gendered word decides; null when it says neither. */
 export function genderOf(text: string): Gender | null {
@@ -171,7 +155,7 @@ export function chooseVoice(gender: Gender | null, description: string, voices: 
 }
 
 export type PersonaDeps = {
-  naive: Pick<NaiveClient, "generateImage" | "fileUrl">;
+  fal: Pick<FalClient, "run">;
   files: Files;
   /** Saves a link to a local file (default: download). */
   fetchUrl?: (url: string, path: string) => Promise<unknown>;
@@ -185,28 +169,29 @@ export async function loadPersona(files: Files, brandId: string, role: PersonaRo
 }
 
 /**
- * The brand's persona in a role: loaded when it exists, else made once and kept. Either one of
- * Naive's prebuilt characters (`character`, chr_…: its face in a candid still), or our own portrait
- * from `description` (the director's presenter, or the stitched creator's type for the co-host) or
- * the default. Training a character of a real face needs the person's consent, so it is never done
- * here. `cost_micro` is what this call spent.
+ * The brand's persona in a role: loaded when it exists, else made once and kept from `description`
+ * (the director's presenter, or the stitched creator's type for the co-host) or the default.
+ * `cost_micro` is what this call spent.
  */
-export async function ensurePersona(deps: PersonaDeps, input: { brandId: string; role?: PersonaRole; description?: string | null; character?: string | null }): Promise<{ persona: Persona; portrait: string; cost_micro: number }> {
+export async function ensurePersona(deps: PersonaDeps, input: { brandId: string; role?: PersonaRole; description?: string | null }): Promise<{ persona: Persona; portrait: string; cost_micro: number }> {
   const role = input.role ?? "host";
   const existing = await loadPersona(deps.files, input.brandId, role);
   if (existing) return { ...existing, cost_micro: 0 };
-  const character = input.character?.trim().startsWith("chr_") ? input.character.trim() : undefined;
-  const description = input.description?.trim() || (character ? `${Object.keys(PREBUILT_CHARACTERS).find((name) => PREBUILT_CHARACTERS[name] === character) ?? "the character"}, a creator` : role === "host" ? DEFAULT_PERSONA : DEFAULT_COHOST);
+  const description = input.description?.trim() || (role === "host" ? DEFAULT_PERSONA : DEFAULT_COHOST);
   const gender = genderOf(description);
   const dir = join(scratchDir(), `persona-${input.brandId}-${role}`);
   await mkdir(dir, { recursive: true });
   try {
-    const key = `${input.brandId}-${role}-${createHash("sha1").update(`${character ?? ""}${description}`).digest("hex").slice(0, 10)}`;
-    const image = await deps.naive.generateImage({ prompt: portraitPrompt(description), aspect_ratio: "3:4", ...(character ? { character, style: CHARACTER_STYLE } : {}) }, key);
-    const file = image.files[0];
-    if (!file) throw new ApiError("naive", 502, "no_file", "the persona portrait came back empty");
+    const out = await deps.fal.run(FAL.frame, {
+      prompt: portraitPrompt(description),
+      aspect_ratio: "3:4",
+      output_format: "png",
+      num_images: 1,
+    });
+    const url = falImageUrl(out);
+    if (!url) throw new ApiError("fal", 502, "no_file", "the persona portrait came back empty");
     const local = join(dir, `${stem(role)}.png`);
-    await (deps.fetchUrl ?? download)((await deps.naive.fileUrl(file.id)).url, local);
+    await (deps.fetchUrl ?? download)(url, local);
     await deps.files.putFile(portraitKey(input.brandId, role), local, "image/png");
     const persona: Persona = {
       brand_id: input.brandId,
@@ -215,8 +200,7 @@ export async function ensurePersona(deps: PersonaDeps, input: { brandId: string;
       gender,
       voice: chooseVoice(gender, description),
       portrait_key: portraitKey(input.brandId, role),
-      ...(character ? { character } : {}),
-      cost_micro: image.cost_micro_usd ?? 0,
+      cost_micro: Math.round(FAL_USD.frame * 1_000_000),
       created_at: new Date().toISOString(),
     };
     const json = join(dir, `${stem(role)}.json`);

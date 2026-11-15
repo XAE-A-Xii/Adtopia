@@ -4,7 +4,7 @@ import type { DemoCreative, DemoScript } from "./demo";
 // on the reserved .example domain, labeled "(demo)". It has pixel-art stills instead of videos.
 
 const SHOT_SECONDS = 8;
-const USD_PER_SECOND = 0.4; // the core's measured google/veo-3.1 price (src/lib/views.ts)
+const USD_PER_SECOND = 0.168; // Kling 3.0 per-second rate (src/lib/views.ts)
 const RENDER_USD = SHOT_SECONDS * USD_PER_SECOND;
 
 /** A pixel-art still for each made-up video: someone holding the bar of soap, in four rooms (36×64 PNGs). */
@@ -69,7 +69,7 @@ const creatives: DemoCreative[] = CONCEPTS.map((c, idx) => {
     qcScore: Math.min(...shots.map((s) => s.score)),
     cost: Math.round(renders * RENDER_USD * 100) / 100,
     generation: 1,
-    shots: shots.map((s, k) => ({ n: k + 1, provider: "naive", renders: s.renders, qc: { score: s.score, pass: true, issues: [], fix_prompt: "" } })),
+    shots: shots.map((s, k) => ({ n: k + 1, provider: "fal", renders: s.renders, qc: { score: s.score, pass: true, issues: [], fix_prompt: "" } })),
     video: null,
     poster: poster(idx),
     analytics: ANALYTICS[idx],
@@ -85,7 +85,7 @@ export const SAMPLE: DemoScript = {
     url: "https://oliveandash.example",
     profile: { name: "Olive & Ash", description: "", slogan: "", industry: "Personal care", colors: ["#647247", "#ead6ad"], logo: null, socials: [], images: [] },
   },
-  options: { concepts: 4, shotsPerConcept: 2, secondsPerShot: SHOT_SECONDS, videoModel: "google/veo-3.1", learnStyle: true },
+  options: { concepts: 4, shotsPerConcept: 2, secondsPerShot: SHOT_SECONDS, videoModel: "fal-ai/kling-video/v3/pro/image-to-video", learnStyle: true },
   estimateUsd: 4 * 2 * SHOT_SECONDS * USD_PER_SECOND,
   plan: {
     brand_name: "Olive & Ash",
@@ -133,7 +133,7 @@ export const SAMPLE: DemoScript = {
   },
   creatives,
   events: [
-    { s: 0, level: "info", message: "Campaign started: 4 videos, 2 shots each, google/veo-3.1" },
+    { s: 0, level: "info", message: "Campaign started: 4 videos, 2 shots each, fal-ai/kling-video/v3/pro/image-to-video" },
     { s: 5.5, level: "info", message: "Research plan: olive oil soap; competitors Dr. Bronner's, Savon de Marseille; searching olive oil soap review, natural soap haul" },
     { s: 19, level: "info", message: "Research done: 24 top videos, 12 live ads, 10 Reddit threads, 18 keywords (15/16 sources)" },
     { s: 21, level: "info", message: "Studying the format of 3 top-performing videos frame by frame" },
@@ -147,7 +147,7 @@ export const SAMPLE: DemoScript = {
     { s: 65.5, level: "info", message: '"First wash, honest take" is ready (QC 9/10)' },
   ],
   spend: {
-    naive: creatives.reduce((n, c) => n + c.cost, 0),
+    ai: creatives.reduce((n, c) => n + c.cost, 0),
     monid: 0.48,
     style: 0.6,
     strategy: 0.9,

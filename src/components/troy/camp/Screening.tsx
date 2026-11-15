@@ -93,7 +93,7 @@ export function Screening({
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={creative.posterUrl} alt="" onLoad={crispIfTiny} className="size-full object-cover" />
-              <p className="absolute inset-x-3 bottom-3 bg-[rgba(43,29,20,0.82)] px-3 py-2 text-[12px] leading-snug text-[var(--paper)]">
+              <p className="absolute inset-x-3 bottom-3 bg-[rgba(200,196,255,0.82)] px-3 py-2 text-[12px] leading-snug text-[var(--paper)]">
                 A still: the made-up demo brand has no footage. A recorded demo plays the real video here.
               </p>
             </>
@@ -101,7 +101,7 @@ export function Screening({
         </div>
 
         <div className={`flex min-h-0 flex-col ${wide ? "w-[320px]" : "max-h-[34vh]"}`}>
-          <div className="flex items-center gap-3 border-b-2 border-[rgba(43,29,20,0.12)] px-5 py-3">
+          <div className="flex items-center gap-3 border-b-2 border-[rgba(200,196,255,0.12)] px-5 py-3">
             <span className={`${styles.pixel} text-[12px] uppercase tracking-wider text-[var(--ink-faint)]`}>
               The cut · {index + 1} of {videos.length}
             </span>
@@ -179,7 +179,7 @@ export function Screening({
             </p>
           </div>
 
-          <div className="flex items-center gap-3 border-t-2 border-[rgba(43,29,20,0.12)] px-5 py-3">
+          <div className="flex items-center gap-3 border-t-2 border-[rgba(200,196,255,0.12)] px-5 py-3">
             <label className="flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"

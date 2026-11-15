@@ -19,7 +19,7 @@ export type TourStep = {
   run?: number;
   /** The station whose panel opens; null closes any. */
   station: StationId | null;
-  /** "world" pulls the camera back to the camp and every land the scouts ride to. */
+  /** "world" frames the street (on the tour): the shops the scouts ride to and the screens the posts play on. */
   camera?: "world";
   /** A part of the open panel to scroll to: "concepts" (the war tent's, with their reasons). */
   focus?: string;
@@ -131,16 +131,6 @@ export function tourSteps(script: DemoScript): TourStep[] {
   const brand = script.brand.name;
   const steps: TourStep[] = [];
 
-  steps.push({
-    key: "start",
-    dwell: 4,
-    title: `${script.brand.domain} goes in`,
-    body: "A website is the only input. From here the agents run the whole campaign themselves: research, strategy, scripts, videos and posting.",
-    at: 0,
-    hold: 3,
-    station: null,
-  });
-
   const lands = [...new Set(script.runs.map((run) => landFor(run.key)))];
   const named = LANDS.filter((land) => lands.includes(land.id)).map((land) => (land.id === "site" ? "the brand's own site" : land.id === "metaads" ? "the Meta Ad Library" : land.name));
   // One scout, followed all the way: out to his land and back with the case.
@@ -148,10 +138,10 @@ export function tourSteps(script: DemoScript): TourStep[] {
   const rideAt = scout ? Math.max(3.5, scout.start - 0.3) : null;
   steps.push({
     key: "scouts",
-    dwell: 5,
-    title: "The scouts fan out",
-    body: `They ride to ${plural(lands.length, "source")} at once: ${list(named)}. ${plural(script.runs.length, "research run")} in all.`,
-    at: 3,
+    dwell: 6,
+    title: "Step 1 · Research",
+    body: "The website is the only input; from here the agents run the whole campaign. First the scouts set out: up the stairs, onto their bikes and along the street to the shops, each one a source: the brand's own site, its competitors, search, the top short videos in its niche, competitor ads and what AI assistants say about it.",
+    at: 0,
     hold: rideAt ?? tl.research[1] - 1,
     station: null,
     camera: "world",
@@ -163,8 +153,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
     steps.push({
       key: "agent",
       dwell: 8.5,
-      title: `Ride along with the ${name} scout`,
-      body: `Every soldier here is an agent with one job. This one rides to ${name} for ${plural(scout.runs.length, "search", "searches")} (${list(labels.slice(0, 4).map((label) => label.replace(new RegExp(`^${name}: `), "")))}${labels.length > 4 ? " and more" : ""}) and brings them back in a scroll case for the strategist. His card says what he is doing right now; click any soldier to follow it the same way.`,
+      title: `Step 1 · Ride along with the ${name} scout`,
+      body: `Every figure here is an agent with one job. Follow this one: it rides to the ${name} shop, gathers what it needs there, then rides back and carries the data down to the research desk. Click any agent to follow it the same way.`,
       at: rideAt,
       hold: Math.min(scout.back + 1, tl.research[1] - 1),
       station: null,
@@ -178,8 +168,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
     steps.push({
       key: "findings",
       dwell: 5.5,
-      title: "What they brought back",
-      body: `${count(research.videos)} top videos, ${plural(research.ads, "live ad")}, ${plural(research.reddit, "Reddit thread")} and ${plural(research.keywords, "keyword")}.${checks.length ? ` Format checks found that ${list(checks)}.` : ""}`,
+      title: "Step 1 · The research pack",
+      body: "Back at the research desk the scouts drop what they found into the bin. The site, competitors, search terms, the niche's top videos, competitor ads and what AI assistants say are all saved together as one research pack.",
       at: tl.research[1],
       hold: tl.research[1] + SHOWN,
       station: "scouts",
@@ -190,8 +180,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
     steps.push({
       key: "oracle",
       dwell: 5.5,
-      title: "Studying the viral references",
-      body: `The oracle breaks the ${plural(script.style.samples, "best outlier video")} down beat by beat (transcript, cuts and frames), so each new video copies what made its original work.`,
+      title: "Step 2 · Viral study",
+      body: "At the format table, analysts take the best-performing videos apart frame by frame: the hook, the pacing, the shots, the captions and the text on screen, to learn which format works in this niche. This step is optional; without it, the research goes straight to strategy.",
       at: tl.style[0],
       hold: tl.style[1] + SHOWN,
       station: "oracle",
@@ -203,8 +193,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
   steps.push({
     key: "tent",
     dwell: 6.5,
-    title: "The creative director's plan",
-    body: `The director picks ${plural(videos.length, "video")}, each one backed by evidence from the research: ${formatList(formats)}.`,
+    title: "Step 3 · Strategy and scripts",
+    body: "At the cork board, the director turns the research into a plan: the creative brief, the keywords and a few video concepts, each with its format. Then the scriptwriter at the desk writes every concept's script and hook.",
     at: tl.strategy[0],
     hold: tl.strategy[1] + SHOWN,
     station: "tent",
@@ -214,8 +204,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
   steps.push({
     key: "workshop",
     dwell: 6,
-    title: "The workshop",
-    body: `Each video is made its own way: ${[...new Set(formats.map((f) => making(f, brand)))].join("; ")}. Quality control checks every one.`,
+    title: "Step 4 · Production",
+    body: "In the studio each script becomes a video: a first frame is made and checked, the shot is rendered and checked, screens of the product are captured, the shots are checked for continuity, a voice-over is added if the format needs one, and it is all cut together. The video wall shows each one rendering.",
     at: tl.production[0],
     hold: tl.review - 0.5,
     station: "workshop",
@@ -227,8 +217,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
     steps.push({
       key: `video-${creative.idx}`,
       dwell: 4,
-      title: `Video ${i + 1}: ${concept?.title ?? "untitled"}`,
-      body: `${capital(concept?.format ?? "video")}.${why ? ` ${why}` : ""}`,
+      title: `Step 5 · Review: video ${i + 1} of ${videos.length}`,
+      body: "A finished video plays on the video wall, and the team cheers its premiere. This is your turn: approve it, or send it back for another take.",
       at: tl.review,
       hold: tl.review,
       station: "theatre",
@@ -254,8 +244,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
     steps.push({
       key: "creators",
       dwell: 5,
-      title: "Or hand them to real creators",
-      body: `The same briefs can go to people who already make these videos. A client-taste agent playing ${brand} vets each creator${turnedDown ? `, turned down ${plural(turnedDown, "of them", "of them")}` : ""} and approved ${list(picks)}. Their outreach messages are drafted and wait for you to send.`,
+      title: "Step 5 · Or hand them to real creators",
+      body: "The same briefs can also go to real creators who already make these videos: an agent playing the brand vets each one, and the outreach messages wait for you to send.",
       at: tl.review,
       hold: tl.review,
       station: "theatre",
@@ -267,8 +257,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
   steps.push({
     key: "post",
     dwell: 5,
-    title: "Approve and post",
-    body: `One click approves them all, and they go out to the brand's own ${platforms.length ? list(platforms) : "accounts"}, labeled AI-generated: all at once, or one a day.`,
+    title: "Step 6 · Approve and post",
+    body: "One click approves them all, and Postiz sends them out to the brand's own accounts, labeled AI-generated: all at once, or one a day. The broadcast tower beams them up to the street.",
     hold: 0,
     run: 6,
     station: "agora",
@@ -283,10 +273,11 @@ export function tourSteps(script: DemoScript): TourStep[] {
     key: "battle",
     dwell: 14,
     pace: 3,
-    title: "Into battle",
-    body: `Every video sails as a company against ${script.plan?.competitors?.[0]?.name ?? "the rival"}'s city. Once its posts have numbers, it fights the category's top videos${bench ? ` (${count(bench.views)} median views, ${((bench.likes / Math.max(1, bench.views)) * 100).toFixed(1)}% likes per view)` : ""}. ${scored}`,
+    title: "Step 6 · How they perform",
+    body: "The posts play on the platforms' screens along the street. As views and likes come in, crowds gather and hearts float up; each video is measured against the niche's top videos, with fireworks when it is ahead and a dimmed screen when it falls behind.",
     hold: "end",
     station: null,
+    camera: "world",
   });
 
   // The loop closes: autopilot starts the next campaign from these posts, and the scouts ride again.
@@ -294,10 +285,8 @@ export function tourSteps(script: DemoScript): TourStep[] {
   steps.push({
     key: "loop",
     dwell: 7.5,
-    title: "Then it goes again: campaign 2",
-    body: `With autopilot on, the next campaign starts on its own cadence and weekly budget, and the director plans it from how these posts did${
-      lesson ? `: "${lesson.best.title}" led, ${against(lesson.best.ratio)} the top videos, and "${lesson.worst.title}" trailed, so more ${lesson.best.format}${lesson.illustrative ? " (illustrative numbers)" : ""}` : ""
-    }. The army comes home and the scouts are already riding out again: research, plan, videos, posts, numbers, and round again.`,
+    title: "Then it goes again",
+    body: "With autopilot on, the next campaign starts by itself, planned from how these posts did, and the scouts are already heading out again: research, plan, videos, posts, numbers, and round again.",
     hold: tl.research[1] - 1,
     station: null,
     camera: "world",
