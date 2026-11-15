@@ -1,25 +1,25 @@
 import { readFile } from "node:fs/promises";
 import { logEvent, newId, now, parse, save, store } from "./db";
 import { ApiError } from "./http";
-import { NaiveClient, type SocialPost } from "./naive";
 import { getBrand, getCampaign, listCreatives } from "./pipeline";
+import { hasPostiz, integrations, type PostizIntegration, type PostizMedia, type PostizPostResult, schedule, upload } from "./postiz";
 import type { CreativeRow } from "./production";
 import { slug } from "./production";
 import type { Concept } from "./strategy";
 
-// Publishing to the brand's own accounts through Naive's Social primitive. Every post is labeled
-// AI-generated: Naive adds each network's AI-content label and an #AIgenerated line.
+// Publishing to the brand's own accounts through Postiz. TikTok receives Postiz's native
+// `video_made_with_ai` disclosure setting; other platforms lack a native AI-content flag in the
+// Postiz public API schema, so `#AIgenerated` is appended to their caption instead.
 
 export type PostRow = {
   id: string;
   creative_id: string;
   brand_id: string;
   idem: string;
-  naive_post_id: string | null;
   platforms_json: string;
   scheduled_at: string | null;
   status: "pending" | "scheduled" | "processing" | "posted" | "failed" | "deleted";
-  /** Naive's post once submitted. Before that, the request's own options ({ request: { visibility } }). */
+  /** Postiz submission results once submitted. Before that, request options ({ request: { visibility } }). */
   result_json: string | null;
   analytics_json: string | null;
   analytics_at: string | null;
@@ -30,10 +30,10 @@ export type PostRow = {
 
 export type SocialAccount = { platform: string; name: string; id: string };
 
-/** Networks Naive can publish a video to today (Pinterest and Reddit need a per-post destination). */
+/** Networks Postiz can publish a video to here (Pinterest and Reddit need per-post board/subreddit fields). */
 const VIDEO_PLATFORMS = new Set(["tiktok", "instagram", "youtube", "x", "facebook", "linkedin", "threads", "bluesky"]);
 
-/** Who sees a post. Naive takes it for YouTube (and Mastodon) only; other networks use the account's default. */
+/** Who sees a post. Supported for YouTube (`public`/`unlisted`/`private`) and TikTok (`public`/`private`). */
 export type Visibility = "public" | "unlisted" | "private";
 export const VISIBILITIES: readonly Visibility[] = ["public", "unlisted", "private"];
 const VISIBILITY_PLATFORMS = new Set(["youtube"]);
@@ -41,42 +41,44 @@ const VISIBILITY_PLATFORMS = new Set(["youtube"]);
 /** Narrows a publish: which approved videos, to which connected networks, seen by whom. */
 export type PublishChoice = { creativeIds?: string[]; platforms?: string[]; visibility?: Visibility };
 
-const PLATFORM_NAMES: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", x: "X", facebook: "Facebook", linkedin: "LinkedIn", threads: "Threads", bluesky: "Bluesky" };
+const PLATFORM_NAMES: Record<string, string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  youtube: "YouTube",
+  x: "X",
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+  threads: "Threads",
+  bluesky: "Bluesky",
+};
 const platformName = (platform: string) => PLATFORM_NAMES[platform] ?? platform;
 
-async function ensureIdentity(naive: NaiveClient, brandId: string) {
+function normalizePlatform(identifier: string): string {
+  const lower = identifier.toLowerCase();
+  if (lower === "instagram-standalone") return "instagram";
+  if (lower === "linkedin-page") return "linkedin";
+  return lower;
+}
+
+/** Link to Postiz where the brand's owner connects its social channels. */
+export async function connectLink(brandId: string, _returnTo?: string) {
   const brand = await getBrand(brandId);
   if (!brand) throw new Error("No such brand");
-  let identity = brand.identity_id;
-  if (!identity) {
-    identity = (await naive.ensureIdentity(`nomen-brand-${slug(brand.domain)}`, `Official social accounts of ${brand.name} (${brand.domain})`)).id;
-    await save("brands", brand.id, { identity_id: identity });
-  }
-  if (!brand.social_activated) {
-    await naive.activateSocial(identity);
-    await save("brands", brand.id, { social_activated: 1 });
-  }
-  return identity;
+  if (!hasPostiz()) throw new ApiError("postiz", 401, "not_configured", "Add a Postiz API key in Settings first.");
+  await logEvent({ brandId, message: "Opened Postiz to connect accounts" });
+  return "https://platform.postiz.com";
 }
 
-/** A hosted link where the brand's owner connects its accounts (OAuth stays with the provider). */
-export async function connectLink(brandId: string, returnTo?: string) {
-  const naive = new NaiveClient();
-  const identity = await ensureIdentity(naive, brandId);
-  const portal = await naive.socialPortal(identity, returnTo ? { redirect_url: returnTo } : {});
-  await logEvent({ brandId, message: "Opened the account connection page" });
-  return portal.url;
-}
-
-export async function connectedAccounts(brandId: string): Promise<SocialAccount[]> {
-  const brand = await getBrand(brandId);
-  if (!brand?.identity_id || !brand.social_activated) return [];
-  const raw = await new NaiveClient().socialAccounts(brand.identity_id);
-  return raw.map((account) => ({
-    platform: String(account.platform ?? account.provider ?? account.network ?? account.type ?? "").toLowerCase(),
-    name: String(account.username ?? account.handle ?? account.name ?? account.display_name ?? account.id ?? ""),
-    id: String(account.id ?? ""),
-  }));
+export async function connectedAccounts(_brandId: string): Promise<SocialAccount[]> {
+  if (!hasPostiz()) return [];
+  const raw = await integrations();
+  return raw
+    .filter((account) => !account.disabled)
+    .map((account) => ({
+      platform: normalizePlatform(account.identifier),
+      name: account.name || account.profile || account.id,
+      id: account.id,
+    }));
 }
 
 /**
@@ -114,9 +116,9 @@ export async function approveAll(campaignId: string) {
 /** The stored cut: recorded on the row, or where production keeps it ("crv_…/final.mp4"). */
 const cutKey = (creative: CreativeRow) => creative.final_key || `${creative.id}/final.mp4`;
 
-/** Whether there is something to post: the cut on Naive, the cut in the store, or a provider's link. */
+/** Whether there is something to post: the cut in the store or an external URL. */
 async function hasMedia(creative: CreativeRow) {
-  return Boolean(creative.final_file_id || creative.final_external_url) || (await store().files.exists(cutKey(creative)));
+  return Boolean(creative.final_external_url) || (await store().files.exists(cutKey(creative)));
 }
 
 /**
@@ -129,9 +131,9 @@ export async function publishCampaign(campaignId: string, mode: "now" | "daily",
   if (!campaign) throw new Error("No such campaign");
   const accounts = await connectedAccounts(campaign.brand_id);
   const connected = new Set(accounts.map((account) => account.platform).filter((platform) => VIDEO_PLATFORMS.has(platform)));
-  if (connected.size === 0) throw new Error("Connect at least one of the brand's accounts first.");
+  if (connected.size === 0) throw new Error("Connect at least one of the brand's accounts in Postiz first.");
   const missing = (choice.platforms ?? []).filter((platform) => !connected.has(platform));
-  if (missing.length) throw new Error(`Connect the brand's ${missing.map(platformName).join(" and ")} account first.`);
+  if (missing.length) throw new Error(`Connect the brand's ${missing.map(platformName).join(" and ")} account in Postiz first.`);
   if (choice.visibility) {
     const publicOnly = (choice.platforms ?? [...connected]).filter((platform) => !VISIBILITY_PLATFORMS.has(platform));
     if (publicOnly.length) throw new Error(`Only YouTube posts can be ${choice.visibility}; ${publicOnly.map(platformName).join(", ")} posts are public. Post to YouTube alone, or post publicly.`);
@@ -189,25 +191,19 @@ function nextSlot(from: Date) {
   return slot;
 }
 
-const ANALYTICS_EVERY_MS = 30 * 60 * 1000;
-const STATUS_EVERY_MS = 60 * 1000;
-/** After a busy answer (Naive at capacity, a network blip), a queued post waits this long before trying again. */
+/** After a busy answer (rate limit, network blip), a queued post waits this long before trying again. */
 const BUSY_RETRY_MS = 60 * 1000;
 
-/** Worker step: submit queued posts, follow their status, refresh analytics of posted ones. */
+/** Worker step: submit queued posts to Postiz and transition due scheduled posts. */
 export async function advancePosts() {
-  const rows = await store().find<PostRow>("posts", { status: { in: ["pending", "scheduled", "processing", "posted"] } }, { order: [["created_at", "asc"]] });
+  const rows = await store().find<PostRow>("posts", { status: { in: ["pending", "scheduled", "processing"] } }, { order: [["created_at", "asc"]] });
   if (rows.length === 0) return;
-  let naive: NaiveClient;
-  try {
-    naive = new NaiveClient();
-  } catch {
-    return;
-  }
+  if (!hasPostiz()) return;
+
   for (const post of rows) {
     const brand = await getBrand(post.brand_id);
     const [creative] = await store().find<CreativeRow>("creatives", { id: post.creative_id }, { limit: 1 });
-    if (!brand?.identity_id || !creative) continue;
+    if (!brand || !creative) continue;
     try {
       if (post.status === "pending") {
         // Checked again here: a post queued before a video was held must not go out either.
@@ -218,110 +214,107 @@ export async function advancePosts() {
           continue;
         }
         if (post.error && Date.now() - Date.parse(post.updated_at) < BUSY_RETRY_MS) continue;
-        await submit(naive, brand.id, brand.identity_id, post, creative);
-      } else if (post.naive_post_id && (post.status === "scheduled" || post.status === "processing")) {
-        if (Date.now() - Date.parse(post.updated_at) < STATUS_EVERY_MS) continue;
-        // Nothing changes before a scheduled post is due; asking every minute only loads a busy Naive.
-        if (post.status === "scheduled" && post.scheduled_at && Date.parse(post.scheduled_at) > Date.now()) continue;
-        const result = await naive.getPost(brand.identity_id, post.naive_post_id);
-        const status = normalizeStatus(result.status);
-        await save("posts", post.id, { status, result_json: JSON.stringify(result), error: postError(result) });
-        if (status === "failed") await logEvent({ brandId: brand.id, level: "error", message: `A post failed: ${postError(result)}` });
-        if (status === "posted") await announcePosted(naive, brand.id, brand.identity_id, post, result);
-      } else if (post.naive_post_id && post.status === "posted") {
-        if (post.analytics_at && Date.now() - Date.parse(post.analytics_at) < ANALYTICS_EVERY_MS) continue;
-        if (Date.now() - Date.parse(post.created_at) > 14 * 24 * 3600 * 1000) continue;
-        const analytics = await naive.postAnalytics(brand.identity_id, post.naive_post_id);
-        await save("posts", post.id, { analytics_json: JSON.stringify(analytics), analytics_at: now() });
+        await submit(brand.id, post, creative);
+      } else if (post.status === "scheduled" && post.scheduled_at && Date.parse(post.scheduled_at) <= Date.now()) {
+        await save("posts", post.id, { status: "posted" });
+        await logEvent({ brandId: brand.id, message: `Posted to ${parse<string[]>(post.platforms_json, []).map(platformName).join(", ")}` });
       }
     } catch (error) {
       if (error instanceof ApiError && error.retryable) {
-        // Naive at capacity, or a network blip: nothing is lost. A queued post says why it waits; a
-        // busy analytics read waits for the next round instead of asking again every tick.
-        if (post.status === "pending") await save("posts", post.id, { error: `Waiting for Naive (${error.message.replace(/^naive: /, "")}); trying again in a minute` });
-        else if (post.status === "posted") await save("posts", post.id, { analytics_at: now() });
+        if (post.status === "pending") {
+          await save("posts", post.id, { error: `Waiting for Postiz (${error.message.replace(/^postiz: /, "")}); trying again in a minute` });
+        }
         continue;
       }
-      await save("posts", post.id, { status: post.status === "pending" ? "failed" : post.status, error: error instanceof Error ? error.message : String(error), analytics_at: now() });
+      await save("posts", post.id, { status: post.status === "pending" ? "failed" : post.status, error: error instanceof Error ? error.message : String(error) });
       if (post.status === "pending") await logEvent({ brandId: brand.id, level: "error", message: `A post failed: ${error instanceof Error ? error.message : String(error)}` });
     }
   }
   await settleCampaigns();
 }
 
-/** Sends a queued post to Naive: the cut, the caption and the title, labeled AI-generated. */
-async function submit(naive: NaiveClient, brandId: string, identity: string, post: PostRow, creative: CreativeRow) {
+/**
+ * Adds `#AIgenerated` when Postiz does not expose a native AI-content disclosure toggle for the
+ * target platform. TikTok supports `video_made_with_ai: true` in Postiz settings.
+ */
+function captionWithAiLabel(caption: string, platform: string): string {
+  if (platform === "tiktok") return caption;
+  if (/#aigenerated\b/i.test(caption)) return caption;
+  return caption.trim() ? `${caption.trim()}\n\n#AIgenerated` : "#AIgenerated";
+}
+
+function matchingIntegrations(channels: PostizIntegration[], platforms: string[]): PostizIntegration[] {
+  const wanted = new Set(platforms.map((p) => p.toLowerCase()));
+  const picked: PostizIntegration[] = [];
+  const seen = new Set<string>();
+  for (const channel of channels) {
+    if (channel.disabled || seen.has(channel.id)) continue;
+    const norm = normalizePlatform(channel.identifier);
+    if (wanted.has(norm) || wanted.has(channel.identifier.toLowerCase())) {
+      seen.add(channel.id);
+      picked.push(channel);
+    }
+  }
+  return picked;
+}
+
+/** Uploads the cut if needed and submits the post to each matching Postiz channel. */
+async function submit(brandId: string, post: PostRow, creative: CreativeRow) {
   const platforms = parse<string[]>(post.platforms_json, []);
   const request = parse<{ request?: { visibility?: Visibility } }>(post.result_json, {}).request ?? {};
-  const result = await naive.createPost(
-    identity,
-    {
-      content: creative.caption,
-      title: parse<{ title?: string }>(creative.concept_json, {}).title,
-      platforms,
-      ...(await postMedia(naive, creative)),
-      ...(post.scheduled_at && Date.parse(post.scheduled_at) > Date.now() + 5 * 60 * 1000 ? { scheduled_at: post.scheduled_at } : {}),
-      ...(request.visibility ? { visibility: request.visibility } : {}),
-      ai_generated: true,
-    },
-    post.idem,
-  );
-  const status = normalizeStatus(result.status);
-  await save("posts", post.id, { naive_post_id: result.id, status, result_json: JSON.stringify(result), error: postError(result) });
+  const channels = matchingIntegrations(await integrations(), platforms);
+  if (channels.length === 0) {
+    throw new Error(`No connected Postiz channel for ${platforms.map(platformName).join(", ")}.`);
+  }
+
+  const media = await postMedia(creative);
+  const scheduled = Boolean(post.scheduled_at && Date.parse(post.scheduled_at) > Date.now() + 5 * 60 * 1000);
+  const at = scheduled && post.scheduled_at ? new Date(post.scheduled_at) : undefined;
+  const title = parse<{ title?: string }>(creative.concept_json, {}).title;
+
+  const results: PostizPostResult[] = [];
+  for (const channel of channels) {
+    const platform = normalizePlatform(channel.identifier);
+    const created = await schedule({
+      integrationId: channel.id,
+      platform: channel.identifier,
+      text: captionWithAiLabel(creative.caption, platform),
+      media,
+      at,
+      title,
+      visibility: request.visibility,
+      aiGenerated: true,
+    });
+    results.push(...created);
+  }
+
+  const status: PostRow["status"] = scheduled ? "scheduled" : "posted";
+  await save("posts", post.id, { status, result_json: JSON.stringify({ posts: results }), error: null });
   await logEvent({
     brandId,
-    message: `Post ${post.scheduled_at ? `scheduled for ${post.scheduled_at.slice(0, 16).replace("T", " ")} UTC` : "submitted"}: ${platforms.map(platformName).join(", ")}${request.visibility ? ` (${request.visibility})` : ""}`,
+    message: `Post ${scheduled && post.scheduled_at ? `scheduled for ${post.scheduled_at.slice(0, 16).replace("T", " ")} UTC` : "submitted"}: ${platforms.map(platformName).join(", ")}${request.visibility ? ` (${request.visibility})` : ""}`,
   });
-  if (status === "posted") await announcePosted(naive, brandId, identity, post, result);
-}
-
-/**
- * A post is out. Its analytics are read at once: Naive's post read has no link, and the analytics
- * carry the network's permalink and first numbers. Then one line in the activity log, with the link.
- */
-async function announcePosted(naive: NaiveClient, brandId: string, identity: string, post: PostRow, result: SocialPost) {
-  let analytics_json: string | null = null;
-  try {
-    analytics_json = JSON.stringify(await naive.postAnalytics(identity, result.id));
-    await save("posts", post.id, { analytics_json, analytics_at: now() });
-  } catch {
-    // The next tick reads them; the line goes out without the link.
+  if (status === "posted") {
+    await logEvent({ brandId, message: `Posted to ${platforms.map(platformName).join(", ")}` });
   }
-  const { url } = postStats({ result_json: JSON.stringify(result), analytics_json });
-  await logEvent({ brandId, message: `Posted to ${parse<string[]>(post.platforms_json, []).map(platformName).join(", ")}${url ? `: ${url}` : ""}` });
 }
 
-/**
- * The file a post carries: the cut on Naive. When production could not upload the cut (Naive was
- * at capacity), it goes up from the store now and is kept on the video, so it is uploaded once.
- */
-async function postMedia(naive: NaiveClient, creative: CreativeRow): Promise<{ file_ids: string[] } | { media_urls: string[] }> {
-  if (creative.final_file_id) return { file_ids: [creative.final_file_id] };
+/** Uploads the stored cut once to Postiz and caches `{ id, path }` on the creative row. */
+async function postMedia(creative: CreativeRow): Promise<PostizMedia> {
+  if (creative.final_url === "postiz" && creative.final_file_id && creative.final_external_url) {
+    return { id: creative.final_file_id, path: creative.final_external_url };
+  }
   const key = cutKey(creative);
   if (await store().files.exists(key)) {
     const name = `${slug(parse<{ title?: string }>(creative.concept_json, {}).title ?? creative.id)}.mp4`;
-    const fileId = await naive.uploadFile(name, "video/mp4", await readFile(await store().files.localPath(key)));
-    await save("creatives", creative.id, { final_file_id: fileId });
-    return { file_ids: [fileId] };
+    const uploaded = await upload(await readFile(await store().files.localPath(key)), name, "video/mp4");
+    await save("creatives", creative.id, { final_file_id: uploaded.id, final_external_url: uploaded.path, final_url: "postiz" });
+    return uploaded;
   }
-  if (creative.final_external_url) return { media_urls: [creative.final_external_url] };
+  if (creative.final_external_url) {
+    return { id: creative.final_file_id ?? creative.id, path: creative.final_external_url };
+  }
   throw new Error("The video has no finished file to post.");
-}
-
-function normalizeStatus(status: string): PostRow["status"] {
-  const value = (status ?? "").toLowerCase();
-  if (["scheduled", "processing", "posted", "failed", "deleted"].includes(value)) return value as PostRow["status"];
-  if (value === "published" || value === "success") return "posted";
-  return "processing";
-}
-
-/** The network's reason, when Naive says a post failed; null otherwise. */
-function postError(result: SocialPost): string | null {
-  if (normalizeStatus(result.status) !== "failed") return null;
-  const error = result.error;
-  if (typeof error === "string" && error) return error;
-  if (error && typeof error === "object") return String((error as { message?: unknown }).message ?? JSON.stringify(error));
-  return "the network refused the post";
 }
 
 /** A publishing campaign goes live once none of its posts is still on its way. */
@@ -349,23 +342,18 @@ const METRIC_KEYS: Record<Metric, string[]> = {
 const METRIC_OF = new Map(Object.entries(METRIC_KEYS).flatMap(([metric, keys]) => keys.map((key) => [key, metric as Metric] as const)));
 
 /**
- * A post's link and its numbers. Naive passes each network's analytics through as the provider
- * shapes them (under `data`, one block per network), so this reads the usual names (videoViews,
- * like_count, comments…) wherever they sit. A number at one level wins over the breakdown under it
- * (a total and its days are not added up); separate branches, like two networks, are added up.
- * Without analytics yet, the post's own `metrics` are used.
+ * Reads a post's link and metrics from stored analytics or result payloads (e.g. demo replays).
+ * Postiz public API post submissions do not return per-post analytics directly.
  */
 export function postStats(post: Pick<PostRow, "analytics_json" | "result_json">): PostStats & { url: string | null } {
   const result = parse<{ url?: unknown; metrics?: unknown } | null>(post.result_json, null);
   const analytics = parse<unknown>(post.analytics_json, null);
   const fromAnalytics = collectStats(analytics);
   const stats = Object.keys(fromAnalytics).length ? fromAnalytics : collectStats(result?.metrics ?? null);
-  // Naive's post read has no link; its analytics carry the network's permalink.
   const url = typeof result?.url === "string" && result.url ? result.url : findPermalink(analytics);
   return { url, ...stats };
 }
 
-/** The first network permalink in the analytics (bundle.social's `permalink`), or null. */
 function findPermalink(node: unknown): string | null {
   if (!node || typeof node !== "object") return null;
   const values = Array.isArray(node) ? node : Object.values(node);
@@ -389,7 +377,7 @@ function collectStats(node: unknown): PostStats {
     if (metric) {
       const n = count(value);
       if (n !== null && here[metric] === undefined) here[metric] = n;
-      continue; // a metric's own value (a list of comments, say) holds no other metric
+      continue;
     }
     if (value && typeof value === "object") below = addStats(below, collectStats(value));
   }
@@ -399,11 +387,6 @@ function collectStats(node: unknown): PostStats {
 const TIME_KEYS = ["createdAt", "created_at", "updatedAt", "updated_at", "measuredAt", "measured_at", "date", "timestamp"];
 const SERIES_KEYS = ["profilePostId", "profile_post_id", "socialAccountId", "social_account_id", "accountId", "account_id", "platform", "platformType", "network"];
 
-/**
- * A list of entries. Snapshots of running totals, each stamped with its time (Naive's provider,
- * bundle.social, keeps one per refresh), count once: the latest of each series (one per network
- * or account). Entries without a time, like one per network, add up.
- */
 function collectList(items: unknown[]): PostStats {
   const latest = new Map<string, { at: number; item: unknown }>();
   let sum: PostStats = {};
@@ -422,7 +405,6 @@ function collectList(items: unknown[]): PostStats {
   return sum;
 }
 
-/** 12, "12", or { count: 12 } (some networks wrap their numbers). */
 function count(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string" && /^\d+(\.\d+)?$/.test(value.trim())) return Number(value);
