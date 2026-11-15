@@ -389,7 +389,7 @@ writeFileSync(join(dir, "script.json"), `${JSON.stringify(script, null, 2)}\n`);
 
 const indexFile = join(outRoot, "index.json");
 const index = existsSync(indexFile) ? JSON.parse(readFileSync(indexFile, "utf8")) : { version: 1, scripts: [] };
-// Other names the recording answers to (like naive.ai for usenaive.ai) stay with it.
+// Other names the recording answers to stay with it.
 const aliases = (index.scripts ?? []).find((s) => s.id === id)?.aliases;
 index.scripts = [{ id, domain: view.brand.domain, name: view.brand.name, ...(aliases?.length ? { aliases } : {}) }, ...(index.scripts ?? []).filter((s) => s.id !== id && s.domain !== view.brand.domain)];
 writeFileSync(indexFile, `${JSON.stringify(index, null, 2)}\n`);

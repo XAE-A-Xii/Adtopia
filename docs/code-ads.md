@@ -14,10 +14,10 @@ CreativeBrief (format "code_ad")
                  ├─ layout.ts: story.json for the page (words, callouts, each beat's gag and screen on the clock)
                  ├─ cues.ts + synth.py: music, foley and the narrator mixed to -14 LUFS
                  ├─ render.ts: headless Chrome + WebGL, 60 fps with 2-sample motion blur, piped into ffmpeg
-                 └─ frame sheet → vision QC (Naive) → crv_…/final.mp4, poster.jpg, frames.jpg in the store's files
+                 └─ frame sheet → vision QC (Claude) → crv_…/final.mp4, poster.jpg, frames.jpg in the store's files
 ```
 
-The finished video then goes through review and posting like every other video: it is uploaded to Naive for posting,
+The finished video then goes through review and posting like every other video,
 carries a QC score and is not internal (it copies no one's footage).
 
 ## The story
@@ -81,7 +81,7 @@ read with audio tags is still there (`NOMEN_CODEAD_NARRATOR=v3`). Ads aim at 18-
 **The frame.** The wall screen holds the top third, the developer's face sits at about 40 %, the one spoken word at 52 % (on his
 chin, as in the original engine's face shots) and the callouts in the lower third over the desk (the original engine stacks them above the
 faces; here that is where the screen is). A beat whose screen carries the point is framed to show the whole screen;
-each framing holds until its gag has landed. The frame check found these rules: in the first Naïve render the
+each framing holds until its gag has landed. The frame check found these rules: in the first render the
 callouts covered the screen and close framings cropped it (QC 5/10).
 
 **Pace.** Adam on eleven_v3 reads about 2.1 words a second; the narration is sped up (pitch kept) by at most 1.3x to
@@ -125,16 +125,12 @@ It renders where the worker runs locally: it needs Google Chrome (WebGL on the G
 scipy. **It cannot render on Vercel** (no Chrome with WebGL, no Python): there the creative fails at once with
 "run the worker locally to make them". A 25 s ad takes about 6-8 minutes at 60 fps on an M-series Mac.
 
-- Voice: ElevenLabs Adam through Monid when a Monid key is set (cents), else the free macOS `say` voice. With Monid's
-  wallet empty the ads use Naive's text-to-speech (`NOMEN_CODEAD_NARRATOR=naive`). Naive checks each read against the
-  text and rejects a line it hears differently: spelled-out numbers ("twenty-nine hundred" comes back as "2900"),
-  dotted API names ("monid.run" as "monad.run") and paraphrases. Keep those out of spoken lines and put them in the
-  callouts and on the big screen instead.
+- Voice: ElevenLabs Adam directly (`ELEVENLABS_API_KEY`) or through Monid (`MONID_API_KEY`, cents), else the free macOS `say` voice.
   `NOMEN_CODEAD_VOICE=scratch` forces the free one. `NOMEN_PYTHON` picks the Python.
-- Cost: the writer and critic (Claude Sonnet on Naive, ~$0.10-0.30), the narrator (~$0.05-0.20), one vision check
+- Cost: the writer and critic (Claude Sonnet, ~$0.10-0.30), the narrator (~$0.05-0.20), one vision check
   (cents). Rendering is free.
 
-The sample for Naïve, end to end (reads the main checkout's data read-only, writes into this checkout's `data/`):
+The sample end to end (reads the main checkout's data read-only, writes into this checkout's `data/`):
 
 ```bash
 NOMEN_DATA_DIR=<a checkout>/data NOMEN_CODEAD_LIVE=all npx vitest run tests/codead.live.test.ts
@@ -144,11 +140,7 @@ NOMEN_DATA_DIR=<a checkout>/data NOMEN_CODEAD_LIVE=all npx vitest run tests/code
 rendering, `stills` renders stills of an ad folder.
 
 **The first sample (Nov 7).** Reference: mplentg's "I Let AI Run My Side Hustle" (644K views, 1,770 followers, 364x;
-an AI given one instruction, "make money"). The writer and critic (8/10) wrote: "You give an AI agent your credit card
-and one instruction: make money. / It buys a yacht and a LLAMA. Your card quits. / So you use Naïve. Agents get a
-company to run, not your wallet. / Pick a company template, like video or store. Deploy it. / Multi-agent teams split
-the goal and work in parallel. / Human approvals: spending waits for your yes. The llama is DENIED. / Now your card
-builds a company. Pick a company template at usenaive.ai." 27.1 s at 1080x1920, 60 fps, -14.1 LUFS; frame QC 8/10
-(two earlier renders scored 5 and 6, and their notes became the layout rules above). Paid: about $0.04 of narration
-per take, about $0.10 per story and a few cents per frame check.
+an AI given one instruction, "make money"). The writer and critic (8/10) wrote a 27.1 s ad at 1080x1920, 60 fps,
+-14.1 LUFS; frame QC 8/10 (two earlier renders scored 5 and 6, and their notes became the layout rules above). Paid:
+about $0.04 of narration per take, about $0.10 per story and a few cents per frame check.
 See the file's header for the options. Output: `data/codead-live/<brand>-<tag>/final.mp4`, `frames.jpg`, `made.json`.
