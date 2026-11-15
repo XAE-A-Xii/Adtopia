@@ -13,7 +13,7 @@ import type { Concept, Strategy } from "./strategy";
 // briefing and outreach draft; one the client turned down for every creator is "failed". When all
 // are settled the campaign moves to review, exactly as rendered videos do.
 
-type Clients = { naive: { message: CastingDeps["message"] } | null; monid: CastingDeps["monid"] };
+type Clients = { claude: { message: CastingDeps["message"] } | null; monid: CastingDeps["monid"] };
 
 /** The brand the client-taste agent stands in for, from the strategy and the product brief. */
 export function clientTaste(strategy: Strategy, product: { audience?: string } | undefined): ClientTaste {
@@ -27,7 +27,7 @@ export function clientTaste(strategy: Strategy, product: { audience?: string } |
 }
 
 export async function stepCastingStage(campaign: CampaignRow, clients: Clients): Promise<{ settled: boolean; ready: number; total: number }> {
-  if (!clients.naive) throw new ApiError("naive", 503, "no_key", "Naive is not connected: casting needs its model");
+  if (!clients.claude) throw new ApiError("anthropic", 401, "not_configured", "Anthropic is not connected: casting needs an Anthropic API key");
   const strategy = parse<Strategy | null>(campaign.strategy_json, null);
   if (!strategy) throw new Error("The campaign has no strategy yet.");
   const product = creativeState(campaign)?.product;
@@ -36,7 +36,7 @@ export async function stepCastingStage(campaign: CampaignRow, clients: Clients):
   const taste = clientTaste(strategy, product);
   const fee = `$${getSetting("creator_fee_usd") || "150"} flat for one video, with usage on the brand's own accounts`;
   const deps: CastingDeps = {
-    message: (input) => clients.naive!.message(input),
+    message: (input) => clients.claude!.message(input),
     monid: clients.monid,
     log: (message, level = "info") => logEvent({ brandId: campaign.brand_id, campaignId: campaign.id, level, message }),
   };

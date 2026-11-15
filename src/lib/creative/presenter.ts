@@ -17,14 +17,12 @@
 //                  render become its multi-shot list, so one render, one voice, covers up to 15 s.
 //   kling-motion   Kling 3.0 Motion Control on Monid: the reference's own footage drives the motion,
 //                  the clip is silent and the soundtrack is our voice.
-//   naive:<model>  a Naive video model that animates the twin frame and speaks the line (Veo 3.1).
 // A new one only needs `submit` and `poll`.
 
 import { join } from "node:path";
 
 import { ApiError } from "../http";
 import { type MonidRunner, outputLink, providerFailed, runCostMicro, runError, TERMINAL } from "../monid";
-import type { MediaJob, NaiveClient } from "../naive";
 import type { Gender } from "./persona";
 import { creatorDirection, emotionArc, NO_TEXT, SAFE } from "./plan";
 import type { Work } from "./remake";
@@ -56,7 +54,7 @@ export type PresenterInput = {
   shots: PresenterShot[];
 };
 
-export type PresenterJob = { provider: "monid" | "naive"; id: string };
+export type PresenterJob = { provider: "monid"; id: string };
 export type PresenterPoll = { status: "running" } | { status: "done"; url: string; cost_micro: number } | { status: "failed"; error: string; retryable: boolean; cost_micro: number };
 
 export type Presenter = {
@@ -195,44 +193,10 @@ export function klingNative(monid: MonidRunner): Presenter {
   };
 }
 
-// ---------- a Naive video model that speaks the line (Veo 3.1 and the like) ----------
-
-/** The file a finished media job produced, whatever shape its result has. */
-export function jobFile(job: unknown): string | null {
-  const r = (job ?? {}) as { result?: { files?: Array<{ file_id?: string; id?: string }>; file_id?: string } | null; file_id?: string };
-  return r.result?.files?.[0]?.file_id ?? r.result?.files?.[0]?.id ?? r.result?.file_id ?? r.file_id ?? null;
-}
-
-export function naiveVideo(naive: Pick<NaiveClient, "generateVideo" | "getMediaJob" | "fileUrl">, model: string): Presenter {
-  return {
-    name: `naive:${model}`,
-    needs: { frame: true, motion: false, audio: false },
-    voice: "own",
-    multiShot: false,
-    ratios: ["9:16", "16:9"],
-    // Veo 3.1 on Naive cost $3.20 for 8 s; it renders 4, 6 or 8 s.
-    price: { perSecond: 0.4, minSeconds: 4, maxSeconds: 8 },
-    async submit(input, idempotencyKey) {
-      const seconds = input.seconds <= 4 ? 4 : input.seconds <= 6 ? 6 : 8;
-      const job = await naive.generateVideo({ model, prompt: speakingPrompt(input), seconds, aspect_ratio: input.ratio, image_urls: input.frameUrl ? [input.frameUrl] : undefined }, idempotencyKey);
-      return { provider: "naive", id: job.id };
-    },
-    async poll(job) {
-      const media: MediaJob = await naive.getMediaJob(job.id);
-      const cost = media.cost_micro_usd ?? 0;
-      const file = jobFile(media);
-      if (media.status === "completed" && file) return { status: "done", url: (await naive.fileUrl(file)).url, cost_micro: cost };
-      if (media.status === "failed" || media.status === "completed") return { status: "failed", error: media.error?.message ?? "the render failed", retryable: false, cost_micro: cost };
-      return { status: "running" };
-    },
-  };
-}
-
-/** The presenter a setting names: "kling-native" (default), "kling-motion" or "naive:<video model id>". */
-export function presenterFor(name: string, clients: { naive: Pick<NaiveClient, "generateVideo" | "getMediaJob" | "fileUrl">; monid: MonidRunner }): Presenter {
-  if (name.startsWith("naive:") && name.length > 6) return naiveVideo(clients.naive, name.slice(6));
+/** The presenter a setting names: "kling-native" (default) or "kling-motion". */
+export function presenterFor(name: string, clients: { monid: MonidRunner }): Presenter {
   if (name === "kling-motion") return klingMotion(clients.monid);
-  if (name && name !== "kling-native") throw new Error(`unknown presenter "${name}": use kling-native, kling-motion or naive:<video model>`);
+  if (name && name !== "kling-native") throw new Error(`unknown presenter "${name}": use kling-native or kling-motion`);
   return klingNative(clients.monid);
 }
 

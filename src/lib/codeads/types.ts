@@ -88,7 +88,7 @@ export type CodeAdStory = {
   nameplate: string;
   /** The poster on the office wall: the brand's own tagline. */
   poster: string;
-  /** The url said and shown at the end ("usenaive.ai"). */
+  /** The url said and shown at the end ("fal.ai"). */
   url: string;
 };
 
@@ -106,4 +106,4 @@ export type CodeAdBrand = {
 
 /** One voiced beat: its clip's place in voice.wav and its words, in seconds of voice.wav. */
 export type VoicedBeat = { id: string; t0: number; t1: number; words: Array<{ w: string; t0: number; t1: number }> };
-export type Voiced = { provider: "eleven" | "naive" | "scratch"; duration: number; beats: VoicedBeat[] };
+export type Voiced = { provider: "eleven" | "scratch"; duration: number; beats: VoicedBeat[] };

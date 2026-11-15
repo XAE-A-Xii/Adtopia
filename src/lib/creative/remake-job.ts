@@ -45,21 +45,16 @@ export const referenceKey = (breakdownId: string) => `references/${breakdownId}.
  */
 export async function advanceRemake(ctx: ProductionContext, creative: CreativeRow, concept: Concept): Promise<void> {
   if (running().has(creative.id) || creative.status === "ready" || creative.status === "failed") return;
-  if (!ctx.naive || !ctx.monid) {
-    await save("creatives", creative.id, { status: "failed", error: "a remake needs Naive (images and checks) and Monid (the presenter, the voice and file links)" });
+  if (!ctx.claude || !ctx.fal || !ctx.monid) {
+    await save("creatives", creative.id, { status: "failed", error: "a remake needs Anthropic (analysis and checks), fal (images), and Monid (the presenter, the voice and file links)" });
     return;
   }
-  if (ctx.naiveOut()) return; // waits for a top-up, like every other render
   if (creative.status === "queued") await save("creatives", creative.id, { status: "producing" });
   const log = (message: string, level: "info" | "warn" | "error" = "info") => logEvent({ brandId: ctx.brandId, campaignId: ctx.campaignId, level, message: `"${concept.title}" (remake): ${message}` }).catch(() => undefined);
   const job = runRemake(ctx, creative, concept, (message) => void log(message))
     .then(() => void troubles.delete(creative.id))
     .catch(async (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof ApiError && error.outOfCredits && error.service === "naive") {
-        await ctx.markNaiveOut();
-        return;
-      }
       const count = (troubles.get(creative.id) ?? 0) + 1;
       troubles.set(creative.id, count);
       if (!(error instanceof OverBudget) && error instanceof ApiError && error.retryable && count < MAX_TROUBLES) {
@@ -126,15 +121,14 @@ async function localVisuals(product: ProductBrief): Promise<ProductBrief> {
  * ("Kling" for Monid), the twin frame as the shot's frame. Each carries its own spend; the first
  * also carries the rest of the remake's (the voice, plates, people), so the campaign's totals add up.
  */
-export function takeShots(creativeId: string, progress: RemakeProgress, extra: { naive_micro: number; monid_micro: number }, presenter: string, ready: boolean): ShotState[] {
-  const naiveRenders = presenter.startsWith("naive:");
+export function takeShots(creativeId: string, progress: RemakeProgress, extra: { fal_micro: number; monid_micro: number }, _presenter: string, ready: boolean): ShotState[] {
   return progress.takes.map((take: TakeView, i) => ({
     n: take.n,
     frame_prompt: "",
     prompt: `${take.role === "cohost" ? "co-host" : take.inset ? "host cut-out" : "host"}, ${take.start.toFixed(1)}-${take.end.toFixed(1)} s of the reference`,
     seconds: Math.round((take.end - take.start) * 10) / 10,
     status: take.status === "rendered" ? (ready ? "passed" : "rendered") : take.status,
-    provider: take.status === "rendering" || take.status === "rendered" ? (naiveRenders ? "naive" : "monid") : null,
+    provider: take.status === "rendering" || take.status === "rendered" ? "monid" : null,
     renders: take.status === "rendered" || take.status === "rendering" ? 1 : 0,
     qc_rounds: 0,
     submit_errors: 0,
@@ -152,7 +146,7 @@ export function takeShots(creativeId: string, progress: RemakeProgress, extra: {
     video_url: null,
     local_path: null,
     qc: null,
-    naive_cost: take.naive_micro + (i === 0 ? extra.naive_micro : 0),
+    fal_cost: take.fal_micro + (i === 0 ? extra.fal_micro : 0),
     monid_cost: take.monid_micro + (i === 0 ? extra.monid_micro : 0),
     error: take.error,
   }));
@@ -165,11 +159,11 @@ async function runRemake(ctx: ProductionContext, creative: CreativeRow, concept:
   if (!source) throw new Error(`the breakdown of reference ${referenceId || "(none)"} is missing`);
   const files = store().files;
   const referencePath = await ensureReferenceVideo(source.breakdown, source.mediaUrl, files);
-  const deps = { naive: ctx.naive!, monid: ctx.monid!, files };
+  const deps = { claude: ctx.claude!, fal: ctx.fal!, monid: ctx.monid!, files };
 
   // The brand's recurring presenter: made once, from the director's description of this video's presenter.
   const hadHost = Boolean(await loadPersona(files, ctx.brandId, "host"));
-  const host = await ensurePersona(deps, { brandId: ctx.brandId, role: "host", description: concept.brief?.creator || concept.creator, character: getSetting("persona_character") || null });
+  const host = await ensurePersona(deps, { brandId: ctx.brandId, role: "host", description: concept.brief?.creator || concept.creator });
   if (!hadHost) log(`made the brand's presenter: ${host.persona.description} (voice ${host.persona.voice.name})`);
   let peopleCost = host.cost_micro;
 
@@ -178,11 +172,11 @@ async function runRemake(ctx: ProductionContext, creative: CreativeRow, concept:
   const last: { progress: RemakeProgress | null } = { progress: null };
   const record = async (progress: RemakeProgress, ready = false) => {
     last.progress = progress;
-    const spent = progress.spend.naive_micro + progress.spend.monid_micro + peopleCost;
-    const takes = progress.takes.reduce((sum, t) => sum + t.naive_micro + t.monid_micro, 0);
-    const takesNaive = progress.takes.reduce((sum, t) => sum + t.naive_micro, 0);
-    const extraNaive = Math.max(0, progress.spend.naive_micro + peopleCost - takesNaive);
-    const extra = { naive_micro: extraNaive, monid_micro: Math.max(0, spent - takes - extraNaive) };
+    const spent = progress.spend.fal_micro + progress.spend.monid_micro + peopleCost;
+    const takes = progress.takes.reduce((sum, t) => sum + t.fal_micro + t.monid_micro, 0);
+    const takesFal = progress.takes.reduce((sum, t) => sum + t.fal_micro, 0);
+    const extraFal = Math.max(0, progress.spend.fal_micro + peopleCost - takesFal);
+    const extra = { fal_micro: extraFal, monid_micro: Math.max(0, spent - takes - extraFal) };
     await save("creatives", creative.id, { shots_json: JSON.stringify(takeShots(creative.id, progress, extra, presenter, ready)), cost_micro: spent });
   };
 
@@ -220,8 +214,8 @@ async function runRemake(ctx: ProductionContext, creative: CreativeRow, concept:
     poster_url: result.poster_key ? `/api/media/${result.poster_key}` : null,
     qc_score: qc?.score ?? null,
     continuity_json: JSON.stringify({ checked: Boolean(qc), consistent: qc ? qc.same_people && !qc.original_visible : false, mismatched: qc?.mismatched ?? [], note: qc ? qc.issues.slice(0, 2).join("; ") || "matches the reference" : "not checked", rounds: 1 }),
-    cost_micro: result.spend.naive_micro + result.spend.monid_micro + peopleCost,
+    cost_micro: result.spend.fal_micro + result.spend.monid_micro + peopleCost,
     error: result.notes.length ? `notes: ${result.notes.join("; ").slice(0, 600)}` : null,
   });
-  log(`ready, ${result.duration.toFixed(1)} s, $${((result.spend.naive_micro + result.spend.monid_micro + peopleCost) / 1e6).toFixed(2)} (estimated $${result.estimate.usd.total.toFixed(2)}); internal only, not posted unless cleared`);
+  log(`ready, ${result.duration.toFixed(1)} s, $${((result.spend.fal_micro + result.spend.monid_micro + peopleCost) / 1e6).toFixed(2)} (estimated $${result.estimate.usd.total.toFixed(2)}); internal only, not posted unless cleared`);
 }

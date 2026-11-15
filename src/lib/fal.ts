@@ -12,6 +12,8 @@ export const FAL = {
   /** Kling 3.0 Pro with its own voice: from a first frame, or from the prompt alone. */
   i2v: "fal-ai/kling-video/v3/pro/image-to-video",
   t2v: "fal-ai/kling-video/v3/pro/text-to-video",
+  /** Whisper audio transcription with segment timestamps. */
+  whisper: "fal-ai/whisper",
 } as const;
 
 /**

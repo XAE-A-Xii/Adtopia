@@ -1,4 +1,4 @@
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { extractJson, type ResearchPlan, roughScore, type RunSpec, videoSearch, type Video } from "../research";
 import { getSetting } from "../settings";
 import { cloneabilityPrior } from "./cloneability";
@@ -73,11 +73,11 @@ export function hashtags(caption: string) {
   return [...new Set([...caption.matchAll(/#([\p{L}\p{N}_]{2,40})/gu)].map((m) => m[1].toLowerCase()))].slice(0, 8);
 }
 
-export async function scout(naive: NaiveClient, input: { plan: ResearchPlan; videos: Video[]; brand: { name: string; description: string }; alreadySearched: string[] }): Promise<ScoutReport> {
+export async function scout(claude: Pick<ClaudeClient, "message">, input: { plan: ResearchPlan; videos: Video[]; brand: { name: string; description: string }; alreadySearched: string[] }): Promise<ScoutReport> {
   const digest = scoutDigest(input.videos);
   // The conversion and face searches ran in the first wave too; the caller's list predates them.
   const alreadySearched = [...new Set([...input.alreadySearched, ...(input.plan.conversion_queries ?? []), ...(input.plan.face_queries ?? [])])];
-  const reply = await naive.message({
+  const reply = await claude.message({
     model: getSetting("planner_model"),
     max_tokens: 1500,
     system: [

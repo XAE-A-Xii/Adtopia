@@ -37,9 +37,9 @@ import type { Readable, Writable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
+import type { ClaudeClient } from "../claude";
 import { ApiError } from "../http";
 import { ffmpegPath } from "../media";
-import type { NaiveClient } from "../naive";
 import { QC_MODEL } from "../qc";
 import { extractJson } from "../research";
 import { editFfmpeg } from "./edit";
@@ -134,7 +134,7 @@ export type ScreenContext = {
   previous?: { html: string; issues: string[] };
 };
 
-type Messenger = Pick<NaiveClient, "message">;
+type Messenger = Pick<ClaudeClient, "message">;
 
 // ---------- allowed local files ----------
 
@@ -630,11 +630,11 @@ async function referenceImages(ctx: ScreenContext): Promise<Array<{ type: "image
  * kit's files and assets/fonts) and the keyframes worth capturing. Throws when the answer has no
  * usable document.
  */
-export async function writeScreen(naive: Messenger, request: ScreenRequest, ctx: ScreenContext): Promise<{ html: string; states: ScreenState[] }> {
+export async function writeScreen(claude: Messenger, request: ScreenRequest, ctx: ScreenContext): Promise<{ html: string; states: ScreenState[] }> {
   const images = await referenceImages(ctx);
   const text = screenPrompt(request, ctx);
   const content = images.length ? [...images, { type: "text", text: `The images above are the brand's real UI, for its look.\n\n${text}` }] : text;
-  const reply = await naive.message({
+  const reply = await claude.message({
     model: QC_MODEL,
     max_tokens: 14000,
     system: writerSystem(request),
@@ -644,7 +644,7 @@ export async function writeScreen(naive: Messenger, request: ScreenRequest, ctx:
   const parsed = parseScreenReply(answer);
   if (!parsed.html) {
     const why = reply.stop_reason === "max_tokens" ? "the answer was cut off before the HTML ended" : "the answer had no HTML document";
-    throw new ApiError("naive", 502, "screen_unreadable", `screen ${request.id}: ${why}`);
+    throw new ApiError("anthropic", 502, "screen_unreadable", `screen ${request.id}: ${why}`);
   }
   const { html } = sanitizeHtml(parsed.html, allowedRoots(ctx.kit, ctx.product));
   return { html, states: parseStates(parsed.states, request.seconds) };
@@ -1469,7 +1469,7 @@ async function checkFrames(clip: ScreenClip & { states?: ScreenState[]; inspect?
  * Vision QC on 2-3 frames of a rendered screen, shown at phone size (540 px wide): legible, nothing
  * cut off, no placeholders, safe areas clear, on brief and on brand.
  */
-export async function checkScreen(naive: Messenger, clip: ScreenClip & { states?: ScreenState[]; inspect?: number[] }, request: ScreenRequest, context: { product?: ProductBrief; kit?: BrandKit | null } = {}): Promise<ScreenCheck> {
+export async function checkScreen(claude: Messenger, clip: ScreenClip & { states?: ScreenState[]; inspect?: number[] }, request: ScreenRequest, context: { product?: ProductBrief; kit?: BrandKit | null } = {}): Promise<ScreenCheck> {
   const frames = await checkFrames(clip, request);
   if (!frames.length) return { pass: false, issues: ["the clip has no readable frames"], score: 1 };
   const colors = (context.kit?.repo?.colors ?? []).slice(0, 8).map((c) => `${c.name} ${c.hex}`).join(", ");
@@ -1500,7 +1500,7 @@ export async function checkScreen(naive: Messenger, clip: ScreenClip & { states?
     .filter(Boolean)
     .join("\n");
   const images = frames.map((frame) => ({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: frame.toString("base64") } }));
-  const ask = (text: string, tools?: object[]) => naive.message({ model: QC_MODEL, max_tokens: 1200, messages: [{ role: "user", content: [...images, { type: "text", text }] }], tools });
+  const ask = (text: string, tools?: object[]) => claude.message({ model: QC_MODEL, max_tokens: 1200, messages: [{ role: "user", content: [...images, { type: "text", text }] }], tools });
 
   type Raw = { score?: unknown; pass?: unknown; issues?: unknown } | null;
   let raw: Raw = null;
@@ -1514,7 +1514,7 @@ export async function checkScreen(naive: Messenger, clip: ScreenClip & { states?
   if (!raw || raw.score === undefined) {
     const reply = await ask(`${rubric.replace("Call the screen_verdict tool once.", "")}\nAnswer with only a JSON object: {"score": 1-10, "pass": true|false, "issues": ["..."]}`);
     raw = extractJson(reply.content.map((block) => block.text ?? "").join("\n")) as Raw;
-    if (!raw) throw new ApiError("naive", 502, "qc_unreadable", `screen ${request.id}: the screen check returned no verdict`);
+    if (!raw) throw new ApiError("anthropic", 502, "qc_unreadable", `screen ${request.id}: the screen check returned no verdict`);
   }
   const score = Math.max(1, Math.min(10, Math.round(Number(raw.score) || 0)));
   const issues = Array.isArray(raw.issues) ? raw.issues.filter((i): i is string => typeof i === "string" && i.trim() !== "").slice(0, 8) : [];
@@ -1541,7 +1541,7 @@ export type ScreenReport = { id: string; attempts: number; check: ScreenCheck | 
  * order; `reports` says how many attempts each took and what the last check said.
  */
 export async function buildScreens(
-  naive: Messenger,
+  claude: Messenger,
   requests: ScreenRequest[],
   ctx: Omit<ScreenContext, "previous">,
   options: BuildScreensOptions,
@@ -1559,7 +1559,7 @@ export async function buildScreens(
     while (next < requests.length) {
       const i = next++;
       try {
-        results[i] = await buildOne(naive, requests[i], ctx, { ...options, render: { ...options.render, chromePath: chrome } }, allow);
+        results[i] = await buildOne(claude, requests[i], ctx, { ...options, render: { ...options.render, chromePath: chrome } }, allow);
       } catch (error) {
         // A busy or rate-limited model is worth another try later; a bad screen is not.
         results[i] = { error: error instanceof Error ? error.message : String(error), retryable: error instanceof ApiError && error.retryable };
@@ -1580,7 +1580,7 @@ export async function buildScreens(
 }
 
 async function buildOne(
-  naive: Messenger,
+  claude: Messenger,
   request: ScreenRequest,
   ctx: Omit<ScreenContext, "previous">,
   options: BuildScreensOptions,
@@ -1593,7 +1593,7 @@ async function buildOne(
   for (let attempt = 1; attempt <= 2; attempt++) {
     let written: { html: string; states: ScreenState[] };
     try {
-      written = await writeScreen(naive, request, { ...ctx, previous });
+      written = await writeScreen(claude, request, { ...ctx, previous });
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
       previous = { html: "", issues: [`your last answer could not be used: ${lastError}. Answer with one complete \`\`\`html block and one \`\`\`json block.`] };
@@ -1610,7 +1610,7 @@ async function buildOne(
     }
     let check: ScreenCheck;
     try {
-      check = await checkScreen(naive, clip, request, ctx);
+      check = await checkScreen(claude, clip, request, ctx);
     } catch (error) {
       // No verdict is not a verdict: keep the clip and say the check was unavailable.
       const note = `check unavailable: ${error instanceof Error ? error.message : String(error)}`;

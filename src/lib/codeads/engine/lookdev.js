@@ -16,7 +16,7 @@ export async function build(studio, story) {
   const key = new THREE.DirectionalLight(0xfff3e6, 2.3); key.position.set(-2.2, 5, 6); key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
   Object.assign(key.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 20 }); scene.add(key);
   const rim = new THREE.DirectionalLight(0xbcd6ff, 1.3); rim.position.set(3, 4, -5); scene.add(rim);
-  const chad = makeCast('chad', { logo, logoOnLight, brandName: L.brandName || 'Naïve' });
+  const chad = makeCast('chad', { logo, logoOnLight, brandName: L.brandName || 'Adtopia' });
   const chud = makeCast('chud', { rivalName: L.rival || 'THE OLD WAY' });
   scene.add(chad.toon.root, chud.toon.root);
   const CX = 0.66, UX = -0.7, HC = headHeight(chad.toon), HU = headHeight(chud.toon);

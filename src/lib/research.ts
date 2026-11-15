@@ -1,5 +1,5 @@
 import { ApiError } from "./http";
-import type { NaiveClient } from "./naive";
+import type { ClaudeClient } from "./claude";
 import type { RunSpec } from "./runs";
 import { getSetting } from "./settings";
 
@@ -295,10 +295,10 @@ const PLAN_TOOL = {
   },
 };
 
-export async function planResearch(naive: NaiveClient, input: { domain: string; brand: ResearchPack["brand"]; siteExcerpt: string; similar: string[] }): Promise<ResearchPlan> {
+export async function planResearch(claude: Pick<ClaudeClient, "message">, input: { domain: string; brand: ResearchPack["brand"]; siteExcerpt: string; similar: string[] }): Promise<ResearchPlan> {
   const fallback = fallbackPlan(input.domain, input.brand, input.similar);
   try {
-    const reply = await naive.message({
+    const reply = await claude.message({
       model: getSetting("planner_model"),
       // The plan now carries conversion searches and benchmark roles: 1200 tokens cut it off mid-call.
       max_tokens: 3000,
@@ -322,7 +322,7 @@ export async function planResearch(naive: NaiveClient, input: { domain: string; 
     return raw ? mergePlan(raw, fallback) : fallback;
   } catch (error) {
     // A busy or failing model is worth waiting for: a generic plan searches the brand's name and
-    // fills the research with noise (the first naive run pulled in music, anime and NIVEA ads).
+    // fills the research with noise (early runs without a planner pulled in music, anime and unrelated ads).
     if (error instanceof ApiError && error.retryable) throw error;
     return fallback;
   }
@@ -461,7 +461,7 @@ export function compactResearch(domain: string, runs: RunResult[], plan: Researc
   };
 }
 
-/** Up to three short, high-performing public videos for Naive to learn a format from. */
+/** Up to three short, high-performing public videos to learn a format from. */
 function brandFrom(output: unknown, domain: string): ResearchPack["brand"] {
   const brand = (record(record(output)?.brand) ?? record(output) ?? {}) as Record<string, unknown>;
   const industries = record(brand.industries)?.eic;

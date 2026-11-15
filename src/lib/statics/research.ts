@@ -1,4 +1,4 @@
-import type { NaiveClient } from "../naive";
+import type { ClaudeClient } from "../claude";
 import { collectStrings, extractJson, items, num, pick, record, type ResearchPack, type ResearchPlan, text } from "../research";
 import type { RunSpec } from "../runs";
 import { getSetting } from "../settings";
@@ -84,11 +84,11 @@ const PLAN_TOOL = {
   },
 };
 
-export async function planStatics(naive: NaiveClient | null, pack: ResearchPack, plan: ResearchPlan | null): Promise<StaticPlan> {
+export async function planStatics(claude: Pick<ClaudeClient, "message"> | null, pack: ResearchPack, plan: ResearchPlan | null): Promise<StaticPlan> {
   const fallback = fallbackStaticPlan(pack, plan);
-  if (!naive) return fallback;
+  if (!claude) return fallback;
   try {
-    const reply = await naive.message({
+    const reply = await claude.message({
       model: getSetting("planner_model"),
       max_tokens: 1500,
       system: "You plan advertising research for a creative team. Call the static_research_plan tool exactly once. Only give X handles and domains you are confident are the companies' real, official ones; leave a field empty rather than guess.",
