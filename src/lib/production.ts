@@ -11,6 +11,7 @@ import { FAL, FAL_USD, FalClient, falImageUrl, falVideoUrl, hasFal } from "./fal
 import { ApiError } from "./http";
 import { chunkCaptions } from "./creative/captions";
 import { renderTimeline } from "./creative/edit";
+import { advanceBrainrot } from "./creative/brainrot-job";
 import { advanceCodeAd } from "./codeads/job";
 import { advanceRemake } from "./creative/remake-job";
 import { buildTimeline, type RenderedAssets, screenVisualId } from "./creative/plan";
@@ -272,6 +273,8 @@ export async function advanceCreative(ctx: ProductionContext, creative: Creative
   if (concept.brief?.format === "remake") return advanceRemake(ctx, creative, concept);
   // Code ads are animated in code, in their own module (codeads/job.ts).
   if (concept.brief?.format === "code_ad") return advanceCodeAd(ctx, creative, concept);
+  // Brainrot ads make their own stills, clips, voice and cut (creative/brainrot-job.ts).
+  if (concept.brief?.format === "brainrot") return advanceBrainrot(ctx, creative, concept);
   const shots = parse<ShotState[]>(creative.shots_json, []);
   // Spend outside the shots: filmed_screen's monitor photos.
   let otherCost = concept.plan?.format === "filmed_screen" ? ((await readPlate(creative.id))?.cost_micro ?? 0) : 0;

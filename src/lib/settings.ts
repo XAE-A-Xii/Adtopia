@@ -54,6 +54,12 @@ export const DEFAULTS = {
   remake_screens: "auto",
   /** A prebuilt Naive character (chr_…) the brand's persona is made from, instead of a portrait from words; empty for our own. */
   persona_character: "",
+  /** Brainrot videos: the fal video model their clips render on. */
+  brainrot_video_model: "fal-ai/veo3.1/lite/image-to-video",
+  /** Brainrot videos: the video model's assumed price per second until a clip measures it (USD). */
+  brainrot_video_usd_per_second: "0.05",
+  /** Brainrot videos: the cost guard's cap per video (USD). */
+  brainrot_max_usd: "4",
 } as const;
 
 export type SettingKey = keyof typeof DEFAULTS;

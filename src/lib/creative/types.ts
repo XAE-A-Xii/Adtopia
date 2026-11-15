@@ -276,7 +276,9 @@ export type VideoFormat =
   /** The reference itself, one to one: its footage re-performed by our people, its music, its layout and graphic places, our product facts (internal only). */
   | "remake"
   /** No camera, no AI video: a 3D cartoon ad made in code (the original engine's build genre: Gary the Builder, a narrator, callouts), its concept taken from the reference (src/lib/codeads). */
-  | "code_ad";
+  | "code_ad"
+  /** A deliberately terrible, so-cringe-it's-funny AI meme ad: original characters, meme text, bass-boosted sound, the product as the punchline (creative/brainrot.ts; held until cleared). */
+  | "brainrot";
 
 /** The creative director's brief for one video: which viral video it remakes and what changes for this product. */
 /** What a video is judged on once posted: reach videos on attention, convert videos on action. */
